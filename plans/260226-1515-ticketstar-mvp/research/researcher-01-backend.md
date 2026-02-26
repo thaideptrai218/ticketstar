@@ -279,9 +279,11 @@ Register: `builder.Services.AddHostedService<OrderExpiryService>();`
 
 ---
 
-## Unresolved Questions
+## Resolved Decisions — 2026-02-26
 
-- Payment mock: simulate async callback (webhook) or synchronous mock confirm? Affects order state transition complexity.
-- Should `SoldCount` in DB be the source of truth (updated on payment) or on reservation? Redis counter as reservation guard + DB on payment is safer but needs counter rollback on expiry.
-- Multi-event staff role: per-event staff assignment table needed or global Staff role sufficient?
-- QR image: return base64 PNG in ticket API or generate on-the-fly at scan time?
+| Question | Decision |
+|---|---|
+| Payment webhook | **Real SePay via ngrok tunnel** — actual QR + bank transfer in dev |
+| SoldCount timing | **On payment confirmation only** — Redis counter guards reservation; rolled back on cancel/expiry |
+| Staff assignment | **Per-event StaffAssignments table** — staff can only scan assigned events |
+| QR delivery | **Return `qrData` string** — frontend renders SVG via `react-qr-code` |

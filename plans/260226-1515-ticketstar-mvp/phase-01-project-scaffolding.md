@@ -13,11 +13,37 @@
 - **Effort:** 6h
 - **Description:** Initialize .NET 8 solution, Next.js 15 project, Docker Compose for infrastructure
 
+## Validated Environment
+
+| Tool    | Version        | Status    |
+| ------- | -------------- | --------- |
+| .NET    | 8 LTS          | Installed |
+| Node.js | 22+            | Installed |
+| pnpm    | latest         | Installed |
+| Docker  | Running        | Ready     |
+
+## Port Map (all standard ports occupied — using alternates)
+
+| Service     | Port  |
+| ----------- | ----- |
+| Next.js dev | 3001  |
+| ASP.NET API | 5010  |
+| MySQL       | 3307  |
+| Redis       | 6380  |
+| RabbitMQ    | 5672  |
+| RabbitMQ UI | 15672 |
+
+## Secrets Management
+
+- Dev secrets via `.env` file (gitignored) + `docker-compose env_file`
+- `appsettings.json` references env vars via `${VAR}` or `appsettings.Development.json` reads from env
+
 ## Key Insights
 
 - 4-project .NET solution (API, Application, Domain, Infrastructure)
-- Next.js with App Router, TypeScript strict mode
+- Next.js with App Router, TypeScript strict mode, pnpm
 - Docker Compose for MySQL 8, Redis 7, RabbitMQ 3-management
+- HTTP only for local dev (no HTTPS cert setup)
 
 ## Requirements
 
@@ -70,11 +96,23 @@ ticketstar/
 
 ## Implementation Steps
 
+### 0. Create root `.env` file
+
+```env
+# Docker infra secrets (gitignored)
+MYSQL_ROOT_PASSWORD=ticketstar_dev
+MYSQL_DATABASE=ticketstar
+REDIS_PASSWORD=
+RABBITMQ_DEFAULT_USER=guest
+RABBITMQ_DEFAULT_PASS=guest
+JWT_SECRET=dev-secret-min-256-bit-change-in-production-!!
+```
+
 ### 1. Docker Compose
 
-1. Create `docker-compose.yml` with services:
-    - `mysql`: image `mysql:8.0`, port 3306, env `MYSQL_ROOT_PASSWORD`, `MYSQL_DATABASE=ticketstar`
-    - `redis`: image `redis:7-alpine`, port 6379
+1. Create `docker-compose.yml` with services (alternate ports):
+    - `mysql`: image `mysql:8.0`, port **3307:3306**, `env_file: .env`
+    - `redis`: image `redis:7-alpine`, port **6380:6379**
     - `rabbitmq`: image `rabbitmq:3-management`, ports 5672, 15672
     - `volumes` for mysql data persistence
 
@@ -101,12 +139,15 @@ ticketstar/
     - `MassTransit.RabbitMQ` 8.\*
     - `QRCoder` 1.6.\*
     - `Swashbuckle.AspNetCore` (already included)
-6. Configure `Program.cs` with minimal setup: Swagger, CORS (allow frontend origin), controllers
-7. Configure `appsettings.json` with connection strings (MySQL, Redis, RabbitMQ), JWT settings
+6. Configure `Program.cs` with minimal setup: Swagger, CORS (allow `http://localhost:3001`), controllers
+7. Configure `appsettings.json`:
+   - Connection strings: MySQL port **3307**, Redis port **6380**, RabbitMQ default
+   - JWT config references env var `JWT_SECRET`
+   - HTTP only: set Kestrel to listen on `http://localhost:5010`
 
 ### 3. Next.js Frontend
 
-1. `npx create-next-app@latest frontend --typescript --tailwind --eslint --app --src-dir`
+1. `pnpm create next-app@latest frontend --typescript --tailwind --eslint --app --src-dir`
 2. Install dependencies:
     - `@tanstack/react-query` — client state
     - `react-hook-form` + `@hookform/resolvers` + `zod` — forms
@@ -118,7 +159,8 @@ ticketstar/
 4. Install shadcn components: button, input, form, card, badge, dialog, sheet, tabs, table, select, skeleton, avatar, separator
 5. Add `sonner` for toast notifications
 6. Create folder structure: `components/ui/`, `components/events/`, `components/tickets/`, `components/checkout/`, `components/checkin/`, `lib/`, `hooks/`, `types/`
-7. Create `.env.local` with `NEXT_PUBLIC_API_URL=http://localhost:5000`
+7. Create `.env.local` with `NEXT_PUBLIC_API_URL=http://localhost:5010`
+8. Set dev server port in `package.json` dev script: `next dev --port 3001`
 
 ### 4. Git Setup
 
@@ -144,13 +186,13 @@ ticketstar/
 
 - `docker compose up -d` → all 3 services healthy
 - `dotnet build` → 0 errors
-- `npm run dev` → Next.js dev server on localhost:3000
-- Swagger UI accessible at localhost:5000/swagger
+- `pnpm dev` → Next.js dev server on **localhost:3001**
+- Swagger UI accessible at **localhost:5010/swagger**
 
 ## Risk Assessment
 
 - **MySQL version compatibility with Pomelo** — use Pomelo 8.x matching .NET 8
-- **Port conflicts** — document required ports (3000, 3306, 5000, 5672, 6379, 15672)
+- **Port remapping** — all standard ports occupied; using 3001, 5010, 3307, 6380. RabbitMQ (5672, 15672) unchanged.
 
 ## Security Considerations
 
