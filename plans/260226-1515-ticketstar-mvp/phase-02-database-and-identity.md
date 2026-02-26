@@ -7,7 +7,7 @@
 
 ## Overview
 
-- **Priority:** P1 | **Status:** pending | **Effort:** 10h
+- **Priority:** P1 | **Status:** completed | **Effort:** 10h
 - **Depends on:** Phase 1
 - EF Core with MySQL, ASP.NET Identity, JWT auth with refresh token rotation, OAuth Google + Magic Link
 
@@ -18,6 +18,10 @@
 - OAuth via Google external login; Magic Link via emailed one-time token
 - 4 roles: Admin, Organizer, Staff, Attendee
 - Staff assignment is per-event (StaffAssignments table)
+- `QrCode` stores HMAC-signed payload for verification; raw payload (`ticketId|eventId|userId|timestamp`) derived by stripping signature — no separate `QrData` field needed
+- All money columns use `decimal(12,0)` — VND has no fractional currency units
+- `CreatedAt` on all entities, `UpdatedAt` on mutable entities (Event, Order, TicketType, Payment)
+- `RefreshToken.ReplacedByToken` required for reuse detection chain
 
 ## Requirements
 
@@ -35,15 +39,15 @@
 
 ```
 Domain/Entities/
-├── ApplicationUser.cs      # extends IdentityUser: FullName, AvatarUrl, IsLocked
-├── Event.cs                # Id, OrganizerId, Title, Description, StartAt, EndAt, Venue, Status, ImageUrl, Slug
-├── TicketType.cs           # Id, EventId, Name, Price, Quota, SoldCount, SaleStartAt, SaleEndAt
-├── Order.cs                # Id, UserId, Status, TotalAmount, ExpiresAt, CreatedAt, PaidAt
-├── OrderItem.cs            # Id, OrderId, TicketTypeId, Quantity, UnitPrice
-├── Ticket.cs               # Id, OrderItemId, UserId, EventId, TicketTypeId, QrCode, QrData, IsCheckedIn
+├── ApplicationUser.cs      # extends IdentityUser: FullName, AvatarUrl, IsLocked, CreatedAt
+├── Event.cs                # Id, OrganizerId, Title, Description, StartAt, EndAt, Venue, Status, ImageUrl, Slug, CreatedAt, UpdatedAt
+├── TicketType.cs           # Id, EventId, Name, Price, Quota, SoldCount, SaleStartAt, SaleEndAt, CreatedAt
+├── Order.cs                # Id, UserId, Status, TotalAmount, ExpiresAt, CreatedAt, UpdatedAt, PaidAt
+├── OrderItem.cs            # Id, OrderId, TicketTypeId, Quantity, UnitPrice, CreatedAt
+├── Ticket.cs               # Id, OrderItemId, UserId, EventId, TicketTypeId, QrCode, IsCheckedIn, CreatedAt
 ├── CheckIn.cs              # Id, TicketId, ScannedBy, ScannedAt, EventId
-├── Payment.cs              # Id, OrderId, Provider, ExternalRef, Amount, Status, ProcessedAt
-├── RefreshToken.cs         # Id, UserId, Token, ExpiresAt, CreatedAt, RevokedAt
+├── Payment.cs              # Id, OrderId, Provider, ExternalRef, Amount, Status, CreatedAt, ProcessedAt
+├── RefreshToken.cs         # Id, UserId, Token, ExpiresAt, CreatedAt, RevokedAt, ReplacedByToken
 ├── StaffAssignment.cs      # Id, UserId, EventId, AssignedBy, AssignedAt
 └── MagicLinkToken.cs       # Id, UserId, Token, ExpiresAt, IsUsed, CreatedAt
 
@@ -102,15 +106,18 @@ Infrastructure/Data/
 2. Create enums in `Domain/Enums/`
 3. `ApplicationUser : IdentityUser` with: `FullName`, `AvatarUrl`, `IsLocked`, `CreatedAt`
 4. Navigation properties: Event.Organizer, Order.User, Ticket.Event, etc.
+5. QR: `QrCode` field only (HMAC-signed payload string) — generate QR image on-the-fly via API, no `QrData` blob storage
+6. `RefreshToken`: include `ReplacedByToken` (nullable string) for rotation chain tracking
 
 ### 2. EF Core Configuration
 
 1. Create `AppDbContext : IdentityDbContext<ApplicationUser>`
 2. Register all DbSets
 3. Create `IEntityTypeConfiguration<T>` for each entity:
-    - Indexes: `Orders(Status, ExpiresAt)`, `Tickets(QrCode)` unique, `Events(Status, StartAt)`, `TicketTypes(EventId)`
+    - Indexes: `Orders(Status, ExpiresAt)`, `Tickets(QrCode)` unique, `Events(Status, StartAt)`, `Events(Slug)` unique, `Events(OrganizerId)`, `TicketTypes(EventId)`, `CheckIns(EventId, TicketId)`, `Payments(OrderId)` unique, `RefreshTokens(UserId)`, `MagicLinkTokens(Token)` unique
     - Relationships: cascade deletes where appropriate (Event→TicketTypes), restrict others
-    - Column types: `decimal(10,2)` for money, `varchar(450)` for user FKs
+    - Column types: `decimal(12,0)` for money (VND has no fractional units), `varchar(450)` for user FKs
+    - `CreatedAt` on all entities (DB default `NOW()`), `UpdatedAt` on mutable entities (Event, Order, TicketType, Payment) via EF `SaveChanges` override
 4. Register in `Program.cs`:
     ```csharp
     builder.Services.AddDbContext<AppDbContext>(opt =>
@@ -161,21 +168,21 @@ Infrastructure/Data/
 
 ## Todo List
 
-- [ ] Create all entity models
-- [ ] Create all enums
-- [ ] Create AppDbContext with Fluent API configs
-- [ ] Create initial migration
-- [ ] Configure Identity in Program.cs
-- [ ] Configure JWT Bearer authentication
-- [ ] Implement TokenService (access + refresh token generation)
-- [ ] Implement refresh token rotation with reuse detection
-- [ ] Implement Google OAuth login endpoint
-- [ ] Implement Magic Link request + verify endpoints
-- [ ] Create DbSeeder for roles + admin
-- [ ] Create auth DTOs
-- [ ] Create AuthController
-- [ ] Test: migration applies cleanly
-- [ ] Test: register + login flow returns JWT
+- [x] Create all entity models
+- [x] Create all enums
+- [x] Create AppDbContext with Fluent API configs
+- [x] Create initial migration
+- [x] Configure Identity in Program.cs
+- [x] Configure JWT Bearer authentication
+- [x] Implement TokenService (access + refresh token generation)
+- [x] Implement refresh token rotation with reuse detection
+- [x] Implement Google OAuth login endpoint
+- [x] Implement Magic Link request + verify endpoints
+- [x] Create DbSeeder for roles + admin
+- [x] Create auth DTOs
+- [x] Create AuthController
+- [x] Test: migration applies cleanly
+- [x] Test: register + login flow returns JWT
 
 ## Success Criteria
 
@@ -188,17 +195,19 @@ Infrastructure/Data/
 
 ## Risk Assessment
 
-- **Google OAuth in dev:** need valid Google Cloud project + OAuth credentials
-- **Magic Link without real email:** stub via MassTransit consumer logging to console
+- **Google OAuth in dev:** ✅ Use real Google Cloud credentials from day 1 — set up project before starting Phase 2
+- **Magic Link without real email:** ✅ Log token to console (MassTransit consumer stubs), no email infra needed
 - **Token rotation complexity:** keep state machine simple, test edge cases
 
 ## Security Considerations
 
-- Refresh tokens stored hashed in DB
+<!-- Updated: Validation Session 4 - hashing algo, Google lib, rate limit strategy confirmed -->
+- Refresh tokens stored **SHA-256 hashed** in DB (hash before save, compare hash on lookup)
 - Magic link tokens expire in 10min, single-use
-- JWT secret key min 256-bit
-- Google ID token validated server-side via Google APIs
-- Rate limit magic link requests (1 per email per minute)
+- JWT secret key min 256-bit; stored in `appsettings.Development.json` (gitignored)
+- Google ID token validated via `Google.Apis.Auth` → `GoogleJsonWebSignature.ValidateAsync()`
+  - Requires real Google Cloud OAuth credentials configured before Phase 2 starts
+- Rate limit magic link endpoint with ASP.NET Core built-in `RateLimiter` (fixed window, per-IP)
 
 ## Next Steps
 

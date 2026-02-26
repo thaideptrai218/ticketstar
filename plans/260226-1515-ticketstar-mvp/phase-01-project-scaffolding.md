@@ -9,7 +9,7 @@
 ## Overview
 
 - **Priority:** P1 (blocks everything)
-- **Status:** pending
+- **Status:** completed
 - **Effort:** 6h
 - **Description:** Initialize .NET 8 solution, Next.js 15 project, Docker Compose for infrastructure
 
@@ -169,18 +169,18 @@ JWT_SECRET=dev-secret-min-256-bit-change-in-production-!!
 
 ## Todo List
 
-- [ ] Create docker-compose.yml
-- [ ] Scaffold .NET solution with 4 projects + test project
-- [ ] Install NuGet packages
-- [ ] Configure Program.cs (minimal: Swagger, CORS, controllers)
-- [ ] Configure appsettings.json
-- [ ] Scaffold Next.js project
-- [ ] Install npm dependencies
-- [ ] Initialize shadcn/ui
-- [ ] Create folder structure
-- [ ] Verify `docker compose up` works
-- [ ] Verify `dotnet build` succeeds
-- [ ] Verify `npm run dev` starts
+- [x] Create docker-compose.yml
+- [x] Scaffold .NET solution with 4 projects + test project
+- [x] Install NuGet packages
+- [x] Configure Program.cs (minimal: Swagger, CORS, controllers)
+- [x] Configure appsettings.json
+- [x] Scaffold Next.js project
+- [x] Install npm dependencies
+- [x] Initialize shadcn/ui
+- [x] Create folder structure
+- [x] Verify `docker compose up` works
+- [x] Verify `dotnet build` succeeds
+- [x] Verify `npm run dev` starts
 
 ## Success Criteria
 

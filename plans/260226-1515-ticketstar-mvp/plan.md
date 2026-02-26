@@ -19,17 +19,17 @@ created: 2026-02-26
 
 ## Phase Overview
 
-| #   | Phase                                                          | Effort | Status  | Depends On |
-| --- | -------------------------------------------------------------- | ------ | ------- | ---------- |
+| #   | Phase                                                          | Effort | Status    | Depends On |
+| --- | -------------------------------------------------------------- | ------ | --------- | ---------- |
 | 1   | [Project Scaffolding](phase-01-project-scaffolding.md)         | 6h     | completed | —          |
-| 2   | [Database & Identity](phase-02-database-and-identity.md)       | 10h    | pending | 1          |
-| 3   | [Backend API](phase-03-backend-api.md)                         | 16h    | pending | 2          |
-| 4   | [Frontend Auth & Layout](phase-04-frontend-auth-and-layout.md) | 8h     | pending | 1          |
-| 5   | [Frontend Marketplace](phase-05-frontend-marketplace.md)       | 10h    | pending | 3, 4       |
-| 6   | [Frontend Attendee](phase-06-frontend-attendee.md)             | 6h     | pending | 3, 4       |
-| 7   | [Frontend Organizer](phase-07-frontend-organizer.md)           | 10h    | pending | 3, 4       |
-| 8   | [Frontend Staff & Admin](phase-08-frontend-staff-admin.md)     | 6h     | pending | 3, 4       |
-| 9   | [Testing](phase-09-testing.md)                                 | 8h     | pending | 5, 6, 7, 8 |
+| 2   | [Database & Identity](phase-02-database-and-identity.md)       | 10h    | completed | 1          |
+| 3   | [Backend API](phase-03-backend-api.md)                         | 16h    | pending   | 2          |
+| 4   | [Frontend Auth & Layout](phase-04-frontend-auth-and-layout.md) | 8h     | pending   | 1          |
+| 5   | [Frontend Marketplace](phase-05-frontend-marketplace.md)       | 10h    | pending   | 3, 4       |
+| 6   | [Frontend Attendee](phase-06-frontend-attendee.md)             | 6h     | pending   | 3, 4       |
+| 7   | [Frontend Organizer](phase-07-frontend-organizer.md)           | 10h    | pending   | 3, 4       |
+| 8   | [Frontend Staff & Admin](phase-08-frontend-staff-admin.md)     | 6h     | pending   | 3, 4       |
+| 9   | [Testing](phase-09-testing.md)                                 | 8h     | pending   | 5, 6, 7, 8 |
 
 ## Critical Path
 
@@ -48,16 +48,50 @@ created: 2026-02-26
 
 ## Validation Log
 
+### Session 5 — 2026-02-26 (Phase 2 Schema Review)
+
+| Question | Decision |
+| --- | --- |
+| QrData field | Dropped — QrCode stores HMAC-signed payload; raw payload derivable, QR image generated on-the-fly |
+| Money column type | `decimal(12,0)` — VND has no fractional units |
+| RefreshToken.ReplacedByToken | Added — required for reuse detection chain |
+| CreatedAt/UpdatedAt | CreatedAt on all entities; UpdatedAt on mutable entities (Event, Order, TicketType, Payment) |
+| Missing indexes | Added: Events(Slug) unique, Events(OrganizerId), CheckIns(EventId,TicketId), Payments(OrderId) unique, RefreshTokens(UserId), MagicLinkTokens(Token) unique |
+
+### Session 4 — 2026-02-26 (Phase 2 Validation)
+
+| Question | Decision |
+| --- | --- |
+| Google OAuth in dev | Real Google credentials from day 1 — set up Google Cloud project before implementation |
+| Magic Link email | Console stub only — log token to console, no real email infra in Phase 2 |
+| Refresh token hashing | SHA-256 before storing in DB |
+| Staff role model | Role + per-event assignment as planned (4 roles seeded in Identity) |
+| JWT config storage | `appsettings.Development.json` (gitignored) |
+| Google token validation | `Google.Apis.Auth` NuGet package — `GoogleJsonWebSignature.ValidateAsync()` |
+| Rate limiting | ASP.NET Core built-in `RateLimiter` middleware on magic link endpoint (per-IP) |
+
 ### Session 3 — 2026-02-26
 
-| Phase        | Status | Completion Details                                               |
-| ------------- | ------ | ---------------------------------------------------------------- |
-| Phase 1       | completed | ✅ Docker Compose (MySQL 8, Redis 7, RabbitMQ 3)                 |
-|              |        | ✅ .NET 8 solution with 4 projects (API, Application, Domain, Infrastructure) |
-|              |        | ✅ Next.js 15 + TypeScript + shadcn/ui scaffolded               |
-|              |        | ✅ Package dependencies installed (NuGet + npm)                 |
-|              |        | ✅ Port mappings configured (3001, 5010, 3307, 6380)             |
-|              |        | ✅ Git repository initialized with proper .gitignore            |
+| Phase   | Status    | Completion Details                                                            |
+| ------- | --------- | ----------------------------------------------------------------------------- |
+| Phase 1 | completed | ✅ Docker Compose (MySQL 8, Redis 7, RabbitMQ 3)                              |
+|         |           | ✅ .NET 8 solution with 4 projects (API, Application, Domain, Infrastructure) |
+|         |           | ✅ Next.js 15 + TypeScript + shadcn/ui scaffolded                             |
+|         |           | ✅ Package dependencies installed (NuGet + npm)                               |
+|         |           | ✅ Port mappings configured (3001, 5010, 3307, 6380)                          |
+|         |           | ✅ Git repository initialized with proper .gitignore                          |
+
+### Session 2 — 2026-02-26 (Phase 2 Implementation Complete)
+
+| Phase   | Status    | Completion Details                                                            |
+| ------- | --------- | ----------------------------------------------------------------------------- |
+| Phase 2 | completed | ✅ All 10 entity models + 3 enums created (AppDbContext + 10 EF configs)     |
+|         |           | ✅ Auth DTOs, ITokenService, IAuthService interfaces designed                 |
+|         |           | ✅ TokenService, AuthService, MagicLinkService, UserHelper implemented       |
+|         |           | ✅ AuthController (5 endpoints) + DbSeeder completed                          |
+|         |           | ✅ Program.cs configured (Identity, JWT, EF Core, per-IP rate limiting)       |
+|         |           | ✅ Initial migration applied to MySQL (all 17 tables created)                 |
+|         |           | ✅ Code review fixes: SHA-256 hashing, RefreshToken.Token unique index       |
 
 ### Session 1 — 2026-02-26
 
@@ -70,22 +104,6 @@ created: 2026-02-26
 | Auth methods     | OAuth (Google) + Magic Link                                       |
 | Refresh tokens   | Rotation enabled                                                  |
 | Offline check-in | No (online only)                                                  |
-
-### Session 2 — 2026-02-26 (Unresolved Questions Resolved)
-
-| Question                  | Decision                                                                     |
-| ------------------------- | ---------------------------------------------------------------------------- |
-| MVP scope                 | Full scope: all 4 roles (Admin, Organizer, Staff, Attendee) + QR + check-in |
-| Email / Magic Link        | Console log only — dev copies token from server logs, no email infra         |
-| Payment                   | Real SePay (VietQR) — bank transfer QR + webhook                             |
-| CSRF protection           | SameSite=Lax only — no explicit CSRF tokens                                  |
-| RabbitMQ / MassTransit    | Keep — stubbed consumers log to console, real infra from day 1               |
-| Refresh token rotation    | Rotation + reuse detection (revoke all sessions on token reuse)              |
-| Input validation          | DataAnnotations (built-in, no extra deps)                                    |
-| Rate limiting             | ASP.NET Core built-in RateLimiter middleware                                 |
-| QR payload format         | `ticketId\|eventId\|userId\|timestamp` + HMAC-SHA256                         |
-| Database                  | MySQL + Pomelo (hard constraint, as planned)                                 |
-| Organizer dashboard scope | Full dashboard: stats, check-in stats, payout views                          |
 
 ## Research Reports
 
