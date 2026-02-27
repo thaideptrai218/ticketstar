@@ -54,9 +54,11 @@ No other new packages needed — all patterns are hand-implemented.
 
 ## Risk Assessment
 
-- **Refactoring auth services** changes return types (Task<T> → Task<Result<T>>). Tests must update.
+- **Refactoring auth services** changes return types (Task<T> → Task<Result<T>>). Phase 5 includes detailed test update strategy.
 - **Repository layer** adds abstraction between services and DbContext. Application project must remove Infrastructure reference and use interfaces only.
-- **Breaking change awareness**: interface signatures change, existing 35 tests need update.
+- **Result pattern** uses transport-agnostic `ResultError` enum — HTTP mapping is in `ApiControllerBase` only.
+- **ApiResponse** lives in API layer (not Application) since it's a presentation concern.
+- **Rollback strategy**: All phases on a single feature branch. Phases 1–4 are additive; Phase 5 modifies existing code. Merge only after all phases complete and tests pass.
 
 ---
 

@@ -12,7 +12,26 @@ Create shared types in Application layer that all services and controllers use. 
 
 ## Files to Create
 
-### 1. `TicketStar.Application/Common/Result.cs`
+### 1. `TicketStar.Application/Common/ResultError.cs`
+
+```csharp
+namespace TicketStar.Application.Common;
+
+/// <summary>
+/// Transport-agnostic error classification. Mapped to HTTP status codes in ApiControllerBase.
+/// </summary>
+public enum ResultError
+{
+    Validation,    // Bad input (HTTP 400)
+    Unauthorized,  // Not authenticated (HTTP 401)
+    Forbidden,     // Not authorized (HTTP 403)
+    NotFound,      // Resource missing (HTTP 404)
+    Conflict,      // Duplicate / state conflict (HTTP 409)
+    Internal       // Unexpected failure (HTTP 500)
+}
+```
+
+### 2. `TicketStar.Application/Common/Result.cs`
 
 ```csharp
 namespace TicketStar.Application.Common;
@@ -22,33 +41,35 @@ public class Result<T>
     public bool IsSuccess { get; }
     public T? Value { get; }
     public string? Error { get; }
-    public int StatusCode { get; }
+    public ResultError? ErrorType { get; }
 
-    private Result(T value) { IsSuccess = true; Value = value; StatusCode = 200; }
-    private Result(string error, int statusCode) { IsSuccess = false; Error = error; StatusCode = statusCode; }
+    private Result(T value) { IsSuccess = true; Value = value; }
+    private Result(string error, ResultError errorType) { IsSuccess = false; Error = error; ErrorType = errorType; }
 
     public static Result<T> Success(T value) => new(value);
-    public static Result<T> Failure(string error, int statusCode = 400) => new(error, statusCode);
+    public static Result<T> Failure(string error, ResultError errorType = ResultError.Validation) => new(error, errorType);
 }
 
 public class Result
 {
     public bool IsSuccess { get; }
     public string? Error { get; }
-    public int StatusCode { get; }
+    public ResultError? ErrorType { get; }
 
-    private Result() { IsSuccess = true; StatusCode = 200; }
-    private Result(string error, int statusCode) { IsSuccess = false; Error = error; StatusCode = statusCode; }
+    private Result() { IsSuccess = true; }
+    private Result(string error, ResultError errorType) { IsSuccess = false; Error = error; ErrorType = errorType; }
 
     public static Result Success() => new();
-    public static Result Failure(string error, int statusCode = 400) => new(error, statusCode);
+    public static Result Failure(string error, ResultError errorType = ResultError.Validation) => new(error, errorType);
 }
 ```
 
-### 2. `TicketStar.Application/Common/ApiResponse.cs`
+### 3. `TicketStar.API/Models/ApiResponse.cs`
+
+> **Note:** ApiResponse is a presentation concern (contains TraceId, HTTP-specific shape). Lives in API layer, not Application.
 
 ```csharp
-namespace TicketStar.Application.Common;
+namespace TicketStar.API.Models;
 
 public class ApiResponse<T>
 {
@@ -79,7 +100,7 @@ public class ApiResponse
 }
 ```
 
-### 3. `TicketStar.Application/Common/PaginatedRequest.cs`
+### 4. `TicketStar.Application/Common/PaginatedRequest.cs`
 
 ```csharp
 namespace TicketStar.Application.Common;
@@ -102,7 +123,7 @@ public record CursorPaginatedRequest
 }
 ```
 
-### 4. `TicketStar.Application/Common/PaginatedResponse.cs`
+### 5. `TicketStar.Application/Common/PaginatedResponse.cs`
 
 ```csharp
 namespace TicketStar.Application.Common;
@@ -113,7 +134,7 @@ public record PaginatedResponse<T>
     public int Page { get; init; }
     public int PageSize { get; init; }
     public int TotalCount { get; init; }
-    public int TotalPages => (int)Math.Ceiling(TotalCount / (double)PageSize);
+    public int TotalPages => (int)Math.Ceiling(TotalCount / (double)Math.Max(PageSize, 1));
     public bool HasPreviousPage => Page > 1;
     public bool HasNextPage => Page < TotalPages;
 }
@@ -131,8 +152,9 @@ public record CursorPaginatedResponse<T>
 ## Todo
 
 - [ ] Create Common/ directory in Application project
+- [ ] Create ResultError.cs (error enum)
 - [ ] Create Result.cs
-- [ ] Create ApiResponse.cs
+- [ ] Create ApiResponse.cs in **API/Models/** (not Application)
 - [ ] Create PaginatedRequest.cs
 - [ ] Create PaginatedResponse.cs
 - [ ] Verify build compiles

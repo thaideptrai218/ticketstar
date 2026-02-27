@@ -49,8 +49,8 @@ Task<Result<TokenResponse>> RefreshTokenAsync(string refreshToken);
 ### 3. `TicketStar.Application/Services/AuthService.cs`
 
 - Replace `AppDbContext _db` with repository interfaces + `IUnitOfWork`
-- Replace `throw new InvalidOperationException(...)` with `return Result<T>.Failure(..., 409)`
-- Replace `throw new UnauthorizedAccessException(...)` with `return Result<T>.Failure(..., 401)`
+- Replace `throw new InvalidOperationException(...)` with `return Result<T>.Failure("...", ResultError.Conflict)`
+- Replace `throw new UnauthorizedAccessException(...)` with `return Result<T>.Failure("...", ResultError.Unauthorized)`
 - Replace `_db.Users.IgnoreQueryFilters()` with `_userRepo.QueryIgnoreFilters()` or specific repo methods
 - Replace `_db.SaveChangesAsync()` with `_unitOfWork.SaveChangesAsync()`
 - Replace `_db.Database.BeginTransactionAsync()` with `_unitOfWork.BeginTransactionAsync()`
@@ -58,7 +58,7 @@ Task<Result<TokenResponse>> RefreshTokenAsync(string refreshToken);
 ### 4. `TicketStar.Application/Services/TokenService.cs`
 
 - Replace `AppDbContext` with `IRefreshTokenRepository`, `IUnitOfWork`
-- Replace `throw new UnauthorizedAccessException(...)` with `Result<T>.Failure(..., 401)`
+- Replace `throw new UnauthorizedAccessException(...)` with `Result<T>.Failure("...", ResultError.Unauthorized)`
 - Replace `IConfiguration` with `IOptions<JwtOptions>` (from Phase 2)
 
 ### 5. `TicketStar.Application/Services/SessionService.cs`
@@ -99,21 +99,47 @@ public async Task<IActionResult> Register([FromBody] RegisterRequest request)
 - Logout: return message via `FromResult(result, "Logged out successfully.")`
 - Revoke all: return message via `FromResult(result, "All sessions revoked.")`
 
-## Test Impact
+## Test Impact & Update Strategy
 
-Existing 35 unit tests test security services (password hasher, token hasher, crypto random) — these are unaffected. Any integration tests for AuthService would need updating for Result return types.
+Existing 35 unit tests cover security services (password hasher, token hasher, crypto random) — these are unaffected.
+
+**Tests that WILL break** (signature/return type changes):
+- Any integration tests mocking `IAuthService`, `ITokenService` — return types change to `Result<T>`
+- Tests asserting on exceptions — must assert on `Result.IsSuccess == false` + `Result.ErrorType` instead
+- Tests constructing services with `AppDbContext` — must provide repository mocks instead
+
+**Required test updates:**
+
+1. Update mock setup for repository interfaces (`IUserRepository`, `IRefreshTokenRepository`, `IUnitOfWork`)
+2. Replace exception-based assertions (`Assert.ThrowsAsync<...>`) with Result assertions:
+   ```csharp
+   // Before
+   await Assert.ThrowsAsync<InvalidOperationException>(() => svc.RegisterAsync(...));
+   // After
+   var result = await svc.RegisterAsync(...);
+   Assert.False(result.IsSuccess);
+   Assert.Equal(ResultError.Conflict, result.ErrorType);
+   ```
+3. Add negative-case tests for each `Result.Failure` path
+4. Verify test count does NOT decrease post-refactor
+5. Run full test suite and confirm all pass before merging
 
 ## Todo
 
 - [ ] Update IAuthService interface signatures
 - [ ] Update ITokenService interface signatures
-- [ ] Refactor AuthService: inject repos, return Results
+- [ ] Refactor AuthService: inject repos, return Results with `ResultError` enum
 - [ ] Refactor TokenService: inject repos, return Results, use JwtOptions
+- [ ] Wrap `GoogleJsonWebSignature.ValidateAsync` in try-catch, convert to `Result.Failure`
 - [ ] Refactor SessionService: inject repo instead of DbContext
 - [ ] Update AuthController: inherit ApiControllerBase, remove try/catch
-- [ ] Fix HTTP status codes (Register → 201)
+- [ ] Fix HTTP status codes (Register → 201 via `CreatedFromResult`)
+- [ ] Update test mocks for repository interfaces
+- [ ] Update assertions: exception-based → Result-based
+- [ ] Add negative-case tests for Result.Failure paths
+- [ ] Verify test count does not decrease
 - [ ] Verify build compiles
-- [ ] Run existing tests
+- [ ] Run full test suite — all tests pass
 
 ---
 
