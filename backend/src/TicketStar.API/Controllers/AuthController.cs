@@ -7,9 +7,8 @@ using TicketStar.Application.Interfaces;
 
 namespace TicketStar.API.Controllers;
 
-[ApiController]
 [Route("api/auth")]
-public class AuthController : ControllerBase
+public class AuthController : ApiControllerBase
 {
     private readonly IAuthService _authService;
     private readonly ITokenService _tokenService;
@@ -21,90 +20,35 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("register")]
-    public async Task<ActionResult<TokenResponse>> Register([FromBody] RegisterRequest request)
-    {
-        try
-        {
-            var response = await _authService.RegisterAsync(request, GetIp(), GetUserAgent());
-            return Ok(response);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(new { error = ex.Message });
-        }
-    }
+    public async Task<IActionResult> Register([FromBody] RegisterRequest request)
+        => CreatedFromResult(await _authService.RegisterAsync(request, GetIp(), GetUserAgent()));
 
     [HttpPost("login")]
-    public async Task<ActionResult<TokenResponse>> Login([FromBody] LoginRequest request)
-    {
-        try
-        {
-            var response = await _authService.LoginAsync(request, GetIp(), GetUserAgent());
-            return Ok(response);
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(new { error = ex.Message });
-        }
-    }
+    public async Task<IActionResult> Login([FromBody] LoginRequest request)
+        => FromResult(await _authService.LoginAsync(request, GetIp(), GetUserAgent()));
 
     [HttpPost("google-login")]
-    public async Task<ActionResult<TokenResponse>> GoogleLogin([FromBody] GoogleLoginRequest request)
-    {
-        try
-        {
-            var response = await _authService.GoogleLoginAsync(request.IdToken, GetIp(), GetUserAgent());
-            return Ok(response);
-        }
-        catch (Exception ex)
-        {
-            return Unauthorized(new { error = ex.Message });
-        }
-    }
+    public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginRequest request)
+        => FromResult(await _authService.GoogleLoginAsync(request.IdToken, GetIp(), GetUserAgent()));
 
     [EnableRateLimiting("magic-link")]
     [HttpPost("magic-link/request")]
     public async Task<IActionResult> RequestMagicLink([FromBody] MagicLinkRequest request)
-    {
-        await _authService.RequestMagicLinkAsync(request.Email, GetIp());
-        return Ok(new { message = "If the email exists, a magic link has been sent." });
-    }
+        => FromResult(await _authService.RequestMagicLinkAsync(request.Email, GetIp()),
+            "If the email exists, a magic link has been sent.");
 
     [HttpPost("magic-link/verify")]
-    public async Task<ActionResult<TokenResponse>> VerifyMagicLink([FromBody] MagicLinkVerifyRequest request)
-    {
-        try
-        {
-            var response = await _authService.VerifyMagicLinkAsync(request.Token, GetIp(), GetUserAgent());
-            return Ok(response);
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(new { error = ex.Message });
-        }
-    }
+    public async Task<IActionResult> VerifyMagicLink([FromBody] MagicLinkVerifyRequest request)
+        => FromResult(await _authService.VerifyMagicLinkAsync(request.Token, GetIp(), GetUserAgent()));
 
     [HttpPost("refresh")]
-    public async Task<ActionResult<TokenResponse>> Refresh([FromBody] RefreshRequest request)
-    {
-        try
-        {
-            var response = await _tokenService.RefreshTokenAsync(request.RefreshToken);
-            return Ok(response);
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(new { error = ex.Message });
-        }
-    }
+    public async Task<IActionResult> Refresh([FromBody] RefreshRequest request)
+        => FromResult(await _tokenService.RefreshTokenAsync(request.RefreshToken));
 
     [Authorize]
     [HttpPost("logout")]
     public async Task<IActionResult> Logout([FromBody] RefreshRequest request)
-    {
-        await _authService.LogoutAsync(request.RefreshToken);
-        return Ok(new { message = "Logged out successfully." });
-    }
+        => FromResult(await _authService.LogoutAsync(request.RefreshToken), "Logged out successfully.");
 
     [Authorize]
     [HttpPost("revoke-all")]
@@ -114,8 +58,7 @@ public class AuthController : ControllerBase
             ?? User.FindFirstValue("sub");
         if (userId is null) return Unauthorized();
 
-        await _authService.RevokeAllSessionsAsync(userId);
-        return Ok(new { message = "All sessions revoked." });
+        return FromResult(await _authService.RevokeAllSessionsAsync(userId), "All sessions revoked.");
     }
 
     private string? GetIp() => HttpContext.Connection.RemoteIpAddress?.ToString();

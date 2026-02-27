@@ -2,7 +2,9 @@ using Microsoft.EntityFrameworkCore;
 using Xunit;
 using TicketStar.Application.Services;
 using TicketStar.Domain.Entities;
+using TicketStar.Domain.Interfaces;
 using TicketStar.Infrastructure.Data;
+using TicketStar.Infrastructure.Repositories;
 using TicketStar.Tests.Helpers;
 
 namespace TicketStar.Tests.Unit.Services;
@@ -15,9 +17,11 @@ public class SessionServiceTests
         return factory.CreateDbContext();
     }
 
-    private SessionService CreateSessionService(AppDbContext db)
+    private (SessionService service, IRepository<AuthSession> repo, IUnitOfWork uow) CreateSessionService(AppDbContext db)
     {
-        return new SessionService(db);
+        var repo = new EfRepository<AuthSession>(db);
+        var uow = new EfUnitOfWork(db);
+        return (new SessionService(repo, uow), repo, uow);
     }
 
     // ============ CreateSessionAsync Tests ============
@@ -27,7 +31,7 @@ public class SessionServiceTests
     {
         // Arrange
         using var db = CreateDbContext();
-        var service = CreateSessionService(db);
+        var (service, _, _) = CreateSessionService(db);
 
         var userId = Guid.NewGuid().ToString();
         var user = new User
@@ -63,7 +67,7 @@ public class SessionServiceTests
     {
         // Arrange
         using var db = CreateDbContext();
-        var service = CreateSessionService(db);
+        var (service, _, _) = CreateSessionService(db);
 
         var userId = Guid.NewGuid().ToString();
         var user = new User
@@ -91,7 +95,7 @@ public class SessionServiceTests
     {
         // Arrange
         using var db = CreateDbContext();
-        var service = CreateSessionService(db);
+        var (service, _, _) = CreateSessionService(db);
 
         var userId = Guid.NewGuid().ToString();
         var user = new User
@@ -123,7 +127,7 @@ public class SessionServiceTests
     {
         // Arrange
         using var db = CreateDbContext();
-        var service = CreateSessionService(db);
+        var (service, _, _) = CreateSessionService(db);
 
         var userId = Guid.NewGuid().ToString();
         var user = new User
@@ -150,7 +154,7 @@ public class SessionServiceTests
     {
         // Arrange
         using var db = CreateDbContext();
-        var service = CreateSessionService(db);
+        var (service, _, _) = CreateSessionService(db);
 
         var userId = Guid.NewGuid().ToString();
         var user = new User
@@ -179,7 +183,7 @@ public class SessionServiceTests
 
         // Assert
         var updated = await db.AuthSessions.FindAsync(sessionId);
-        Assert.False(updated.IsActive);
+        Assert.False(updated!.IsActive);
         Assert.NotNull(updated.RevokedAt);
     }
 
@@ -188,7 +192,7 @@ public class SessionServiceTests
     {
         // Arrange
         using var db = CreateDbContext();
-        var service = CreateSessionService(db);
+        var (service, _, _) = CreateSessionService(db);
 
         var userId = Guid.NewGuid().ToString();
         var user = new User
@@ -219,8 +223,8 @@ public class SessionServiceTests
 
         // Assert
         var updated = await db.AuthSessions.FindAsync(sessionId);
-        Assert.False(updated.IsActive);
-        Assert.Equal(revokedAt, updated.RevokedAt); // Should not change
+        Assert.False(updated!.IsActive);
+        Assert.Equal(revokedAt, updated.RevokedAt);
     }
 
     [Fact]
@@ -228,14 +232,12 @@ public class SessionServiceTests
     {
         // Arrange
         using var db = CreateDbContext();
-        var service = CreateSessionService(db);
+        var (service, _, _) = CreateSessionService(db);
 
         var nonExistentId = Guid.NewGuid();
 
         // Act - should not throw
         await service.DeactivateSessionAsync(nonExistentId);
-
-        // Assert - no exception
     }
 
     // ============ DeactivateAllSessionsAsync Tests ============
@@ -245,7 +247,7 @@ public class SessionServiceTests
     {
         // Arrange
         using var db = CreateDbContext();
-        var service = CreateSessionService(db);
+        var (service, _, _) = CreateSessionService(db);
 
         var userId = Guid.NewGuid().ToString();
         var user = new User
@@ -258,7 +260,6 @@ public class SessionServiceTests
         db.Users.Add(user);
         db.SaveChanges();
 
-        // Add multiple active sessions
         db.AuthSessions.Add(new AuthSession
         {
             UserId = userId,
@@ -289,7 +290,7 @@ public class SessionServiceTests
     {
         // Arrange
         using var db = CreateDbContext();
-        var service = CreateSessionService(db);
+        var (service, _, _) = CreateSessionService(db);
 
         var userId = Guid.NewGuid().ToString();
         var user = new User
@@ -328,7 +329,7 @@ public class SessionServiceTests
         Assert.True(sessions.All(s => !s.IsActive));
 
         var alreadyInactive = sessions.First(s => s.IpAddress == "127.0.0.2");
-        Assert.Equal(revokedAt, alreadyInactive.RevokedAt); // Should not change
+        Assert.Equal(revokedAt, alreadyInactive.RevokedAt);
     }
 
     [Fact]
@@ -336,14 +337,14 @@ public class SessionServiceTests
     {
         // Arrange
         using var db = CreateDbContext();
-        var service = CreateSessionService(db);
+        var (service, _, _) = CreateSessionService(db);
 
         var userId = Guid.NewGuid().ToString();
 
         // Act - should not throw
         await service.DeactivateAllSessionsAsync(userId);
 
-        // Assert - no exception
+        // Assert
         var count = await db.AuthSessions
             .Where(s => s.UserId == userId)
             .CountAsync();
@@ -357,7 +358,7 @@ public class SessionServiceTests
     {
         // Arrange
         using var db = CreateDbContext();
-        var service = CreateSessionService(db);
+        var (service, _, _) = CreateSessionService(db);
 
         var userId = Guid.NewGuid().ToString();
         var user = new User
@@ -380,14 +381,14 @@ public class SessionServiceTests
 
         var sessionId = session.Id;
         var originalLastActivity = session.LastActivityAt;
-        System.Threading.Thread.Sleep(10); // Ensure time difference
+        await Task.Delay(10); // Ensure time difference
 
         // Act
         await service.UpdateActivityAsync(sessionId);
 
         // Assert
         var updated = await db.AuthSessions.FindAsync(sessionId);
-        Assert.True(updated.LastActivityAt > originalLastActivity);
+        Assert.True(updated!.LastActivityAt > originalLastActivity);
     }
 
     [Fact]
@@ -395,13 +396,11 @@ public class SessionServiceTests
     {
         // Arrange
         using var db = CreateDbContext();
-        var service = CreateSessionService(db);
+        var (service, _, _) = CreateSessionService(db);
 
         var nonExistentId = Guid.NewGuid();
 
         // Act - should not throw
         await service.UpdateActivityAsync(nonExistentId);
-
-        // Assert - no exception
     }
 }

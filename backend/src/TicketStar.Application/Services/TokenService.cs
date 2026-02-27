@@ -1,29 +1,37 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using TicketStar.Application.Common;
 using TicketStar.Application.DTOs.Auth;
 using TicketStar.Application.Interfaces;
+using TicketStar.Application.Options;
 using TicketStar.Domain.Entities;
-using TicketStar.Infrastructure.Data;
+using TicketStar.Domain.Interfaces;
 
 namespace TicketStar.Application.Services;
 
 public class TokenService : ITokenService
 {
-    private readonly IConfiguration _config;
+    private readonly JwtOptions _jwtOptions;
     private readonly ITokenHasher _tokenHasher;
     private readonly ISecureRandom _random;
-    private readonly AppDbContext _db;
+    private readonly IRefreshTokenRepository _refreshTokenRepo;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public TokenService(IConfiguration config, ITokenHasher tokenHasher, ISecureRandom random, AppDbContext db)
+    public TokenService(
+        IOptions<JwtOptions> jwtOptions,
+        ITokenHasher tokenHasher,
+        ISecureRandom random,
+        IRefreshTokenRepository refreshTokenRepo,
+        IUnitOfWork unitOfWork)
     {
-        _config = config;
+        _jwtOptions = jwtOptions.Value;
         _tokenHasher = tokenHasher;
         _random = random;
-        _db = db;
+        _refreshTokenRepo = refreshTokenRepo;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<TokenResponse> GenerateTokenPairAsync(User user, AuthSession session)
@@ -38,42 +46,38 @@ public class TokenService : ITokenService
             SessionId = session.Id,
             TokenHash = refreshHash,
             FamilyId = Guid.NewGuid().ToString("N"),
-            ExpiresAt = DateTime.UtcNow.AddDays(7),
+            ExpiresAt = DateTime.UtcNow.AddDays(_jwtOptions.RefreshTokenDays),
         };
-        _db.RefreshTokens.Add(entity);
-        await _db.SaveChangesAsync();
+        _refreshTokenRepo.Add(entity);
+        await _unitOfWork.SaveChangesAsync();
 
-        var expiryMinutes = _config.GetValue("Jwt:ExpiryMinutes", 15);
         return new TokenResponse(
             accessToken, refreshPlaintext,
-            DateTime.UtcNow.AddMinutes(expiryMinutes),
+            DateTime.UtcNow.AddMinutes(_jwtOptions.AccessTokenMinutes),
             session.Id.ToString("N"));
     }
 
-    public async Task<TokenResponse> RefreshTokenAsync(string refreshToken)
+    public async Task<Result<TokenResponse>> RefreshTokenAsync(string refreshToken)
     {
         var hash = _tokenHasher.Hash(refreshToken);
-        var stored = await _db.RefreshTokens
-            .Include(r => r.User)
-            .Include(r => r.Session)
-            .FirstOrDefaultAsync(r => r.TokenHash == hash);
+        var stored = await _refreshTokenRepo.GetByHashWithUserAndSessionAsync(hash);
 
         if (stored is null)
-            throw new UnauthorizedAccessException("Invalid refresh token.");
+            return Result<TokenResponse>.Failure("Invalid refresh token.", ResultError.Unauthorized);
 
         // Reuse detection: revoked token used again -> revoke entire family
         if (stored.IsRevoked)
         {
             await RevokeTokenFamilyAsync(stored.FamilyId);
-            throw new UnauthorizedAccessException("Token reuse detected. Sessions revoked.");
+            return Result<TokenResponse>.Failure("Token reuse detected. Sessions revoked.", ResultError.Unauthorized);
         }
 
         if (stored.IsExpired)
-            throw new UnauthorizedAccessException("Refresh token expired.");
+            return Result<TokenResponse>.Failure("Refresh token expired.", ResultError.Unauthorized);
 
         var user = stored.User;
         if (user.DeletedAt is not null || user.IsLocked)
-            throw new UnauthorizedAccessException("Account unavailable.");
+            return Result<TokenResponse>.Failure("Account unavailable.", ResultError.Unauthorized);
 
         // Rotate: revoke old, issue new in same family
         stored.RevokedAt = DateTime.UtcNow;
@@ -86,45 +90,41 @@ public class TokenService : ITokenService
             UserId = user.Id,
             SessionId = stored.SessionId,
             TokenHash = newHash,
-            FamilyId = stored.FamilyId, // same family
-            ExpiresAt = DateTime.UtcNow.AddDays(7),
+            FamilyId = stored.FamilyId,
+            ExpiresAt = DateTime.UtcNow.AddDays(_jwtOptions.RefreshTokenDays),
         };
-        _db.RefreshTokens.Add(newEntity);
+        _refreshTokenRepo.Add(newEntity);
 
         // Update session activity
         if (stored.Session is { IsActive: true })
             stored.Session.LastActivityAt = DateTime.UtcNow;
 
-        await _db.SaveChangesAsync();
+        await _unitOfWork.SaveChangesAsync();
 
         var accessToken = GenerateAccessToken(user, stored.SessionId.ToString("N"));
-        var expiryMinutes = _config.GetValue("Jwt:ExpiryMinutes", 15);
-        return new TokenResponse(
+        return Result<TokenResponse>.Success(new TokenResponse(
             accessToken, newPlaintext,
-            DateTime.UtcNow.AddMinutes(expiryMinutes),
-            stored.SessionId.ToString("N"));
+            DateTime.UtcNow.AddMinutes(_jwtOptions.AccessTokenMinutes),
+            stored.SessionId.ToString("N")));
     }
 
     public async Task RevokeRefreshTokenAsync(string refreshToken)
     {
         var hash = _tokenHasher.Hash(refreshToken);
-        var stored = await _db.RefreshTokens.FirstOrDefaultAsync(r => r.TokenHash == hash);
+        var stored = await _refreshTokenRepo.GetByHashAsync(hash);
         if (stored is { IsActive: true })
         {
             stored.RevokedAt = DateTime.UtcNow;
-            await _db.SaveChangesAsync();
+            await _unitOfWork.SaveChangesAsync();
         }
     }
 
     public async Task RevokeAllUserTokensAsync(string userId)
     {
-        var active = await _db.RefreshTokens
-            .Where(r => r.UserId == userId && r.RevokedAt == null)
-            .ToListAsync();
-
+        var active = await _refreshTokenRepo.GetActiveByUserAsync(userId);
         var now = DateTime.UtcNow;
         foreach (var t in active) t.RevokedAt = now;
-        await _db.SaveChangesAsync();
+        await _unitOfWork.SaveChangesAsync();
     }
 
     private string GenerateAccessToken(User user, string sessionId)
@@ -140,15 +140,14 @@ public class TokenService : ITokenService
             new("sstamp", user.SecurityStamp[..8]),
         };
 
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Secret"]!));
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtOptions.Secret));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-        var expiryMinutes = _config.GetValue("Jwt:ExpiryMinutes", 15);
 
         var token = new JwtSecurityToken(
-            issuer: _config["Jwt:Issuer"],
-            audience: _config["Jwt:Audience"],
+            issuer: _jwtOptions.Issuer,
+            audience: _jwtOptions.Audience,
             claims: claims,
-            expires: DateTime.UtcNow.AddMinutes(expiryMinutes),
+            expires: DateTime.UtcNow.AddMinutes(_jwtOptions.AccessTokenMinutes),
             signingCredentials: creds);
 
         return new JwtSecurityTokenHandler().WriteToken(token);
@@ -156,12 +155,9 @@ public class TokenService : ITokenService
 
     private async Task RevokeTokenFamilyAsync(string familyId)
     {
-        var tokens = await _db.RefreshTokens
-            .Where(r => r.FamilyId == familyId && r.RevokedAt == null)
-            .ToListAsync();
-
+        var tokens = await _refreshTokenRepo.GetActiveByFamilyAsync(familyId);
         var now = DateTime.UtcNow;
         foreach (var t in tokens) t.RevokedAt = now;
-        await _db.SaveChangesAsync();
+        await _unitOfWork.SaveChangesAsync();
     }
 }

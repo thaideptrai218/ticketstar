@@ -1,3 +1,4 @@
+using TicketStar.Application.Common;
 using TicketStar.Application.DTOs.Auth;
 using TicketStar.Domain.Entities;
 
@@ -9,7 +10,7 @@ public interface ITokenService
     Task<TokenResponse> GenerateTokenPairAsync(User user, AuthSession session);
 
     /// <summary>Rotate refresh token. Validates hash, family, expiry, security stamp.</summary>
-    Task<TokenResponse> RefreshTokenAsync(string refreshToken);
+    Task<Result<TokenResponse>> RefreshTokenAsync(string refreshToken);
 
     /// <summary>Revoke a single refresh token.</summary>
     Task RevokeRefreshTokenAsync(string refreshToken);

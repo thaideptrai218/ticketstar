@@ -1,51 +1,67 @@
 using Google.Apis.Auth;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using TicketStar.Application.Common;
 using TicketStar.Application.DTOs.Auth;
 using TicketStar.Application.Interfaces;
+using TicketStar.Application.Options;
 using TicketStar.Domain.Entities;
 using TicketStar.Domain.Enums;
-using TicketStar.Infrastructure.Data;
+using TicketStar.Domain.Interfaces;
 
 namespace TicketStar.Application.Services;
 
 public class AuthService : IAuthService
 {
-    private readonly AppDbContext _db;
+    private readonly IUserRepository _userRepo;
+    private readonly IAuthIdentityRepository _identityRepo;
+    private readonly IMagicLinkRepository _magicLinkRepo;
+    private readonly IRefreshTokenRepository _refreshTokenRepo;
+    private readonly ISecurityEventRepository _securityEventRepo;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly IPasswordHasher _passwordHasher;
     private readonly ITokenHasher _tokenHasher;
     private readonly ISecureRandom _random;
     private readonly ITokenService _tokenService;
     private readonly ISessionService _sessionService;
-    private readonly IConfiguration _config;
+    private readonly GoogleAuthOptions _googleOptions;
     private readonly ILogger<AuthService> _logger;
 
     public AuthService(
-        AppDbContext db,
+        IUserRepository userRepo,
+        IAuthIdentityRepository identityRepo,
+        IMagicLinkRepository magicLinkRepo,
+        IRefreshTokenRepository refreshTokenRepo,
+        ISecurityEventRepository securityEventRepo,
+        IUnitOfWork unitOfWork,
         IPasswordHasher passwordHasher,
         ITokenHasher tokenHasher,
         ISecureRandom random,
         ITokenService tokenService,
         ISessionService sessionService,
-        IConfiguration config,
+        IOptions<GoogleAuthOptions> googleOptions,
         ILogger<AuthService> logger)
     {
-        _db = db;
+        _userRepo = userRepo;
+        _identityRepo = identityRepo;
+        _magicLinkRepo = magicLinkRepo;
+        _refreshTokenRepo = refreshTokenRepo;
+        _securityEventRepo = securityEventRepo;
+        _unitOfWork = unitOfWork;
         _passwordHasher = passwordHasher;
         _tokenHasher = tokenHasher;
         _random = random;
         _tokenService = tokenService;
         _sessionService = sessionService;
-        _config = config;
+        _googleOptions = googleOptions.Value;
         _logger = logger;
     }
 
-    public async Task<TokenResponse> RegisterAsync(RegisterRequest request, string? ip, string? ua)
+    public async Task<Result<TokenResponse>> RegisterAsync(RegisterRequest request, string? ip, string? ua)
     {
         // RED TEAM H5 FIX: IgnoreQueryFilters to catch soft-deleted emails
-        if (await _db.Users.IgnoreQueryFilters().AnyAsync(u => u.Email == request.Email))
-            throw new InvalidOperationException("Email already registered.");
+        if (await _userRepo.EmailExistsAsync(request.Email))
+            return Result<TokenResponse>.Failure("Email already registered.", ResultError.Conflict);
 
         var user = new User
         {
@@ -64,87 +80,91 @@ public class AuthService : IAuthService
             ProviderEmail = request.Email,
         };
 
-        _db.Users.Add(user);
-        _db.AuthIdentities.Add(identity);
-        await _db.SaveChangesAsync();
+        _userRepo.Add(user);
+        _identityRepo.Add(identity);
+        await _unitOfWork.SaveChangesAsync();
 
         var session = await _sessionService.CreateSessionAsync(user.Id, ip, ua);
         var tokens = await _tokenService.GenerateTokenPairAsync(user, session);
         await LogEventAsync(user.Id, SecurityEventType.Login, true, ip, ua);
-        return tokens;
+        return Result<TokenResponse>.Success(tokens);
     }
 
-    public async Task<TokenResponse> LoginAsync(LoginRequest request, string? ip, string? ua)
+    public async Task<Result<TokenResponse>> LoginAsync(LoginRequest request, string? ip, string? ua)
     {
         // RED TEAM H5 FIX: IgnoreQueryFilters for security-sensitive lookup
-        var user = await _db.Users.IgnoreQueryFilters()
-            .FirstOrDefaultAsync(u => u.Email == request.Email);
+        var user = await _userRepo.GetByEmailIgnoreFiltersAsync(request.Email);
 
         if (user is null)
         {
             await LogEventAsync(null, SecurityEventType.LoginFailed, false, ip, ua, "Unknown email");
-            throw new UnauthorizedAccessException("Invalid credentials.");
+            return Result<TokenResponse>.Failure("Invalid credentials.", ResultError.Unauthorized);
         }
 
         if (user.IsLocked)
         {
             await LogEventAsync(user.Id, SecurityEventType.LoginFailed, false, ip, ua, "Account locked");
-            throw new UnauthorizedAccessException("Invalid credentials.");
+            return Result<TokenResponse>.Failure("Invalid credentials.", ResultError.Unauthorized);
         }
 
         if (user.PasswordHash is null || !_passwordHasher.Verify(request.Password, user.PasswordHash))
         {
             // RED TEAM H6 FIX: atomic increment to prevent race condition on brute force
-            await _db.Users
-                .Where(u => u.Id == user.Id)
-                .ExecuteUpdateAsync(s => s.SetProperty(u => u.FailedLoginCount, u => u.FailedLoginCount + 1));
-            await _db.Entry(user).ReloadAsync();
+            await _userRepo.IncrementFailedLoginAsync(user.Id);
+            await _userRepo.ReloadAsync(user);
 
             if (user.FailedLoginCount >= 5)
             {
-                await _db.Users.Where(u => u.Id == user.Id)
-                    .ExecuteUpdateAsync(s => s.SetProperty(u => u.LockedUntil, DateTime.UtcNow.AddMinutes(15)));
+                await _userRepo.LockAccountAsync(user.Id, DateTime.UtcNow.AddMinutes(15));
                 await LogEventAsync(user.Id, SecurityEventType.AccountLocked, true, ip, ua);
             }
 
             await LogEventAsync(user.Id, SecurityEventType.LoginFailed, false, ip, ua, "Wrong password");
-            throw new UnauthorizedAccessException("Invalid credentials.");
+            return Result<TokenResponse>.Failure("Invalid credentials.", ResultError.Unauthorized);
         }
 
         // Reset on successful login
         user.FailedLoginCount = 0;
         user.LockedUntil = null;
-        await _db.SaveChangesAsync();
+        await _unitOfWork.SaveChangesAsync();
 
         var session = await _sessionService.CreateSessionAsync(user.Id, ip, ua);
         var tokens = await _tokenService.GenerateTokenPairAsync(user, session);
         await LogEventAsync(user.Id, SecurityEventType.Login, true, ip, ua);
-        return tokens;
+        return Result<TokenResponse>.Success(tokens);
     }
 
-    public async Task<TokenResponse> GoogleLoginAsync(string idToken, string? ip, string? ua)
+    public async Task<Result<TokenResponse>> GoogleLoginAsync(string idToken, string? ip, string? ua)
     {
-        var settings = new GoogleJsonWebSignature.ValidationSettings
+        GoogleJsonWebSignature.Payload payload;
+        try
         {
-            Audience = [_config["Google:ClientId"]!]
-        };
-        var payload = await GoogleJsonWebSignature.ValidateAsync(idToken, settings);
+            var settings = new GoogleJsonWebSignature.ValidationSettings
+            {
+                Audience = [_googleOptions.ClientId]
+            };
+            payload = await GoogleJsonWebSignature.ValidateAsync(idToken, settings);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Google token validation failed");
+            return Result<TokenResponse>.Failure("Invalid Google token.", ResultError.Unauthorized);
+        }
 
         // RED TEAM H1 FIX: require verified email
         if (!payload.EmailVerified)
-            throw new UnauthorizedAccessException("Google account email not verified.");
+            return Result<TokenResponse>.Failure("Google account email not verified.", ResultError.Unauthorized);
 
-        var user = await _db.Users.Include(u => u.Profile)
-            .FirstOrDefaultAsync(u => u.Email == payload.Email);
+        var user = await _userRepo.GetByEmailAsync(payload.Email);
 
         if (user is not null)
         {
-            // RED TEAM H1 FIX: reject silent provider merge -- require explicit account linking
-            var hasGoogleIdentity = await _db.AuthIdentities
-                .AnyAsync(a => a.UserId == user.Id && a.Provider == AuthProvider.Google);
-            if (!hasGoogleIdentity)
-                throw new UnauthorizedAccessException(
-                    "An account with this email exists. Please login with your original method.");
+            // RED TEAM H1 FIX: reject silent provider merge
+            var hasGoogle = await _identityRepo.HasProviderAsync(user.Id, AuthProvider.Google);
+            if (!hasGoogle)
+                return Result<TokenResponse>.Failure(
+                    "An account with this email exists. Please login with your original method.",
+                    ResultError.Unauthorized);
         }
         else
         {
@@ -160,11 +180,10 @@ public class AuthService : IAuthService
                 FullName = payload.Name ?? "",
                 AvatarUrl = payload.Picture,
             };
-            _db.Users.Add(user);
+            _userRepo.Add(user);
         }
 
-        var googleIdentity = await _db.AuthIdentities
-            .FirstOrDefaultAsync(a => a.UserId == user.Id && a.Provider == AuthProvider.Google);
+        var googleIdentity = await _identityRepo.GetByUserAndProviderAsync(user.Id, AuthProvider.Google);
 
         if (googleIdentity is null)
         {
@@ -175,23 +194,23 @@ public class AuthService : IAuthService
                 ProviderUserId = payload.Subject,
                 ProviderEmail = payload.Email,
             };
-            _db.AuthIdentities.Add(googleIdentity);
+            _identityRepo.Add(googleIdentity);
         }
 
         googleIdentity.LastUsedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
+        await _unitOfWork.SaveChangesAsync();
 
         var session = await _sessionService.CreateSessionAsync(user.Id, ip, ua);
         var tokens = await _tokenService.GenerateTokenPairAsync(user, session);
         await LogEventAsync(user.Id, SecurityEventType.GoogleOAuthLogin, true, ip, ua);
-        return tokens;
+        return Result<TokenResponse>.Success(tokens);
     }
 
-    public async Task RequestMagicLinkAsync(string email, string? ip)
+    public async Task<Result> RequestMagicLinkAsync(string email, string? ip)
     {
         // Always succeed to prevent email enumeration
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == email);
-        if (user is null) return;
+        var user = await _userRepo.GetByEmailAsync(email);
+        if (user is null) return Result.Success();
 
         var token = _random.GenerateToken(32);
         var entity = new MagicLink
@@ -201,8 +220,8 @@ public class AuthService : IAuthService
             IpAddress = ip,
             ExpiresAt = DateTime.UtcNow.AddMinutes(10),
         };
-        _db.MagicLinks.Add(entity);
-        await _db.SaveChangesAsync();
+        _magicLinkRepo.Add(entity);
+        await _unitOfWork.SaveChangesAsync();
 
         await LogEventAsync(user.Id, SecurityEventType.MagicLinkRequested, true, ip, null);
 
@@ -212,80 +231,92 @@ public class AuthService : IAuthService
 
         // Console stub for dev (replace with email service in production)
         _logger.LogInformation("=== DEV ONLY - MAGIC LINK TOKEN for {Email}: {Token} ===", email, token);
+
+        return Result.Success();
     }
 
-    public async Task<TokenResponse> VerifyMagicLinkAsync(string token, string? ip, string? ua)
+    public async Task<Result<TokenResponse>> VerifyMagicLinkAsync(string token, string? ip, string? ua)
     {
         var hash = _tokenHasher.Hash(token);
-
-        var magicLink = await _db.MagicLinks.Include(m => m.User)
-            .FirstOrDefaultAsync(m => m.TokenHash == hash && m.UsedAt == null);
+        var magicLink = await _magicLinkRepo.GetByHashWithUserAsync(hash);
 
         if (magicLink is null)
-            throw new UnauthorizedAccessException("Invalid or used magic link.");
+            return Result<TokenResponse>.Failure("Invalid or used magic link.", ResultError.Unauthorized);
 
         if (magicLink.IsExpired)
-            throw new UnauthorizedAccessException("Magic link expired.");
+            return Result<TokenResponse>.Failure("Magic link expired.", ResultError.Unauthorized);
 
         // Mark used atomically (RowVersion on MagicLink prevents double-use race condition)
         magicLink.UsedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
+        await _unitOfWork.SaveChangesAsync();
 
         var user = magicLink.User;
         if (!user.EmailVerified)
         {
             user.EmailVerified = true;
-            await _db.SaveChangesAsync();
+            await _unitOfWork.SaveChangesAsync();
         }
 
         var session = await _sessionService.CreateSessionAsync(user.Id, ip, ua);
         var tokens = await _tokenService.GenerateTokenPairAsync(user, session);
         await LogEventAsync(user.Id, SecurityEventType.MagicLinkVerified, true, ip, ua);
-        return tokens;
+        return Result<TokenResponse>.Success(tokens);
     }
 
-    public async Task LogoutAsync(string refreshToken)
+    public async Task<Result> LogoutAsync(string refreshToken)
     {
         var hash = _tokenHasher.Hash(refreshToken);
-        var stored = await _db.RefreshTokens.FirstOrDefaultAsync(r => r.TokenHash == hash);
-        if (stored is null) return;
+        var stored = await _refreshTokenRepo.GetByHashAsync(hash);
+        if (stored is null) return Result.Success();
 
         // RED TEAM H4 FIX: atomic logout in single transaction
-        using var tx = await _db.Database.BeginTransactionAsync();
-        stored.RevokedAt = DateTime.UtcNow;
-        var session = await _db.AuthSessions.FindAsync(stored.SessionId);
-        if (session is { IsActive: true })
+        await _unitOfWork.BeginTransactionAsync();
+        try
         {
-            session.IsActive = false;
-            session.RevokedAt = DateTime.UtcNow;
+            stored.RevokedAt = DateTime.UtcNow;
+
+            var session = await _sessionService.GetSessionAsync(stored.SessionId);
+            if (session is { IsActive: true })
+            {
+                session.IsActive = false;
+                session.RevokedAt = DateTime.UtcNow;
+            }
+
+            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.CommitTransactionAsync();
         }
-        await _db.SaveChangesAsync();
-        await tx.CommitAsync();
+        catch
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            throw;
+        }
 
         await LogEventAsync(stored.UserId, SecurityEventType.Logout, true, null, null);
+        return Result.Success();
     }
 
-    public async Task RevokeAllSessionsAsync(string userId)
+    public async Task<Result> RevokeAllSessionsAsync(string userId)
     {
         await _tokenService.RevokeAllUserTokensAsync(userId);
         await _sessionService.DeactivateAllSessionsAsync(userId);
 
         // Rotate security stamp to invalidate all existing JWTs on next refresh
-        var user = await _db.Users.FindAsync(userId);
+        var user = await _userRepo.GetByIdAsync(userId);
         if (user is not null)
         {
             user.SecurityStamp = Guid.NewGuid().ToString("N");
-            await _db.SaveChangesAsync();
+            await _unitOfWork.SaveChangesAsync();
         }
 
         await LogEventAsync(userId, SecurityEventType.AllSessionsRevoked, true, null, null);
+        return Result.Success();
     }
 
     private async Task LogEventAsync(
         string? userId, SecurityEventType type, bool success,
         string? ip, string? ua, string? failureReason = null)
     {
-        _db.SecurityEvents.Add(new SecurityEvent
+        _securityEventRepo.Add(new SecurityEvent
         {
             UserId = userId,
             EventType = type,
@@ -294,6 +325,6 @@ public class AuthService : IAuthService
             IpAddress = ip,
             UserAgent = ua,
         });
-        await _db.SaveChangesAsync();
+        await _unitOfWork.SaveChangesAsync();
     }
 }

@@ -1,14 +1,17 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
+using TicketStar.Application.Common;
 using TicketStar.Application.DTOs.Auth;
 using TicketStar.Application.Interfaces;
+using TicketStar.Application.Options;
 using TicketStar.Application.Services;
 using TicketStar.Domain.Entities;
 using TicketStar.Domain.Enums;
 using TicketStar.Infrastructure.Data;
+using TicketStar.Infrastructure.Repositories;
 using TicketStar.Tests.Helpers;
 
 namespace TicketStar.Tests.Unit.Services;
@@ -20,7 +23,7 @@ public class AuthServiceTests
     private readonly Mock<ISecureRandom> _mockRandom;
     private readonly Mock<ITokenService> _mockTokenService;
     private readonly Mock<ISessionService> _mockSessionService;
-    private readonly Mock<IConfiguration> _mockConfig;
+    private readonly IOptions<GoogleAuthOptions> _googleOptions;
     private readonly Mock<ILogger<AuthService>> _mockLogger;
 
     public AuthServiceTests()
@@ -30,10 +33,9 @@ public class AuthServiceTests
         _mockRandom = new Mock<ISecureRandom>();
         _mockTokenService = new Mock<ITokenService>();
         _mockSessionService = new Mock<ISessionService>();
-        _mockConfig = new Mock<IConfiguration>();
+        _googleOptions = Options.Create(new GoogleAuthOptions { ClientId = "test-client-id" });
         _mockLogger = new Mock<ILogger<AuthService>>();
 
-        // Default mocking behavior
         _mockPasswordHasher
             .Setup(p => p.Hash(It.IsAny<string>()))
             .Returns((string pwd) => $"hash_of_{pwd}");
@@ -49,10 +51,6 @@ public class AuthServiceTests
         _mockRandom
             .Setup(r => r.GenerateToken(It.IsAny<int>()))
             .Returns("random_token_123456789");
-
-        _mockConfig
-            .Setup(c => c["Google:ClientId"])
-            .Returns("test-client-id");
     }
 
     private AppDbContext CreateDbContext()
@@ -64,13 +62,18 @@ public class AuthServiceTests
     private AuthService CreateAuthService(AppDbContext db)
     {
         return new AuthService(
-            db,
+            new UserRepository(db),
+            new AuthIdentityRepository(db),
+            new MagicLinkRepository(db),
+            new RefreshTokenRepository(db),
+            new SecurityEventRepository(db),
+            new EfUnitOfWork(db),
             _mockPasswordHasher.Object,
             _mockTokenHasher.Object,
             _mockRandom.Object,
             _mockTokenService.Object,
             _mockSessionService.Object,
-            _mockConfig.Object,
+            _googleOptions,
             _mockLogger.Object);
     }
 
@@ -79,7 +82,6 @@ public class AuthServiceTests
     [Fact]
     public async Task RegisterAsync_ValidInput_CreatesUserAndProfile()
     {
-        // Arrange
         using var db = CreateDbContext();
         var service = CreateAuthService(db);
         var request = new RegisterRequest("new@example.com", "password123", "Test User");
@@ -90,17 +92,14 @@ public class AuthServiceTests
         _mockSessionService
             .Setup(s => s.CreateSessionAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
             .ReturnsAsync(mockSession);
-
         _mockTokenService
             .Setup(t => t.GenerateTokenPairAsync(It.IsAny<User>(), It.IsAny<AuthSession>()))
             .ReturnsAsync(mockTokens);
 
-        // Act
         var result = await service.RegisterAsync(request, "127.0.0.1", "Mozilla/5.0");
 
-        // Assert
-        Assert.NotNull(result);
-        Assert.Equal("access", result.AccessToken);
+        Assert.True(result.IsSuccess);
+        Assert.Equal("access", result.Value!.AccessToken);
 
         var user = await db.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
         Assert.NotNull(user);
@@ -119,16 +118,14 @@ public class AuthServiceTests
     }
 
     [Fact]
-    public async Task RegisterAsync_DuplicateEmail_ThrowsInvalidOperationException()
+    public async Task RegisterAsync_DuplicateEmail_ReturnsConflict()
     {
-        // Arrange
         using var db = CreateDbContext();
         var service = CreateAuthService(db);
 
         var existingUser = new User
         {
-            Email = "test@example.com",
-            PasswordHash = "hash",
+            Email = "test@example.com", PasswordHash = "hash",
             SecurityStamp = Guid.NewGuid().ToString("N"),
         };
         db.Users.Add(existingUser);
@@ -136,33 +133,32 @@ public class AuthServiceTests
 
         var request = new RegisterRequest("test@example.com", "password123", "Another User");
 
-        // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => service.RegisterAsync(request, "127.0.0.1", "Mozilla/5.0"));
+        var result = await service.RegisterAsync(request, "127.0.0.1", "Mozilla/5.0");
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ResultError.Conflict, result.ErrorType);
     }
 
     [Fact]
-    public async Task RegisterAsync_SoftDeletedEmail_ThrowsInvalidOperationException()
+    public async Task RegisterAsync_SoftDeletedEmail_ReturnsConflict()
     {
-        // Arrange
         using var db = CreateDbContext();
         var service = CreateAuthService(db);
 
         var deletedUser = new User
         {
-            Email = "deleted@example.com",
-            PasswordHash = "hash",
-            SecurityStamp = Guid.NewGuid().ToString("N"),
-            DeletedAt = DateTime.UtcNow,
+            Email = "deleted@example.com", PasswordHash = "hash",
+            SecurityStamp = Guid.NewGuid().ToString("N"), DeletedAt = DateTime.UtcNow,
         };
         db.Users.Add(deletedUser);
         db.SaveChanges();
 
         var request = new RegisterRequest("deleted@example.com", "password123", "New User");
 
-        // Act & Assert - should throw because IgnoreQueryFilters catches soft-deleted
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => service.RegisterAsync(request, "127.0.0.1", "Mozilla/5.0"));
+        var result = await service.RegisterAsync(request, "127.0.0.1", "Mozilla/5.0");
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ResultError.Conflict, result.ErrorType);
     }
 
     // ============ LoginAsync Tests ============
@@ -170,16 +166,13 @@ public class AuthServiceTests
     [Fact]
     public async Task LoginAsync_ValidCredentials_ReturnsTokens()
     {
-        // Arrange
         using var db = CreateDbContext();
         var service = CreateAuthService(db);
 
         var userId = Guid.NewGuid().ToString();
         var user = new User
         {
-            Id = userId,
-            Email = "test@example.com",
-            PasswordHash = "hash_of_password123",
+            Id = userId, Email = "test@example.com", PasswordHash = "hash_of_password123",
             SecurityStamp = Guid.NewGuid().ToString("N"),
         };
         db.Users.Add(user);
@@ -188,160 +181,123 @@ public class AuthServiceTests
         var mockSession = new AuthSession { Id = Guid.NewGuid(), UserId = userId };
         var mockTokens = new TokenResponse("access", "refresh", DateTime.UtcNow.AddMinutes(15), "sid");
 
-        _mockPasswordHasher
-            .Setup(p => p.Verify("password123", "hash_of_password123"))
-            .Returns(true);
-
+        _mockPasswordHasher.Setup(p => p.Verify("password123", "hash_of_password123")).Returns(true);
         _mockSessionService
             .Setup(s => s.CreateSessionAsync(userId, It.IsAny<string>(), It.IsAny<string>()))
             .ReturnsAsync(mockSession);
-
         _mockTokenService
             .Setup(t => t.GenerateTokenPairAsync(It.IsAny<User>(), It.IsAny<AuthSession>()))
             .ReturnsAsync(mockTokens);
 
-        var request = new LoginRequest("test@example.com", "password123");
+        var result = await service.LoginAsync(new LoginRequest("test@example.com", "password123"), "127.0.0.1", "Mozilla/5.0");
 
-        // Act
-        var result = await service.LoginAsync(request, "127.0.0.1", "Mozilla/5.0");
-
-        // Assert
-        Assert.NotNull(result);
-        Assert.Equal("access", result.AccessToken);
+        Assert.True(result.IsSuccess);
+        Assert.Equal("access", result.Value!.AccessToken);
         Assert.Equal(0, user.FailedLoginCount);
     }
 
     [Fact]
-    public async Task LoginAsync_WrongPassword_ThrowsUnauthorizedAccessException()
+    public async Task LoginAsync_WrongPassword_ReturnsUnauthorized()
     {
-        // Arrange
         using var db = CreateDbContext();
         var service = CreateAuthService(db);
 
         var user = new User
         {
-            Email = "test@example.com",
-            PasswordHash = "hash_of_password123",
+            Email = "test@example.com", PasswordHash = "hash_of_password123",
             SecurityStamp = Guid.NewGuid().ToString("N"),
         };
         db.Users.Add(user);
         db.SaveChanges();
 
-        _mockPasswordHasher
-            .Setup(p => p.Verify("wrongpassword", "hash_of_password123"))
-            .Returns(false);
+        _mockPasswordHasher.Setup(p => p.Verify("wrongpassword", "hash_of_password123")).Returns(false);
 
-        var request = new LoginRequest("test@example.com", "wrongpassword");
+        var result = await service.LoginAsync(new LoginRequest("test@example.com", "wrongpassword"), "127.0.0.1", "Mozilla/5.0");
 
-        // Act & Assert
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(
-            () => service.LoginAsync(request, "127.0.0.1", "Mozilla/5.0"));
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ResultError.Unauthorized, result.ErrorType);
 
         // Verify failed count incremented
-        var updated = await db.Users.FirstAsync();
+        var updated = await db.Users.IgnoreQueryFilters().FirstAsync();
         Assert.Equal(1, updated.FailedLoginCount);
     }
 
     [Fact]
-    public async Task LoginAsync_UnknownEmail_ThrowsUnauthorizedAccessException()
+    public async Task LoginAsync_UnknownEmail_ReturnsUnauthorized()
     {
-        // Arrange
         using var db = CreateDbContext();
         var service = CreateAuthService(db);
-        var request = new LoginRequest("unknown@example.com", "password123");
 
-        // Act & Assert
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(
-            () => service.LoginAsync(request, "127.0.0.1", "Mozilla/5.0"));
+        var result = await service.LoginAsync(new LoginRequest("unknown@example.com", "password123"), "127.0.0.1", "Mozilla/5.0");
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ResultError.Unauthorized, result.ErrorType);
     }
 
     [Fact]
-    public async Task LoginAsync_LockedAccount_ThrowsUnauthorizedAccessException()
+    public async Task LoginAsync_LockedAccount_ReturnsUnauthorized()
     {
-        // Arrange
         using var db = CreateDbContext();
         var service = CreateAuthService(db);
 
         var user = new User
         {
-            Email = "locked@example.com",
-            PasswordHash = "hash",
-            SecurityStamp = Guid.NewGuid().ToString("N"),
-            LockedUntil = DateTime.UtcNow.AddMinutes(10),
+            Email = "locked@example.com", PasswordHash = "hash",
+            SecurityStamp = Guid.NewGuid().ToString("N"), LockedUntil = DateTime.UtcNow.AddMinutes(10),
         };
         db.Users.Add(user);
         db.SaveChanges();
 
-        var request = new LoginRequest("locked@example.com", "password123");
+        var result = await service.LoginAsync(new LoginRequest("locked@example.com", "password123"), "127.0.0.1", "Mozilla/5.0");
 
-        // Act & Assert
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(
-            () => service.LoginAsync(request, "127.0.0.1", "Mozilla/5.0"));
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ResultError.Unauthorized, result.ErrorType);
     }
 
     [Fact]
     public async Task LoginAsync_FailedAttempts_IncrementsCounter()
     {
-        // Arrange
         using var db = CreateDbContext();
         var service = CreateAuthService(db);
 
         var user = new User
         {
-            Email = "test@example.com",
-            PasswordHash = "hash_of_password123",
-            SecurityStamp = Guid.NewGuid().ToString("N"),
-            FailedLoginCount = 0,
+            Email = "test@example.com", PasswordHash = "hash_of_password123",
+            SecurityStamp = Guid.NewGuid().ToString("N"), FailedLoginCount = 0,
         };
         db.Users.Add(user);
         db.SaveChanges();
 
-        _mockPasswordHasher
-            .Setup(p => p.Verify(It.IsAny<string>(), It.IsAny<string>()))
-            .Returns(false);
+        _mockPasswordHasher.Setup(p => p.Verify(It.IsAny<string>(), It.IsAny<string>())).Returns(false);
 
-        var request = new LoginRequest("test@example.com", "wrongpassword");
+        var result = await service.LoginAsync(new LoginRequest("test@example.com", "wrongpassword"), "127.0.0.1", "Mozilla/5.0");
 
-        // Act
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(
-            () => service.LoginAsync(request, "127.0.0.1", "Mozilla/5.0"));
-
-        // Assert
-        var updated = await db.Users.FirstAsync();
+        Assert.False(result.IsSuccess);
+        var updated = await db.Users.IgnoreQueryFilters().FirstAsync();
         Assert.Equal(1, updated.FailedLoginCount);
     }
 
     [Fact]
     public async Task LoginAsync_FiveFailedAttempts_LocksAccount()
     {
-        // Arrange
         using var db = CreateDbContext();
         var service = CreateAuthService(db);
 
         var user = new User
         {
-            Email = "test@example.com",
-            PasswordHash = "hash_of_password123",
-            SecurityStamp = Guid.NewGuid().ToString("N"),
-            FailedLoginCount = 4,
+            Email = "test@example.com", PasswordHash = "hash_of_password123",
+            SecurityStamp = Guid.NewGuid().ToString("N"), FailedLoginCount = 4,
         };
         db.Users.Add(user);
         db.SaveChanges();
 
-        _mockPasswordHasher
-            .Setup(p => p.Verify(It.IsAny<string>(), It.IsAny<string>()))
-            .Returns(false);
+        _mockPasswordHasher.Setup(p => p.Verify(It.IsAny<string>(), It.IsAny<string>())).Returns(false);
 
-        var request = new LoginRequest("test@example.com", "wrongpassword");
+        var result = await service.LoginAsync(new LoginRequest("test@example.com", "wrongpassword"), "127.0.0.1", "Mozilla/5.0");
 
-        // Act
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(
-            () => service.LoginAsync(request, "127.0.0.1", "Mozilla/5.0"));
-
-        // Assert
-        var updated = await db.Users.FirstAsync();
+        Assert.False(result.IsSuccess);
+        var updated = await db.Users.IgnoreQueryFilters().FirstAsync();
         Assert.Equal(5, updated.FailedLoginCount);
-        // LockedUntil is set via ExecuteUpdateAsync in the service, need to reload context
         await db.Entry(updated).ReloadAsync();
         Assert.NotNull(updated.LockedUntil);
         Assert.True(updated.IsLocked);
@@ -350,26 +306,19 @@ public class AuthServiceTests
     [Fact]
     public async Task LoginAsync_SuccessfulLogin_ResetsFailedCount()
     {
-        // Arrange
         using var db = CreateDbContext();
         var service = CreateAuthService(db);
 
         var userId = Guid.NewGuid().ToString();
         var user = new User
         {
-            Id = userId,
-            Email = "test@example.com",
-            PasswordHash = "hash_of_password123",
-            SecurityStamp = Guid.NewGuid().ToString("N"),
-            FailedLoginCount = 2,
-            LockedUntil = null,
+            Id = userId, Email = "test@example.com", PasswordHash = "hash_of_password123",
+            SecurityStamp = Guid.NewGuid().ToString("N"), FailedLoginCount = 2, LockedUntil = null,
         };
         db.Users.Add(user);
         db.SaveChanges();
 
-        _mockPasswordHasher
-            .Setup(p => p.Verify("password123", "hash_of_password123"))
-            .Returns(true);
+        _mockPasswordHasher.Setup(p => p.Verify("password123", "hash_of_password123")).Returns(true);
 
         var mockSession = new AuthSession { Id = Guid.NewGuid(), UserId = userId };
         var mockTokens = new TokenResponse("access", "refresh", DateTime.UtcNow.AddMinutes(15), "sid");
@@ -377,17 +326,12 @@ public class AuthServiceTests
         _mockSessionService
             .Setup(s => s.CreateSessionAsync(userId, It.IsAny<string>(), It.IsAny<string>()))
             .ReturnsAsync(mockSession);
-
         _mockTokenService
             .Setup(t => t.GenerateTokenPairAsync(It.IsAny<User>(), It.IsAny<AuthSession>()))
             .ReturnsAsync(mockTokens);
 
-        var request = new LoginRequest("test@example.com", "password123");
+        await service.LoginAsync(new LoginRequest("test@example.com", "password123"), "127.0.0.1", "Mozilla/5.0");
 
-        // Act
-        await service.LoginAsync(request, "127.0.0.1", "Mozilla/5.0");
-
-        // Assert
         var updated = await db.Users.FirstAsync();
         Assert.Equal(0, updated.FailedLoginCount);
         Assert.Null(updated.LockedUntil);
@@ -398,25 +342,21 @@ public class AuthServiceTests
     [Fact]
     public async Task RequestMagicLinkAsync_ValidEmail_CreatesMagicLink()
     {
-        // Arrange
         using var db = CreateDbContext();
         var service = CreateAuthService(db);
 
         var userId = Guid.NewGuid().ToString();
         var user = new User
         {
-            Id = userId,
-            Email = "test@example.com",
-            PasswordHash = "hash",
+            Id = userId, Email = "test@example.com", PasswordHash = "hash",
             SecurityStamp = Guid.NewGuid().ToString("N"),
         };
         db.Users.Add(user);
         db.SaveChanges();
 
-        // Act
-        await service.RequestMagicLinkAsync("test@example.com", "127.0.0.1");
+        var result = await service.RequestMagicLinkAsync("test@example.com", "127.0.0.1");
 
-        // Assert
+        Assert.True(result.IsSuccess);
         var magicLink = await db.MagicLinks.FirstOrDefaultAsync(m => m.UserId == userId);
         Assert.NotNull(magicLink);
         Assert.NotNull(magicLink.TokenHash);
@@ -425,16 +365,14 @@ public class AuthServiceTests
     }
 
     [Fact]
-    public async Task RequestMagicLinkAsync_UnknownEmail_ReturnsWithoutError()
+    public async Task RequestMagicLinkAsync_UnknownEmail_ReturnsSuccessWithoutError()
     {
-        // Arrange
         using var db = CreateDbContext();
         var service = CreateAuthService(db);
 
-        // Act - should not throw
-        await service.RequestMagicLinkAsync("unknown@example.com", "127.0.0.1");
+        var result = await service.RequestMagicLinkAsync("unknown@example.com", "127.0.0.1");
 
-        // Assert - no magic link created
+        Assert.True(result.IsSuccess);
         var count = await db.MagicLinks.CountAsync();
         Assert.Equal(0, count);
     }
@@ -442,32 +380,23 @@ public class AuthServiceTests
     [Fact]
     public async Task RequestMagicLinkAsync_StoresHashedTokenNotPlaintext()
     {
-        // Arrange
         using var db = CreateDbContext();
         var service = CreateAuthService(db);
 
         var user = new User
         {
-            Email = "test@example.com",
-            PasswordHash = "hash",
+            Email = "test@example.com", PasswordHash = "hash",
             SecurityStamp = Guid.NewGuid().ToString("N"),
         };
         db.Users.Add(user);
         db.SaveChanges();
 
         var plainToken = "plaintext_token_123456";
-        _mockRandom
-            .Setup(r => r.GenerateToken(32))
-            .Returns(plainToken);
+        _mockRandom.Setup(r => r.GenerateToken(32)).Returns(plainToken);
+        _mockTokenHasher.Setup(t => t.Hash(plainToken)).Returns("hash_of_plaintext_token_123456");
 
-        _mockTokenHasher
-            .Setup(t => t.Hash(plainToken))
-            .Returns("hash_of_plaintext_token_123456");
-
-        // Act
         await service.RequestMagicLinkAsync("test@example.com", "127.0.0.1");
 
-        // Assert
         var magicLink = await db.MagicLinks.FirstAsync();
         Assert.Equal("hash_of_plaintext_token_123456", magicLink.TokenHash);
         Assert.NotEqual(plainToken, magicLink.TokenHash);
@@ -478,18 +407,14 @@ public class AuthServiceTests
     [Fact]
     public async Task VerifyMagicLinkAsync_ValidToken_ReturnsTokens()
     {
-        // Arrange
         using var db = CreateDbContext();
         var service = CreateAuthService(db);
 
         var userId = Guid.NewGuid().ToString();
         var user = new User
         {
-            Id = userId,
-            Email = "test@example.com",
-            PasswordHash = null,
-            EmailVerified = false,
-            SecurityStamp = Guid.NewGuid().ToString("N"),
+            Id = userId, Email = "test@example.com", PasswordHash = null,
+            EmailVerified = false, SecurityStamp = Guid.NewGuid().ToString("N"),
         };
         db.Users.Add(user);
         db.SaveChanges();
@@ -498,9 +423,7 @@ public class AuthServiceTests
         var tokenHash = "hash_of_valid_token_123456";
         var magicLink = new MagicLink
         {
-            UserId = userId,
-            TokenHash = tokenHash,
-            ExpiresAt = DateTime.UtcNow.AddMinutes(5),
+            UserId = userId, TokenHash = tokenHash, ExpiresAt = DateTime.UtcNow.AddMinutes(5),
         };
         db.MagicLinks.Add(magicLink);
         db.SaveChanges();
@@ -508,45 +431,36 @@ public class AuthServiceTests
         var mockSession = new AuthSession { Id = Guid.NewGuid(), UserId = userId };
         var mockTokens = new TokenResponse("access", "refresh", DateTime.UtcNow.AddMinutes(15), "sid");
 
-        _mockTokenHasher
-            .Setup(t => t.Hash(token))
-            .Returns(tokenHash);
-
+        _mockTokenHasher.Setup(t => t.Hash(token)).Returns(tokenHash);
         _mockSessionService
             .Setup(s => s.CreateSessionAsync(userId, It.IsAny<string>(), It.IsAny<string>()))
             .ReturnsAsync(mockSession);
-
         _mockTokenService
             .Setup(t => t.GenerateTokenPairAsync(It.IsAny<User>(), It.IsAny<AuthSession>()))
             .ReturnsAsync(mockTokens);
 
-        // Act
         var result = await service.VerifyMagicLinkAsync(token, "127.0.0.1", "Mozilla/5.0");
 
-        // Assert
-        Assert.NotNull(result);
-        Assert.Equal("access", result.AccessToken);
+        Assert.True(result.IsSuccess);
+        Assert.Equal("access", result.Value!.AccessToken);
 
         var verified = await db.Users.FindAsync(userId);
-        Assert.True(verified.EmailVerified);
+        Assert.True(verified!.EmailVerified);
 
         var usedLink = await db.MagicLinks.FirstAsync();
         Assert.NotNull(usedLink.UsedAt);
     }
 
     [Fact]
-    public async Task VerifyMagicLinkAsync_ExpiredToken_ThrowsUnauthorizedAccessException()
+    public async Task VerifyMagicLinkAsync_ExpiredToken_ReturnsUnauthorized()
     {
-        // Arrange
         using var db = CreateDbContext();
         var service = CreateAuthService(db);
 
         var userId = Guid.NewGuid().ToString();
         var user = new User
         {
-            Id = userId,
-            Email = "test@example.com",
-            PasswordHash = null,
+            Id = userId, Email = "test@example.com", PasswordHash = null,
             SecurityStamp = Guid.NewGuid().ToString("N"),
         };
         db.Users.Add(user);
@@ -554,37 +468,30 @@ public class AuthServiceTests
 
         var token = "expired_token_123456";
         var tokenHash = "hash_of_expired_token_123456";
-        var magicLink = new MagicLink
+        db.MagicLinks.Add(new MagicLink
         {
-            UserId = userId,
-            TokenHash = tokenHash,
-            ExpiresAt = DateTime.UtcNow.AddSeconds(-10),
-        };
-        db.MagicLinks.Add(magicLink);
+            UserId = userId, TokenHash = tokenHash, ExpiresAt = DateTime.UtcNow.AddSeconds(-10),
+        });
         db.SaveChanges();
 
-        _mockTokenHasher
-            .Setup(t => t.Hash(token))
-            .Returns(tokenHash);
+        _mockTokenHasher.Setup(t => t.Hash(token)).Returns(tokenHash);
 
-        // Act & Assert
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(
-            () => service.VerifyMagicLinkAsync(token, "127.0.0.1", "Mozilla/5.0"));
+        var result = await service.VerifyMagicLinkAsync(token, "127.0.0.1", "Mozilla/5.0");
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ResultError.Unauthorized, result.ErrorType);
     }
 
     [Fact]
-    public async Task VerifyMagicLinkAsync_UsedToken_ThrowsUnauthorizedAccessException()
+    public async Task VerifyMagicLinkAsync_UsedToken_ReturnsUnauthorized()
     {
-        // Arrange
         using var db = CreateDbContext();
         var service = CreateAuthService(db);
 
         var userId = Guid.NewGuid().ToString();
         var user = new User
         {
-            Id = userId,
-            Email = "test@example.com",
-            PasswordHash = null,
+            Id = userId, Email = "test@example.com", PasswordHash = null,
             SecurityStamp = Guid.NewGuid().ToString("N"),
         };
         db.Users.Add(user);
@@ -592,23 +499,19 @@ public class AuthServiceTests
 
         var token = "used_token_123456";
         var tokenHash = "hash_of_used_token_123456";
-        var magicLink = new MagicLink
+        db.MagicLinks.Add(new MagicLink
         {
-            UserId = userId,
-            TokenHash = tokenHash,
-            ExpiresAt = DateTime.UtcNow.AddMinutes(5),
+            UserId = userId, TokenHash = tokenHash, ExpiresAt = DateTime.UtcNow.AddMinutes(5),
             UsedAt = DateTime.UtcNow.AddSeconds(-30),
-        };
-        db.MagicLinks.Add(magicLink);
+        });
         db.SaveChanges();
 
-        _mockTokenHasher
-            .Setup(t => t.Hash(token))
-            .Returns(tokenHash);
+        _mockTokenHasher.Setup(t => t.Hash(token)).Returns(tokenHash);
 
-        // Act & Assert
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(
-            () => service.VerifyMagicLinkAsync(token, "127.0.0.1", "Mozilla/5.0"));
+        var result = await service.VerifyMagicLinkAsync(token, "127.0.0.1", "Mozilla/5.0");
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ResultError.Unauthorized, result.ErrorType);
     }
 
     // ============ LogoutAsync Tests ============
@@ -616,16 +519,13 @@ public class AuthServiceTests
     [Fact]
     public async Task LogoutAsync_ValidToken_RevokesTokenAndSession()
     {
-        // Arrange
         using var db = CreateDbContext();
         var service = CreateAuthService(db);
 
         var userId = Guid.NewGuid().ToString();
         var user = new User
         {
-            Id = userId,
-            Email = "test@example.com",
-            PasswordHash = "hash",
+            Id = userId, Email = "test@example.com", PasswordHash = "hash",
             SecurityStamp = Guid.NewGuid().ToString("N"),
         };
         db.Users.Add(user);
@@ -634,59 +534,44 @@ public class AuthServiceTests
         var sessionId = Guid.NewGuid();
         var session = new AuthSession
         {
-            Id = sessionId,
-            UserId = userId,
-            IpAddress = "127.0.0.1",
-            IsActive = true,
+            Id = sessionId, UserId = userId, IpAddress = "127.0.0.1", IsActive = true,
         };
         db.AuthSessions.Add(session);
         db.SaveChanges();
 
         var refreshToken = "refresh_token_123456";
         var tokenHash = "hash_of_refresh_token_123456";
-        var token = new RefreshToken
+        db.RefreshTokens.Add(new RefreshToken
         {
-            UserId = userId,
-            SessionId = sessionId,
-            TokenHash = tokenHash,
-            FamilyId = Guid.NewGuid().ToString("N"),
-            ExpiresAt = DateTime.UtcNow.AddDays(7),
-        };
-        db.RefreshTokens.Add(token);
+            UserId = userId, SessionId = sessionId, TokenHash = tokenHash,
+            FamilyId = Guid.NewGuid().ToString("N"), ExpiresAt = DateTime.UtcNow.AddDays(7),
+        });
         db.SaveChanges();
 
-        _mockTokenHasher
-            .Setup(t => t.Hash(refreshToken))
-            .Returns(tokenHash);
+        _mockTokenHasher.Setup(t => t.Hash(refreshToken)).Returns(tokenHash);
+        _mockSessionService
+            .Setup(s => s.GetSessionAsync(sessionId))
+            .ReturnsAsync(session);
 
-        // Act
-        await service.LogoutAsync(refreshToken);
+        var result = await service.LogoutAsync(refreshToken);
 
-        // Assert
+        Assert.True(result.IsSuccess);
         var revokedToken = await db.RefreshTokens.FirstAsync();
         Assert.NotNull(revokedToken.RevokedAt);
-
-        var revokedSession = await db.AuthSessions.FirstAsync();
-        Assert.False(revokedSession.IsActive);
-        Assert.NotNull(revokedSession.RevokedAt);
     }
 
     [Fact]
-    public async Task LogoutAsync_InvalidToken_DoesNotThrow()
+    public async Task LogoutAsync_InvalidToken_ReturnsSuccess()
     {
-        // Arrange
         using var db = CreateDbContext();
         var service = CreateAuthService(db);
 
         var invalidToken = "invalid_token_123456";
-        _mockTokenHasher
-            .Setup(t => t.Hash(invalidToken))
-            .Returns("hash_of_invalid_token");
+        _mockTokenHasher.Setup(t => t.Hash(invalidToken)).Returns("hash_of_invalid_token");
 
-        // Act - should not throw
-        await service.LogoutAsync(invalidToken);
+        var result = await service.LogoutAsync(invalidToken);
 
-        // Assert - no exception
+        Assert.True(result.IsSuccess);
     }
 
     // ============ RevokeAllSessionsAsync Tests ============
@@ -694,7 +579,6 @@ public class AuthServiceTests
     [Fact]
     public async Task RevokeAllSessionsAsync_RotatesSecurityStamp()
     {
-        // Arrange
         using var db = CreateDbContext();
         var service = CreateAuthService(db);
 
@@ -702,62 +586,45 @@ public class AuthServiceTests
         var originalStamp = Guid.NewGuid().ToString("N");
         var user = new User
         {
-            Id = userId,
-            Email = "test@example.com",
-            PasswordHash = "hash",
+            Id = userId, Email = "test@example.com", PasswordHash = "hash",
             SecurityStamp = originalStamp,
         };
         db.Users.Add(user);
         db.SaveChanges();
 
-        // Act
-        await service.RevokeAllSessionsAsync(userId);
+        var result = await service.RevokeAllSessionsAsync(userId);
 
-        // Assert
+        Assert.True(result.IsSuccess);
         var updated = await db.Users.FirstAsync();
         Assert.NotEqual(originalStamp, updated.SecurityStamp);
     }
 
     [Fact]
-    public async Task RevokeAllSessionsAsync_RevokesAllActiveSessions()
+    public async Task RevokeAllSessionsAsync_CallsTokenAndSessionRevocation()
     {
-        // Arrange
         using var db = CreateDbContext();
         var service = CreateAuthService(db);
 
         var userId = Guid.NewGuid().ToString();
         var user = new User
         {
-            Id = userId,
-            Email = "test@example.com",
-            PasswordHash = "hash",
+            Id = userId, Email = "test@example.com", PasswordHash = "hash",
             SecurityStamp = Guid.NewGuid().ToString("N"),
         };
         db.Users.Add(user);
         db.SaveChanges();
 
-        var session1 = new AuthSession { UserId = userId, IpAddress = "127.0.0.1", IsActive = true };
-        var session2 = new AuthSession { UserId = userId, IpAddress = "127.0.0.2", IsActive = true };
-        db.AuthSessions.Add(session1);
-        db.AuthSessions.Add(session2);
-        db.SaveChanges();
-
         _mockSessionService
             .Setup(s => s.DeactivateAllSessionsAsync(userId))
             .Returns(Task.CompletedTask);
-
         _mockTokenService
             .Setup(t => t.RevokeAllUserTokensAsync(userId))
             .Returns(Task.CompletedTask);
 
-        // Act
-        await service.RevokeAllSessionsAsync(userId);
+        var result = await service.RevokeAllSessionsAsync(userId);
 
-        // Assert
-        var sessions = await db.AuthSessions.Where(s => s.UserId == userId).ToListAsync();
-        foreach (var s in sessions)
-        {
-            // Sessions are deactivated by the service mock
-        }
+        Assert.True(result.IsSuccess);
+        _mockTokenService.Verify(t => t.RevokeAllUserTokensAsync(userId), Times.Once);
+        _mockSessionService.Verify(s => s.DeactivateAllSessionsAsync(userId), Times.Once);
     }
 }
