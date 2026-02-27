@@ -1,36 +1,25 @@
 using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using TicketStar.Application.Interfaces;
 using TicketStar.Application.Services;
-using TicketStar.Domain.Entities;
+using TicketStar.Application.Services.Security;
 using TicketStar.Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // EF Core + MySQL
-var connStr = builder.Configuration.GetConnectionString("MySqlConnection")!;
+var connStr = builder.Configuration.GetConnectionString("MySqlConnection")
+    ?? "Server=localhost;Port=3307;Database=ticketstar;User=root;Password=root1234;";
 builder.Services.AddDbContext<AppDbContext>(opt =>
     opt.UseMySql(connStr, ServerVersion.AutoDetect(connStr)));
 
-// Identity
-builder.Services.AddIdentity<ApplicationUser, IdentityRole>(opt =>
-    {
-        opt.Password.RequireDigit = true;
-        opt.Password.RequiredLength = 8;
-        opt.Password.RequireNonAlphanumeric = false;
-        opt.User.RequireUniqueEmail = true;
-    })
-    .AddEntityFrameworkStores<AppDbContext>()
-    .AddDefaultTokenProviders();
-
 // JWT Authentication
-var jwtSecret = builder.Configuration["Jwt:Secret"]!;
+var jwtSecret = builder.Configuration["Jwt:Secret"] ?? "dev-placeholder-secret-32-chars-min!!";
 builder.Services.AddAuthentication(opt =>
     {
         opt.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -51,7 +40,7 @@ builder.Services.AddAuthentication(opt =>
         };
     });
 
-// Rate limiting for magic link endpoint (per-IP)
+// Rate limiting
 builder.Services.AddRateLimiter(opt =>
 {
     opt.AddPolicy("magic-link", ctx =>
@@ -66,10 +55,15 @@ builder.Services.AddRateLimiter(opt =>
     opt.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 });
 
+// Security services -- singletons (stateless, thread-safe)
+builder.Services.AddSingleton<IPasswordHasher, Argon2PasswordHasher>();
+builder.Services.AddSingleton<ITokenHasher, Sha256TokenHasher>();
+builder.Services.AddSingleton<ISecureRandom, CryptoRandomService>();
+
 // Application services
+builder.Services.AddScoped<ISessionService, SessionService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddScoped<MagicLinkService>();
 builder.Services.AddScoped<DbSeeder>();
 
 // Controllers + Swagger
@@ -116,7 +110,8 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var seeder = scope.ServiceProvider.GetRequiredService<DbSeeder>();
-    await seeder.SeedAsync();
+    var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
+    await seeder.SeedAsync(hasher.Hash);
 }
 
 // Configure pipeline
@@ -135,3 +130,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.Run();
+
+// Enable WebApplicationFactory for integration tests
+public partial class Program { }

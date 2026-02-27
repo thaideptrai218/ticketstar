@@ -1,9 +1,9 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using TicketStar.Application.DTOs.Auth;
 using TicketStar.Application.Interfaces;
-using TicketStar.Application.Services;
 
 namespace TicketStar.API.Controllers;
 
@@ -13,13 +13,39 @@ public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
     private readonly ITokenService _tokenService;
-    private readonly MagicLinkService _magicLinkService;
 
-    public AuthController(IAuthService authService, ITokenService tokenService, MagicLinkService magicLinkService)
+    public AuthController(IAuthService authService, ITokenService tokenService)
     {
         _authService = authService;
         _tokenService = tokenService;
-        _magicLinkService = magicLinkService;
+    }
+
+    [HttpPost("register")]
+    public async Task<ActionResult<TokenResponse>> Register([FromBody] RegisterRequest request)
+    {
+        try
+        {
+            var response = await _authService.RegisterAsync(request, GetIp(), GetUserAgent());
+            return Ok(response);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("login")]
+    public async Task<ActionResult<TokenResponse>> Login([FromBody] LoginRequest request)
+    {
+        try
+        {
+            var response = await _authService.LoginAsync(request, GetIp(), GetUserAgent());
+            return Ok(response);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new { error = ex.Message });
+        }
     }
 
     [HttpPost("google-login")]
@@ -27,7 +53,7 @@ public class AuthController : ControllerBase
     {
         try
         {
-            var response = await _authService.GoogleLoginAsync(request.IdToken);
+            var response = await _authService.GoogleLoginAsync(request.IdToken, GetIp(), GetUserAgent());
             return Ok(response);
         }
         catch (Exception ex)
@@ -40,8 +66,7 @@ public class AuthController : ControllerBase
     [HttpPost("magic-link/request")]
     public async Task<IActionResult> RequestMagicLink([FromBody] MagicLinkRequest request)
     {
-        await _magicLinkService.RequestAsync(request.Email);
-        // Always return OK to prevent email enumeration
+        await _authService.RequestMagicLinkAsync(request.Email, GetIp());
         return Ok(new { message = "If the email exists, a magic link has been sent." });
     }
 
@@ -50,7 +75,7 @@ public class AuthController : ControllerBase
     {
         try
         {
-            var response = await _magicLinkService.VerifyAsync(request.Token);
+            var response = await _authService.VerifyMagicLinkAsync(request.Token, GetIp(), GetUserAgent());
             return Ok(response);
         }
         catch (UnauthorizedAccessException ex)
@@ -77,7 +102,22 @@ public class AuthController : ControllerBase
     [HttpPost("logout")]
     public async Task<IActionResult> Logout([FromBody] RefreshRequest request)
     {
-        await _tokenService.RevokeRefreshTokenAsync(request.RefreshToken);
+        await _authService.LogoutAsync(request.RefreshToken);
         return Ok(new { message = "Logged out successfully." });
     }
+
+    [Authorize]
+    [HttpPost("revoke-all")]
+    public async Task<IActionResult> RevokeAllSessions()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue("sub");
+        if (userId is null) return Unauthorized();
+
+        await _authService.RevokeAllSessionsAsync(userId);
+        return Ok(new { message = "All sessions revoked." });
+    }
+
+    private string? GetIp() => HttpContext.Connection.RemoteIpAddress?.ToString();
+    private string? GetUserAgent() => Request.Headers.UserAgent.ToString();
 }

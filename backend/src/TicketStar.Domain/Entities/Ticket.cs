@@ -13,7 +13,7 @@ public class Ticket
 
     // Navigation properties
     public OrderItem OrderItem { get; set; } = null!;
-    public ApplicationUser User { get; set; } = null!;
+    public User User { get; set; } = null!;
     public Event Event { get; set; } = null!;
     public TicketType TicketType { get; set; } = null!;
     public CheckIn? CheckIn { get; set; }

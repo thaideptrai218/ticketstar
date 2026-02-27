@@ -9,10 +9,14 @@ public class TicketTypeConfiguration : IEntityTypeConfiguration<TicketType>
     public void Configure(EntityTypeBuilder<TicketType> builder)
     {
         builder.HasKey(t => t.Id);
-        builder.Property(t => t.Name).HasMaxLength(100).IsRequired();
-        builder.Property(t => t.Price).HasColumnType("decimal(12,0)");
-        builder.Property(t => t.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
-        builder.Property(t => t.UpdatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+
+        builder.Property(t => t.Name).IsRequired().HasMaxLength(200);
+        builder.Property(t => t.Price).HasColumnType("decimal(10,2)");
+
+        builder.Property(t => t.CreatedAt)
+            .HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+        builder.Property(t => t.UpdatedAt)
+            .HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
 
         builder.HasIndex(t => t.EventId);
 

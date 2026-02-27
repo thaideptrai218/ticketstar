@@ -9,7 +9,7 @@ public class StaffAssignment
     public DateTime AssignedAt { get; set; }
 
     // Navigation properties
-    public ApplicationUser User { get; set; } = null!;
+    public User User { get; set; } = null!;
     public Event Event { get; set; } = null!;
-    public ApplicationUser Assigner { get; set; } = null!;
+    public User Assigner { get; set; } = null!;
 }

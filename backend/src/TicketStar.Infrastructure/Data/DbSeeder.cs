@@ -1,66 +1,76 @@
-using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using TicketStar.Domain.Entities;
+using TicketStar.Domain.Enums;
 
 namespace TicketStar.Infrastructure.Data;
 
 public class DbSeeder
 {
-    private readonly RoleManager<IdentityRole> _roleManager;
-    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly AppDbContext _db;
     private readonly IConfiguration _config;
     private readonly ILogger<DbSeeder> _logger;
 
-    private static readonly string[] Roles = ["Admin", "Organizer", "Staff", "Attendee"];
-
-    public DbSeeder(
-        RoleManager<IdentityRole> roleManager,
-        UserManager<ApplicationUser> userManager,
-        IConfiguration config,
-        ILogger<DbSeeder> logger)
+    public DbSeeder(AppDbContext db, IConfiguration config, ILogger<DbSeeder> logger)
     {
-        _roleManager = roleManager;
-        _userManager = userManager;
+        _db = db;
         _config = config;
         _logger = logger;
     }
 
-    public async Task SeedAsync()
+    public async Task SeedAsync(Func<string, string> hashPassword)
     {
-        // Seed roles
-        foreach (var role in Roles)
+        var adminEmail = _config["Admin:Email"] ?? "admin@ticketstar.dev";
+        var adminPassword = _config["Admin:Password"] ?? "Admin@123!";
+
+        // Skip if admin already exists (ignoring soft-delete filter)
+        var exists = await _db.Users
+            .IgnoreQueryFilters()
+            .AnyAsync(u => u.Email == adminEmail);
+
+        if (exists)
         {
-            if (!await _roleManager.RoleExistsAsync(role))
-            {
-                await _roleManager.CreateAsync(new IdentityRole(role));
-                _logger.LogInformation("Seeded role: {Role}", role);
-            }
+            _logger.LogInformation("Admin user already exists, skipping seed.");
+            return;
         }
 
-        // Seed admin user
-        var adminEmail = _config["Admin:Email"] ?? "admin@ticketstar.dev";
-        var adminUser = await _userManager.FindByEmailAsync(adminEmail);
-        if (adminUser is null)
+        var adminId = Guid.NewGuid().ToString();
+
+        var user = new User
         {
-            adminUser = new ApplicationUser
-            {
-                UserName = adminEmail,
-                Email = adminEmail,
-                FullName = "System Admin",
-                EmailConfirmed = true,
-                CreatedAt = DateTime.UtcNow
-            };
-            var result = await _userManager.CreateAsync(adminUser, _config["Admin:Password"] ?? "Admin@123!");
-            if (result.Succeeded)
-            {
-                await _userManager.AddToRoleAsync(adminUser, "Admin");
-                _logger.LogInformation("Seeded admin user: {Email}", adminEmail);
-            }
-            else
-            {
-                _logger.LogError("Failed to seed admin: {Errors}", string.Join(", ", result.Errors.Select(e => e.Description)));
-            }
-        }
+            Id = adminId,
+            Email = adminEmail,
+            PasswordHash = hashPassword(adminPassword),
+            Role = UserRole.Admin,
+            EmailVerified = true,
+            SecurityStamp = Guid.NewGuid().ToString("N"),
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        var profile = new UserProfile
+        {
+            UserId = adminId,
+            FullName = "System Admin",
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        var identity = new AuthIdentity
+        {
+            Id = Guid.NewGuid(),
+            UserId = adminId,
+            Provider = AuthProvider.Email,
+            ProviderUserId = adminEmail,
+            ProviderEmail = adminEmail,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _db.Users.Add(user);
+        _db.UserProfiles.Add(profile);
+        _db.AuthIdentities.Add(identity);
+
+        await _db.SaveChangesAsync();
+        _logger.LogInformation("Admin user seeded: {Email}", adminEmail);
     }
 }

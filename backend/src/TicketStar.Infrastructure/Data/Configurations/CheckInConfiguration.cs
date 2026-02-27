@@ -9,15 +9,17 @@ public class CheckInConfiguration : IEntityTypeConfiguration<CheckIn>
     public void Configure(EntityTypeBuilder<CheckIn> builder)
     {
         builder.HasKey(c => c.Id);
-        builder.Property(c => c.ScannedBy).HasMaxLength(450).IsRequired();
-        builder.Property(c => c.ScannedAt).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
 
-        builder.HasIndex(c => new { c.EventId, c.TicketId });
+        builder.Property(c => c.ScannedBy).IsRequired().HasMaxLength(450);
+
+        // 1:1 with Ticket — unique FK
+        builder.HasIndex(c => c.TicketId).IsUnique();
+        builder.HasIndex(c => new { c.EventId, c.ScannedAt });
 
         builder.HasOne(c => c.Ticket)
             .WithOne(t => t.CheckIn)
             .HasForeignKey<CheckIn>(c => c.TicketId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(c => c.Scanner)
             .WithMany()

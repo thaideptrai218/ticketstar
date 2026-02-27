@@ -18,7 +18,7 @@ public class Event
     public DateTime UpdatedAt { get; set; }
 
     // Navigation properties
-    public ApplicationUser Organizer { get; set; } = null!;
+    public User Organizer { get; set; } = null!;
     public ICollection<TicketType> TicketTypes { get; set; } = [];
     public ICollection<Ticket> Tickets { get; set; } = [];
     public ICollection<CheckIn> CheckIns { get; set; } = [];

@@ -14,7 +14,7 @@ public class Order
     public DateTime? PaidAt { get; set; }
 
     // Navigation properties
-    public ApplicationUser User { get; set; } = null!;
+    public User User { get; set; } = null!;
     public ICollection<OrderItem> Items { get; set; } = [];
     public Payment? Payment { get; set; }
 }

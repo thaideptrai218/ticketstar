@@ -8,23 +8,30 @@ public class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
 {
     public void Configure(EntityTypeBuilder<RefreshToken> builder)
     {
-        builder.HasKey(r => r.Id);
-        builder.Property(r => r.UserId).HasMaxLength(450).IsRequired();
-        builder.Property(r => r.Token).HasMaxLength(500).IsRequired();
-        builder.Property(r => r.ReplacedByToken).HasMaxLength(500);
-        builder.Property(r => r.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+        builder.HasKey(t => t.Id);
 
-        builder.HasIndex(r => r.Token).IsUnique();
-        builder.HasIndex(r => r.UserId);
+        builder.Property(t => t.UserId).IsRequired().HasMaxLength(450);
+        builder.Property(t => t.TokenHash).IsRequired().HasMaxLength(128);
+        builder.Property(t => t.FamilyId).IsRequired().HasMaxLength(100);
 
-        // Ignore computed properties
-        builder.Ignore(r => r.IsExpired);
-        builder.Ignore(r => r.IsRevoked);
-        builder.Ignore(r => r.IsActive);
+        builder.Property(t => t.CreatedAt)
+            .HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
 
-        builder.HasOne(r => r.User)
+        builder.HasIndex(t => t.TokenHash).IsUnique();
+        builder.HasIndex(t => new { t.UserId, t.FamilyId });
+
+        builder.Ignore(t => t.IsExpired);
+        builder.Ignore(t => t.IsRevoked);
+        builder.Ignore(t => t.IsActive);
+
+        builder.HasOne(t => t.User)
             .WithMany(u => u.RefreshTokens)
-            .HasForeignKey(r => r.UserId)
+            .HasForeignKey(t => t.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne(t => t.Session)
+            .WithMany(s => s.RefreshTokens)
+            .HasForeignKey(t => t.SessionId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

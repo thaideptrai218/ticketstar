@@ -9,14 +9,17 @@ public class StaffAssignmentConfiguration : IEntityTypeConfiguration<StaffAssign
     public void Configure(EntityTypeBuilder<StaffAssignment> builder)
     {
         builder.HasKey(s => s.Id);
-        builder.Property(s => s.UserId).HasMaxLength(450).IsRequired();
-        builder.Property(s => s.AssignedBy).HasMaxLength(450).IsRequired();
-        builder.Property(s => s.AssignedAt).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+
+        builder.Property(s => s.UserId).IsRequired().HasMaxLength(450);
+        builder.Property(s => s.AssignedBy).IsRequired().HasMaxLength(450);
+
+        builder.HasIndex(s => new { s.UserId, s.EventId }).IsUnique();
+        builder.HasIndex(s => s.EventId);
 
         builder.HasOne(s => s.User)
             .WithMany(u => u.StaffAssignments)
             .HasForeignKey(s => s.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(s => s.Event)
             .WithMany(e => e.StaffAssignments)

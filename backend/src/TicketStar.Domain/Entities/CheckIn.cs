@@ -10,6 +10,6 @@ public class CheckIn
 
     // Navigation properties
     public Ticket Ticket { get; set; } = null!;
-    public ApplicationUser Scanner { get; set; } = null!;
+    public User Scanner { get; set; } = null!;
     public Event Event { get; set; } = null!;
 }
