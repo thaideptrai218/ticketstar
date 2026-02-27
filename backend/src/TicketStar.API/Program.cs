@@ -13,8 +13,7 @@ using TicketStar.Infrastructure.Data;
 var builder = WebApplication.CreateBuilder(args);
 
 // EF Core + MySQL
-var connStr = builder.Configuration.GetConnectionString("MySqlConnection")
-    ?? "Server=localhost;Port=3307;Database=ticketstar;User=root;Password=root1234;";
+var connStr = builder.Configuration.GetConnectionString("MySqlConnection")!;
 builder.Services.AddDbContext<AppDbContext>(opt =>
     opt.UseMySql(connStr, ServerVersion.AutoDetect(connStr)));
 

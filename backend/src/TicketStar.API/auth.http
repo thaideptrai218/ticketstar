@@ -1,0 +1,190 @@
+### TicketStar Auth API — Manual Testing
+### Base URL: http://localhost:5010
+### Usage: Run the API first: dotnet run --project TicketStar.API.csproj
+###
+### Flow: Register → Login → Copy access_token → use as {{accessToken}}
+###       Then test Refresh → Logout → Revoke All
+
+@baseUrl = http://localhost:5010
+@contentType = application/json
+
+# After login/register, paste the access_token here:
+@accessToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkYzk4MjljZC1jNWIzLTRjOTItYWYxMy0yOWMwYzlmODhhYTgiLCJlbWFpbCI6InRlc3R1c2VyQGV4YW1wbGUuY29tIiwianRpIjoiYjViYjkzZjYtYWUzZi00NmI3LTk3YTgtMmQwODE3NzZjNTdlIiwiZW1haWxfdmVyaWZpZWQiOiJmYWxzZSIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IlVzZXIiLCJzaWQiOiJmYTQwMjJjM2Q4Mzc0OTEzYWJjNzI1NjJkOWQ1OGMzZSIsInNzdGFtcCI6IjlkMjFjNTYxIiwiZXhwIjoxNzcyMTkwMzMwLCJpc3MiOiJUaWNrZXRTdGFyIiwiYXVkIjoiVGlja2V0U3RhciJ9.lUk2Nvt7RYNgbFJ0fDHhBjFxd8B4ouBMraVkfBGjjJE
+# After login/register, paste the refresh_token here:
+@refreshToken = QjGbhVCbrDbdVmXjtZIit23BiEsKYl2WeV2v1zAqcsYyaOD2LDgg-zSt9-An4O97uE-uuCwbtJf1731iMYt2bg
+
+
+### ─────────────────────────────────────────
+### 1. REGISTER (creates user + returns tokens)
+### ─────────────────────────────────────────
+
+POST {{baseUrl}}/api/auth/register
+Content-Type: {{contentType}}
+
+{
+  "email": "testuser@example.com",
+  "password": "TestPass@123",
+  "fullName": "Test User"
+}
+
+### ─────────────────────────────────────────
+### 2. LOGIN — valid credentials
+### ─────────────────────────────────────────
+
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "testuser@example.com",
+  "password": "TestPass@123"
+}
+
+### ─────────────────────────────────────────
+### 3. LOGIN — wrong password (expect 401)
+### ─────────────────────────────────────────
+
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "testuser@example.com",
+  "password": "WrongPassword"
+}
+
+### ─────────────────────────────────────────
+### 4. LOGIN — unknown email (expect 401, same message — no enumeration)
+### ─────────────────────────────────────────
+
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "nobody@example.com",
+  "password": "AnyPassword"
+}
+
+### ─────────────────────────────────────────
+### 5. REGISTER — duplicate email (expect 409)
+### ─────────────────────────────────────────
+
+POST {{baseUrl}}/api/auth/register
+Content-Type: {{contentType}}
+
+{
+  "email": "testuser@example.com",
+  "password": "AnotherPass@123",
+  "fullName": "Duplicate User"
+}
+
+### ─────────────────────────────────────────
+### 6. MAGIC LINK REQUEST — existing email (always 200)
+### ─────────────────────────────────────────
+
+POST {{baseUrl}}/api/auth/magic-link/request
+Content-Type: {{contentType}}
+
+{
+  "email": "testuser@example.com"
+}
+
+### ─────────────────────────────────────────
+### 7. MAGIC LINK REQUEST — non-existent email (expect 200 — no enumeration)
+### ─────────────────────────────────────────
+
+POST {{baseUrl}}/api/auth/magic-link/request
+Content-Type: {{contentType}}
+
+{
+  "email": "ghost@example.com"
+}
+
+### ─────────────────────────────────────────
+### 8. MAGIC LINK VERIFY
+### NOTE: Copy the token from the API console logs after step 6
+### ─────────────────────────────────────────
+
+POST {{baseUrl}}/api/auth/magic-link/verify
+Content-Type: {{contentType}}
+
+{
+  "token": "PASTE_MAGIC_LINK_TOKEN_FROM_LOGS_HERE"
+}
+
+### ─────────────────────────────────────────
+### 9. GOOGLE OAUTH LOGIN
+### NOTE: Get a valid Google ID token from frontend OAuth flow
+### ─────────────────────────────────────────
+
+POST {{baseUrl}}/api/auth/google-login
+Content-Type: {{contentType}}
+
+{
+  "idToken": "PASTE_GOOGLE_ID_TOKEN_HERE"
+}
+
+### ─────────────────────────────────────────
+### 10. REFRESH TOKEN — rotate refresh token
+### NOTE: Set @refreshToken above first
+### ─────────────────────────────────────────
+
+POST {{baseUrl}}/api/auth/refresh
+Content-Type: {{contentType}}
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+### ─────────────────────────────────────────
+### 11. REFRESH — reuse old (revoked) token (expect 401 + family revoked)
+### NOTE: Run step 10 first, then reuse the SAME old refreshToken
+### ─────────────────────────────────────────
+
+POST {{baseUrl}}/api/auth/refresh
+Content-Type: {{contentType}}
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+### ─────────────────────────────────────────
+### 12. LOGOUT (requires auth)
+### NOTE: Set @accessToken and @refreshToken above first
+### ─────────────────────────────────────────
+
+POST {{baseUrl}}/api/auth/logout
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+### ─────────────────────────────────────────
+### 13. REVOKE ALL SESSIONS (requires auth)
+### Rotates security stamp — invalidates all tokens across all devices
+### ─────────────────────────────────────────
+
+POST {{baseUrl}}/api/auth/revoke-all
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+### ─────────────────────────────────────────
+### 14. PROTECTED ENDPOINT CHECK
+### Use any future authorized endpoint to verify token works
+### ─────────────────────────────────────────
+
+GET {{baseUrl}}/api/auth/revoke-all
+Authorization: Bearer {{accessToken}}
+
+### ─────────────────────────────────────────
+### 15. BRUTE FORCE LOCKOUT TEST
+### Run this 5+ times in a row — 6th attempt should get locked (same 401 message)
+### ─────────────────────────────────────────
+
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "testuser@example.com",
+  "password": "WrongPassword1"
+}
