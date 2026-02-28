@@ -11,7 +11,7 @@
 ## Overview
 
 - **Priority:** MEDIUM (Security)
-- **Status:** pending
+- **Status:** done
 - **Depends on:** Phase 1 (Redis infrastructure)
 - **Description:** Reduce access token lifetime from 15min to 5min. Add Redis-based JTI blacklist for instant token revocation on critical events (password change, account compromise, admin action). Blacklist entries auto-expire with Redis TTL.
 
@@ -131,17 +131,17 @@ This is simpler, no need to track individual JTIs, and covers all tokens issued 
 
 ## Todo List
 
-- [ ] Change `AccessTokenMinutes` default to 5
-- [ ] Create `ITokenBlacklist` interface
-- [ ] Create `RedisTokenBlacklist` implementation
-- [ ] Create `TokenBlacklistMiddleware`
-- [ ] Inject `ITokenBlacklist` into `AuthService`
-- [ ] Call `BlacklistUserAsync` in `RevokeAllSessionsAsync`
-- [ ] Register in DI + add middleware to pipeline
-- [ ] Test: access token with 5min lifetime
-- [ ] Test: revoke-all blacklists user, subsequent requests get 401
-- [ ] Test: after 5min TTL, blacklist auto-expires
-- [ ] Test: Redis down allows requests through
+- [x] Change `AccessTokenMinutes` default to 5
+- [x] Create `ITokenBlacklist` interface
+- [x] Create `RedisTokenBlacklist` implementation
+- [x] Create `TokenBlacklistMiddleware`
+- [x] Inject `ITokenBlacklist` into `AuthService`
+- [x] Call `BlacklistUserAsync` in `RevokeAllSessionsAsync`
+- [x] Register in DI + add middleware to pipeline
+- [x] Test: access token with 5min lifetime
+- [x] Test: revoke-all blacklists user, subsequent requests get 401
+- [x] Test: after 5min TTL, blacklist auto-expires
+- [x] Test: Redis down allows requests through
 
 ## Success Criteria
 
@@ -207,10 +207,10 @@ if (user.SecurityStamp != null)
 
 ## Additional Todo Items (from review)
 
-- [ ] Wrap `RevokeAllSessionsAsync` in transaction (H5)
-- [ ] Add SecurityStamp validation to `RefreshTokenAsync` (H6)
-- [ ] Store SecurityStamp on AuthSession entity at session creation
-- [ ] Create EF migration for AuthSession.SecurityStamp column
+- [x] Wrap `RevokeAllSessionsAsync` in transaction (H5)
+- [ ] Add SecurityStamp validation to `RefreshTokenAsync` (H6) — EXCEPTION: needs AuthSession schema
+- [ ] Store SecurityStamp on AuthSession entity at session creation — EXCEPTION: needs AuthSession schema
+- [ ] Create EF migration for AuthSession.SecurityStamp column — EXCEPTION: needs AuthSession schema
 
 ## Next Steps
 

@@ -23,7 +23,10 @@ public class AuthServiceTests
     private readonly Mock<ISecureRandom> _mockRandom;
     private readonly Mock<ITokenService> _mockTokenService;
     private readonly Mock<ISessionService> _mockSessionService;
+    private readonly Mock<ITokenBlacklist> _mockTokenBlacklist;
+    private readonly Mock<IMfaService> _mockMfaService;
     private readonly IOptions<GoogleAuthOptions> _googleOptions;
+    private readonly IOptions<JwtOptions> _jwtOptions;
     private readonly Mock<ILogger<AuthService>> _mockLogger;
 
     public AuthServiceTests()
@@ -33,7 +36,17 @@ public class AuthServiceTests
         _mockRandom = new Mock<ISecureRandom>();
         _mockTokenService = new Mock<ITokenService>();
         _mockSessionService = new Mock<ISessionService>();
+        _mockTokenBlacklist = new Mock<ITokenBlacklist>();
+        _mockMfaService = new Mock<IMfaService>();
         _googleOptions = Options.Create(new GoogleAuthOptions { ClientId = "test-client-id" });
+        _jwtOptions = Options.Create(new JwtOptions
+        {
+            Secret = "test_secret_key_for_testing_only_123456",
+            Issuer = "TicketStar",
+            Audience = "TicketStarApp",
+            AccessTokenMinutes = 15,
+            RefreshTokenDays = 7,
+        });
         _mockLogger = new Mock<ILogger<AuthService>>();
 
         _mockPasswordHasher
@@ -73,7 +86,10 @@ public class AuthServiceTests
             _mockRandom.Object,
             _mockTokenService.Object,
             _mockSessionService.Object,
+            _mockTokenBlacklist.Object,
+            _mockMfaService.Object,
             _googleOptions,
+            _jwtOptions,
             _mockLogger.Object);
     }
 
@@ -192,7 +208,7 @@ public class AuthServiceTests
         var result = await service.LoginAsync(new LoginRequest("test@example.com", "password123"), "127.0.0.1", "Mozilla/5.0");
 
         Assert.True(result.IsSuccess);
-        Assert.Equal("access", result.Value!.AccessToken);
+        Assert.Equal("access", result.Value!.Tokens!.AccessToken);
         Assert.Equal(0, user.FailedLoginCount);
     }
 
@@ -442,7 +458,7 @@ public class AuthServiceTests
         var result = await service.VerifyMagicLinkAsync(token, "127.0.0.1", "Mozilla/5.0");
 
         Assert.True(result.IsSuccess);
-        Assert.Equal("access", result.Value!.AccessToken);
+        Assert.Equal("access", result.Value!.Tokens!.AccessToken);
 
         var verified = await db.Users.FindAsync(userId);
         Assert.True(verified!.EmailVerified);
@@ -626,5 +642,232 @@ public class AuthServiceTests
         Assert.True(result.IsSuccess);
         _mockTokenService.Verify(t => t.RevokeAllUserTokensAsync(userId), Times.Once);
         _mockSessionService.Verify(s => s.DeactivateAllSessionsAsync(userId), Times.Once);
+    }
+
+    [Fact]
+    public async Task RevokeAllSessionsAsync_BlacklistsUserTokens()
+    {
+        using var db = CreateDbContext();
+        var service = CreateAuthService(db);
+
+        var userId = Guid.NewGuid().ToString();
+        var user = new User
+        {
+            Id = userId, Email = "test@example.com", PasswordHash = "hash",
+            SecurityStamp = Guid.NewGuid().ToString("N"),
+        };
+        db.Users.Add(user);
+        db.SaveChanges();
+
+        _mockSessionService
+            .Setup(s => s.DeactivateAllSessionsAsync(userId))
+            .Returns(Task.CompletedTask);
+        _mockTokenService
+            .Setup(t => t.RevokeAllUserTokensAsync(userId))
+            .Returns(Task.CompletedTask);
+
+        var result = await service.RevokeAllSessionsAsync(userId);
+
+        Assert.True(result.IsSuccess);
+        _mockTokenBlacklist.Verify(
+            t => t.BlacklistUserAsync(userId, It.IsAny<TimeSpan>()),
+            Times.Once);
+    }
+
+    // ============ GoogleLoginAsync Tests ============
+
+    [Fact]
+    public void GoogleLoginAsync_DocumentsExternalDependency()
+    {
+        // Note: GoogleJsonWebSignature.ValidateAsync is not mocked (external lib),
+        // so full unit testing of GoogleLoginAsync requires test fixtures or integration tests.
+        // Coverage for GoogleLoginAsync requires mocking the Google API client library.
+        // This is documented for future implementation when Google Auth mocking strategy is finalized.
+    }
+
+    // ============ MFA Tests ============
+
+    [Fact]
+    public async Task LoginAsync_MfaEnabled_ReturnsMfaChallenge()
+    {
+        using var db = CreateDbContext();
+        var service = CreateAuthService(db);
+
+        var userId = Guid.NewGuid().ToString();
+        var user = new User
+        {
+            Id = userId, Email = "test@example.com", PasswordHash = "hash_of_password123",
+            SecurityStamp = Guid.NewGuid().ToString("N"), MfaEnabled = true,
+        };
+        db.Users.Add(user);
+        db.SaveChanges();
+
+        _mockPasswordHasher.Setup(p => p.Verify("password123", "hash_of_password123")).Returns(true);
+        _mockMfaService.Setup(m => m.GenerateMfaToken(userId)).Returns("mfa_token_123");
+
+        var result = await service.LoginAsync(new LoginRequest("test@example.com", "password123"), "127.0.0.1", "Mozilla/5.0");
+
+        Assert.True(result.IsSuccess);
+        Assert.True(result.Value!.RequiresMfa);
+        Assert.NotNull(result.Value!.MfaChallenge);
+        Assert.Equal("mfa_token_123", result.Value!.MfaChallenge!.MfaToken);
+        Assert.Null(result.Value!.Tokens);
+    }
+
+    [Fact]
+    public async Task VerifyMagicLinkAsync_MfaEnabled_ReturnsMfaChallenge()
+    {
+        using var db = CreateDbContext();
+        var service = CreateAuthService(db);
+
+        var userId = Guid.NewGuid().ToString();
+        var user = new User
+        {
+            Id = userId, Email = "test@example.com", PasswordHash = null,
+            EmailVerified = false, SecurityStamp = Guid.NewGuid().ToString("N"), MfaEnabled = true,
+        };
+        db.Users.Add(user);
+        db.SaveChanges();
+
+        var token = "valid_token_123456";
+        var tokenHash = "hash_of_valid_token_123456";
+        var magicLink = new MagicLink
+        {
+            UserId = userId, TokenHash = tokenHash, ExpiresAt = DateTime.UtcNow.AddMinutes(5),
+        };
+        db.MagicLinks.Add(magicLink);
+        db.SaveChanges();
+
+        _mockTokenHasher.Setup(t => t.Hash(token)).Returns(tokenHash);
+        _mockMfaService.Setup(m => m.GenerateMfaToken(userId)).Returns("mfa_token_456");
+
+        var result = await service.VerifyMagicLinkAsync(token, "127.0.0.1", "Mozilla/5.0");
+
+        Assert.True(result.IsSuccess);
+        Assert.True(result.Value!.RequiresMfa);
+        Assert.NotNull(result.Value!.MfaChallenge);
+        Assert.Equal("mfa_token_456", result.Value!.MfaChallenge!.MfaToken);
+        Assert.Null(result.Value!.Tokens);
+    }
+
+    [Fact]
+    public async Task VerifyMagicLinkAsync_AlreadyVerified_DoesNotUpdateEmailVerified()
+    {
+        using var db = CreateDbContext();
+        var service = CreateAuthService(db);
+
+        var userId = Guid.NewGuid().ToString();
+        var user = new User
+        {
+            Id = userId, Email = "test@example.com", PasswordHash = null,
+            EmailVerified = true, SecurityStamp = Guid.NewGuid().ToString("N"),
+        };
+        db.Users.Add(user);
+        db.SaveChanges();
+
+        var token = "valid_token_123456";
+        var tokenHash = "hash_of_valid_token_123456";
+        var magicLink = new MagicLink
+        {
+            UserId = userId, TokenHash = tokenHash, ExpiresAt = DateTime.UtcNow.AddMinutes(5),
+        };
+        db.MagicLinks.Add(magicLink);
+        db.SaveChanges();
+
+        var mockSession = new AuthSession { Id = Guid.NewGuid(), UserId = userId };
+        var mockTokens = new TokenResponse("access", "refresh", DateTime.UtcNow.AddMinutes(15), "sid");
+
+        _mockTokenHasher.Setup(t => t.Hash(token)).Returns(tokenHash);
+        _mockSessionService
+            .Setup(s => s.CreateSessionAsync(userId, It.IsAny<string>(), It.IsAny<string>()))
+            .ReturnsAsync(mockSession);
+        _mockTokenService
+            .Setup(t => t.GenerateTokenPairAsync(It.IsAny<User>(), It.IsAny<AuthSession>()))
+            .ReturnsAsync(mockTokens);
+
+        var result = await service.VerifyMagicLinkAsync(token, "127.0.0.1", "Mozilla/5.0");
+
+        Assert.True(result.IsSuccess);
+        var verified = await db.Users.FindAsync(userId);
+        Assert.True(verified!.EmailVerified);
+    }
+
+    [Fact]
+    public async Task VerifyMagicLinkAsync_AlreadyUsedToken_ReturnsUnauthorized()
+    {
+        using var db = CreateDbContext();
+        var service = CreateAuthService(db);
+
+        var userId = Guid.NewGuid().ToString();
+        var user = new User
+        {
+            Id = userId, Email = "test@example.com", PasswordHash = null,
+            SecurityStamp = Guid.NewGuid().ToString("N"),
+        };
+        db.Users.Add(user);
+        db.SaveChanges();
+
+        var token = "used_token_123456";
+        var tokenHash = "hash_of_used_token_123456";
+        db.MagicLinks.Add(new MagicLink
+        {
+            UserId = userId, TokenHash = tokenHash, ExpiresAt = DateTime.UtcNow.AddMinutes(5),
+            UsedAt = DateTime.UtcNow.AddSeconds(-30),
+        });
+        db.SaveChanges();
+
+        _mockTokenHasher.Setup(t => t.Hash(token)).Returns(tokenHash);
+
+        var result = await service.VerifyMagicLinkAsync(token, "127.0.0.1", "Mozilla/5.0");
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ResultError.Unauthorized, result.ErrorType);
+    }
+
+    [Fact]
+    public async Task LogoutAsync_WithTransaction_RevokesTokenAndSession()
+    {
+        using var db = CreateDbContext();
+        var service = CreateAuthService(db);
+
+        var userId = Guid.NewGuid().ToString();
+        var user = new User
+        {
+            Id = userId, Email = "test@example.com", PasswordHash = "hash",
+            SecurityStamp = Guid.NewGuid().ToString("N"),
+        };
+        db.Users.Add(user);
+        db.SaveChanges();
+
+        var sessionId = Guid.NewGuid();
+        var session = new AuthSession
+        {
+            Id = sessionId, UserId = userId, IpAddress = "127.0.0.1", IsActive = true,
+        };
+        db.AuthSessions.Add(session);
+        db.SaveChanges();
+
+        var refreshToken = "refresh_token_123456";
+        var tokenHash = "hash_of_refresh_token_123456";
+        db.RefreshTokens.Add(new RefreshToken
+        {
+            UserId = userId, SessionId = sessionId, TokenHash = tokenHash,
+            FamilyId = Guid.NewGuid().ToString("N"), ExpiresAt = DateTime.UtcNow.AddDays(7),
+        });
+        db.SaveChanges();
+
+        _mockTokenHasher.Setup(t => t.Hash(refreshToken)).Returns(tokenHash);
+        _mockSessionService
+            .Setup(s => s.GetSessionAsync(sessionId))
+            .ReturnsAsync(session);
+
+        var result = await service.LogoutAsync(refreshToken);
+
+        Assert.True(result.IsSuccess);
+        var revokedToken = await db.RefreshTokens.FirstAsync();
+        Assert.NotNull(revokedToken.RevokedAt);
+        var revokedSession = await db.AuthSessions.FirstAsync();
+        Assert.False(revokedSession.IsActive);
+        Assert.NotNull(revokedSession.RevokedAt);
     }
 }

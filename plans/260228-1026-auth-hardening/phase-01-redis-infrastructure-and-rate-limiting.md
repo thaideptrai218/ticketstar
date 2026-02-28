@@ -10,7 +10,7 @@
 ## Overview
 
 - **Priority:** HIGH
-- **Status:** pending
+- **Status:** done
 - **Description:** Wire Redis into DI, create shared `IRedisService` abstraction, replace in-memory `FixedWindowRateLimiter` with Redis-backed distributed rate limiting on `/login`, `/register`, `/refresh`, and `/magic-link/request`.
 
 ## Key Insights
@@ -142,20 +142,20 @@ Use Redis Lua script via `StackExchange.Redis` for atomic sliding window:
 
 ## Todo List
 
-- [ ] Add `StackExchange.Redis` to Infrastructure csproj
-- [ ] Create `RedisOptions.cs`
-- [ ] Create `IRedisService.cs` interface
-- [ ] Create `RedisService.cs` implementation (fail-open on Redis errors)
-- [ ] Register `IConnectionMultiplexer` + `IRedisService` in `AddRedis()` extension
-- [ ] Create `RedisRateLimiterPolicy.cs` + `RedisRateLimiter.cs` with Lua-based sliding window
-- [ ] Rewrite `AddRateLimiting()` to use Redis-backed policies
-- [ ] Update `Program.cs` with Redis health check
-- [ ] Add `[EnableRateLimiting]` attributes to AuthController endpoints
-- [ ] Add `AspNetCore.HealthChecks.Redis` package
-- [ ] Update appsettings with Redis connection string
-- [ ] Test: verify rate limit triggers 429 after threshold
-- [ ] Test: verify Redis failure allows requests through (fail-open)
-- [ ] Test: `IRedisService` basic operations (set/get/delete)
+- [x] Add `StackExchange.Redis` to Infrastructure csproj
+- [x] Create `RedisOptions.cs`
+- [x] Create `IRedisService.cs` interface
+- [x] Create `RedisService.cs` implementation (fail-open on Redis errors)
+- [x] Register `IConnectionMultiplexer` + `IRedisService` in `AddRedis()` extension
+- [x] Create `RedisRateLimiterPolicy.cs` + `RedisRateLimiter.cs` with Lua-based sliding window
+- [x] Rewrite `AddRateLimiting()` to use Redis-backed policies
+- [x] Update `Program.cs` with Redis health check
+- [x] Add `[EnableRateLimiting]` attributes to AuthController endpoints
+- [x] Add `AspNetCore.HealthChecks.Redis` package
+- [x] Update appsettings with Redis connection string
+- [x] Test: verify rate limit triggers 429 after threshold
+- [x] Test: verify Redis failure allows requests through (fail-open)
+- [x] Test: `IRedisService` basic operations (set/get/delete)
 
 ## Success Criteria
 

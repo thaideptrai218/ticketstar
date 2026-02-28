@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TicketStar.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using TicketStar.Infrastructure.Data;
 namespace TicketStar.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260228163731_AuthHardening")]
+    partial class AuthHardening
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -303,32 +306,6 @@ namespace TicketStar.Infrastructure.Migrations
                     b.HasIndex("UserId", "CreatedAt");
 
                     b.ToTable("MagicLinks");
-                });
-
-            modelBuilder.Entity("TicketStar.Domain.Entities.MfaRecoveryCode", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)");
-
-                    b.Property<string>("CodeHash")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)");
-
-                    b.Property<DateTime?>("UsedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasMaxLength(36)
-                        .HasColumnType("varchar(36)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("MfaRecoveryCodes", (string)null);
                 });
 
             modelBuilder.Entity("TicketStar.Domain.Entities.Order", b =>
@@ -718,12 +695,6 @@ namespace TicketStar.Infrastructure.Migrations
                     b.Property<DateTime?>("LockedUntil")
                         .HasColumnType("datetime(6)");
 
-                    b.Property<bool>("MfaEnabled")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<string>("MfaSecret")
-                        .HasColumnType("longtext");
-
                     b.Property<string>("PasswordHash")
                         .HasMaxLength(500)
                         .HasColumnType("varchar(500)");
@@ -910,17 +881,6 @@ namespace TicketStar.Infrastructure.Migrations
                 {
                     b.HasOne("TicketStar.Domain.Entities.User", "User")
                         .WithMany("MagicLinks")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("TicketStar.Domain.Entities.MfaRecoveryCode", b =>
-                {
-                    b.HasOne("TicketStar.Domain.Entities.User", "User")
-                        .WithMany("MfaRecoveryCodes")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -1142,8 +1102,6 @@ namespace TicketStar.Infrastructure.Migrations
                     b.Navigation("EmailChangeRequests");
 
                     b.Navigation("MagicLinks");
-
-                    b.Navigation("MfaRecoveryCodes");
 
                     b.Navigation("Orders");
 

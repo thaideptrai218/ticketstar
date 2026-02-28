@@ -1,7 +1,7 @@
 ---
 title: "Auth Hardening - 6 Security Phases"
 description: "Critical fixes, Redis rate limiting, HttpOnly cookies, multi-tab grace, token blacklist, TOTP MFA"
-status: pending
+status: done
 priority: P1
 effort: 22h
 branch: main
@@ -20,12 +20,12 @@ code_review: plans/reports/code-review-260228-1038-auth-security-owasp.md
 
 | #   | Phase                                | Priority     | Effort | Status  | File                                                           | Review Fixes   |
 | --- | ------------------------------------ | ------------ | ------ | ------- | -------------------------------------------------------------- | -------------- |
-| 0   | Critical Quick Fixes                 | **CRITICAL** | 1h     | pending | [phase-00](phase-00-critical-quick-fixes.md)                   | C1, C3, H7, H8 |
-| 1   | Redis Infrastructure & Rate Limiting | HIGH         | 3h     | pending | [phase-01](phase-01-redis-infrastructure-and-rate-limiting.md) | C2             |
-| 2   | HttpOnly Cookie + Security Headers   | HIGH         | 5h     | pending | [phase-02](phase-02-httponly-cookie-refresh-token.md)          | H1, H2, H4     |
-| 3   | Multi-Tab Reuse Grace Period         | MEDIUM       | 3h     | pending | [phase-03](phase-03-multi-tab-reuse-grace-period.md)           | H3             |
-| 4   | Access Token Shortening & Blacklist  | MEDIUM       | 4h     | pending | [phase-04](phase-04-access-token-shortening-and-blacklist.md)  | H5, H6         |
-| 5   | TOTP MFA Implementation              | MEDIUM       | 6h     | pending | [phase-05](phase-05-totp-mfa-implementation.md)                | —              |
+| 0   | Critical Quick Fixes                 | **CRITICAL** | 1h     | done    | [phase-00](phase-00-critical-quick-fixes.md)                   | C1, C3, H7, H8 |
+| 1   | Redis Infrastructure & Rate Limiting | HIGH         | 3h     | done    | [phase-01](phase-01-redis-infrastructure-and-rate-limiting.md) | C2             |
+| 2   | HttpOnly Cookie + Security Headers   | HIGH         | 5h     | done    | [phase-02](phase-02-httponly-cookie-refresh-token.md)          | H1, H2, H4     |
+| 3   | Multi-Tab Reuse Grace Period         | MEDIUM       | 3h     | done    | [phase-03](phase-03-multi-tab-reuse-grace-period.md)           | H3             |
+| 4   | Access Token Shortening & Blacklist  | MEDIUM       | 4h     | done    | [phase-04](phase-04-access-token-shortening-and-blacklist.md)  | H5, H6         |
+| 5   | TOTP MFA Implementation              | MEDIUM       | 6h     | done    | [phase-05](phase-05-totp-mfa-implementation.md)                | —              |
 
 ## Dependencies
 

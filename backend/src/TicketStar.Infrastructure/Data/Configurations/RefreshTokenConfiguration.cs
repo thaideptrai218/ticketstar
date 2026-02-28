@@ -17,6 +17,14 @@ public class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
         builder.Property(t => t.CreatedAt)
             .HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
 
+        // Optimistic concurrency — prevents duplicate rotation under concurrent requests.
+        // MySQL doesn't support SQL Server-style IsRowVersion(); use IsConcurrencyToken instead.
+        builder.Property(t => t.RowVersion)
+            .IsConcurrencyToken()
+            .HasColumnType("timestamp(6)")
+            .HasDefaultValueSql("CURRENT_TIMESTAMP(6)")
+            .ValueGeneratedOnAddOrUpdate();
+
         builder.HasIndex(t => t.TokenHash).IsUnique();
         builder.HasIndex(t => new { t.UserId, t.FamilyId });
 

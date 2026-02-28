@@ -10,7 +10,7 @@
 ## Overview
 
 - **Priority:** CRITICAL
-- **Status:** pending
+- **Status:** done
 - **Effort:** 1h
 - **Description:** One-line fixes for 4 findings from OWASP review. No architectural changes. Do first.
 
@@ -52,13 +52,13 @@
 
 ## Todo List
 
-- [ ] Delete plaintext magic link token log (C1)
-- [ ] Add `[MaxLength(128)]` to Password fields (C3)
-- [ ] Add `[MaxLength]` to token DTOs (H8)
-- [ ] Move CORS origins to appsettings config (H7)
-- [ ] Compile check — verify no build errors
-- [ ] Test: oversized password returns 400
-- [ ] Test: CORS allows configured origins
+- [x] Delete plaintext magic link token log (C1)
+- [x] Add `[MaxLength(128)]` to Password fields (C3)
+- [x] Add `[MaxLength]` to token DTOs (H8)
+- [x] Move CORS origins to appsettings config (H7)
+- [x] Compile check — verify no build errors
+- [x] Test: oversized password returns 400
+- [x] Test: CORS allows configured origins
 
 ## Success Criteria
 

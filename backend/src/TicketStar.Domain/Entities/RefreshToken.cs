@@ -16,6 +16,9 @@ public class RefreshToken
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? RevokedAt { get; set; }
 
+    /// <summary>Optimistic concurrency token — prevents two simultaneous refreshes corrupting state.</summary>
+    public DateTime? RowVersion { get; set; }
+
     public bool IsExpired => DateTime.UtcNow >= ExpiresAt;
     public bool IsRevoked => RevokedAt is not null;
     public bool IsActive => !IsExpired && !IsRevoked;

@@ -19,12 +19,14 @@ public class TokenServiceTests
 {
     private readonly Mock<ITokenHasher> _mockTokenHasher;
     private readonly Mock<ISecureRandom> _mockRandom;
+    private readonly Mock<IGracePeriodCache> _mockGracePeriodCache;
     private readonly IOptions<JwtOptions> _jwtOptions;
 
     public TokenServiceTests()
     {
         _mockTokenHasher = new Mock<ITokenHasher>();
         _mockRandom = new Mock<ISecureRandom>();
+        _mockGracePeriodCache = new Mock<IGracePeriodCache>();
 
         _mockTokenHasher
             .Setup(t => t.Hash(It.IsAny<string>()))
@@ -54,7 +56,7 @@ public class TokenServiceTests
     {
         var refreshTokenRepo = new RefreshTokenRepository(db);
         var uow = new EfUnitOfWork(db);
-        return new TokenService(_jwtOptions, _mockTokenHasher.Object, _mockRandom.Object, refreshTokenRepo, uow);
+        return new TokenService(_jwtOptions, _mockTokenHasher.Object, _mockRandom.Object, refreshTokenRepo, uow, _mockGracePeriodCache.Object);
     }
 
     // ============ GenerateTokenPairAsync Tests ============

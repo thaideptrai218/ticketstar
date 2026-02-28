@@ -56,5 +56,13 @@ public class TestAppDbContext : AppDbContext
             updatedAtProp.Metadata.SetDefaultValueSql("CURRENT_TIMESTAMP");
         }
         catch { }
+
+        try
+        {
+            var rowVersionProp = entity.Property("RowVersion");
+            rowVersionProp.Metadata.SetDefaultValueSql("CURRENT_TIMESTAMP");
+            rowVersionProp.Metadata.SetColumnType("blob");
+        }
+        catch { }
     }
 }

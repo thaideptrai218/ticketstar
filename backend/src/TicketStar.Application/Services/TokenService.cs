@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using TicketStar.Application.Common;
@@ -19,19 +20,25 @@ public class TokenService : ITokenService
     private readonly ISecureRandom _random;
     private readonly IRefreshTokenRepository _refreshTokenRepo;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IGracePeriodCache _gracePeriodCache;
+
+    // Grace window for multi-tab simultaneous refresh (same token used twice within this period)
+    private static readonly TimeSpan GracePeriod = TimeSpan.FromSeconds(10);
 
     public TokenService(
         IOptions<JwtOptions> jwtOptions,
         ITokenHasher tokenHasher,
         ISecureRandom random,
         IRefreshTokenRepository refreshTokenRepo,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IGracePeriodCache gracePeriodCache)
     {
         _jwtOptions = jwtOptions.Value;
         _tokenHasher = tokenHasher;
         _random = random;
         _refreshTokenRepo = refreshTokenRepo;
         _unitOfWork = unitOfWork;
+        _gracePeriodCache = gracePeriodCache;
     }
 
     public async Task<TokenResponse> GenerateTokenPairAsync(User user, AuthSession session)
@@ -65,9 +72,15 @@ public class TokenService : ITokenService
         if (stored is null)
             return Result<TokenResponse>.Failure("Invalid refresh token.", ResultError.Unauthorized);
 
-        // Reuse detection: revoked token used again -> revoke entire family
+        // Reuse detection: revoked token used again
         if (stored.IsRevoked)
         {
+            // Grace period: allow replay within 10s for multi-tab simultaneous refresh
+            var cached = await _gracePeriodCache.GetAsync(hash);
+            if (cached is not null)
+                return Result<TokenResponse>.Success(cached);
+
+            // No grace entry — genuine reuse, revoke entire family
             await RevokeTokenFamilyAsync(stored.FamilyId);
             return Result<TokenResponse>.Failure("Token reuse detected. Sessions revoked.", ResultError.Unauthorized);
         }
@@ -99,13 +112,30 @@ public class TokenService : ITokenService
         if (stored.Session is { IsActive: true })
             stored.Session.LastActivityAt = DateTime.UtcNow;
 
-        await _unitOfWork.SaveChangesAsync();
+        try
+        {
+            await _unitOfWork.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // Two simultaneous requests rotated the same token — check grace cache for the winner's response
+            var cached = await _gracePeriodCache.GetAsync(hash);
+            if (cached is not null)
+                return Result<TokenResponse>.Success(cached);
+
+            return Result<TokenResponse>.Failure("Token already rotated. Please retry.", ResultError.Unauthorized);
+        }
 
         var accessToken = GenerateAccessToken(user, stored.SessionId.ToString("N"));
-        return Result<TokenResponse>.Success(new TokenResponse(
+        var tokenResponse = new TokenResponse(
             accessToken, newPlaintext,
             DateTime.UtcNow.AddMinutes(_jwtOptions.AccessTokenMinutes),
-            stored.SessionId.ToString("N")));
+            stored.SessionId.ToString("N"));
+
+        // Cache for grace period — allows duplicate refresh within 10s (multi-tab scenario)
+        await _gracePeriodCache.SetAsync(hash, tokenResponse, GracePeriod);
+
+        return Result<TokenResponse>.Success(tokenResponse);
     }
 
     public async Task RevokeRefreshTokenAsync(string refreshToken)

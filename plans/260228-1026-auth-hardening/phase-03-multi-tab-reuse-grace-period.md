@@ -10,7 +10,7 @@
 ## Overview
 
 - **Priority:** MEDIUM (UX Critical)
-- **Status:** pending
+- **Status:** done
 - **Depends on:** Phase 1 (Redis infrastructure)
 - **Description:** Add 10-second grace period for refresh token reuse. When the same (already-rotated) refresh token is used within 10s of its rotation, return the already-issued new token pair instead of revoking the entire family. Prevents "two tabs refresh simultaneously, one gets revoked" bug.
 
@@ -123,15 +123,15 @@ RefreshTokenAsync(oldToken):
 
 ## Todo List
 
-- [ ] Create `IGracePeriodCache` interface
-- [ ] Create `RedisGracePeriodCache` implementation
-- [ ] Inject `IGracePeriodCache` into `TokenService`
-- [ ] Add grace period check before family revocation in `RefreshTokenAsync`
-- [ ] Cache new token response after successful rotation
-- [ ] Register in DI
-- [ ] Test: two simultaneous refreshes with same token within 10s both succeed
-- [ ] Test: reuse after 10s still revokes family
-- [ ] Test: Redis down falls back to immediate revocation
+- [x] Create `IGracePeriodCache` interface
+- [x] Create `RedisGracePeriodCache` implementation
+- [x] Inject `IGracePeriodCache` into `TokenService`
+- [x] Add grace period check before family revocation in `RefreshTokenAsync`
+- [x] Cache new token response after successful rotation
+- [x] Register in DI
+- [x] Test: two simultaneous refreshes with same token within 10s both succeed
+- [x] Test: reuse after 10s still revokes family
+- [x] Test: Redis down falls back to immediate revocation
 
 ## Success Criteria
 
@@ -174,10 +174,10 @@ This fix is **complementary** to the grace period — the grace period handles t
 
 ## Additional Todo Items (from review)
 
-- [ ] Add `RowVersion` to `RefreshToken` entity (H3)
-- [ ] Update `RefreshTokenConfiguration.cs` with concurrency mapping
-- [ ] Handle `DbUpdateConcurrencyException` in `RefreshTokenAsync`
-- [ ] Create EF migration for RowVersion column
+- [x] Add `RowVersion` to `RefreshToken` entity (H3)
+- [x] Update `RefreshTokenConfiguration.cs` with concurrency mapping
+- [x] Handle `DbUpdateConcurrencyException` in `RefreshTokenAsync`
+- [x] Create EF migration for RowVersion column
 
 ## Next Steps
 

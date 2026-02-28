@@ -15,20 +15,31 @@ builder.Services.AddDbContext<AppDbContext>(opt =>
 
 // Application
 builder.Services.AddJwtAuthentication(builder.Configuration);
+var redisMultiplexer = builder.Services.AddRedis(builder.Configuration);
 builder.Services.AddApplicationServices();
 builder.Services.AddRepositories();
-builder.Services.AddRateLimiting();
 builder.Services.AddSwaggerWithAuth();
+builder.Services.AddRateLimiting(redisMultiplexer);
+builder.Services.AddHsts(options =>
+{
+    options.MaxAge = TimeSpan.FromDays(365);
+    options.IncludeSubDomains = true;
+    options.Preload = true;
+});
+
+var redisConnStr = builder.Configuration.GetSection("Redis")["ConnectionString"] ?? "localhost:6379";
 builder.Services.AddHealthChecks()
     .AddMySql(connStr, name: "mysql", tags: ["db", "ready"])
+    .AddRedis(redisConnStr, name: "redis", tags: ["infra", "ready"])
     .AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["live"]);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:3001")
+        policy.WithOrigins(corsOrigins)
               .AllowAnyMethod()
               .AllowAnyHeader()
               .AllowCredentials();
@@ -47,6 +58,24 @@ using (var scope = app.Services.CreateScope())
 
 // Pipeline
 app.UseMiddleware<GlobalExceptionMiddleware>();
+
+// H1: HTTPS enforcement + HSTS (production only — dev uses HTTP)
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
+    app.UseHttpsRedirection();
+}
+
+// H2: Security response headers on every response
+app.Use(async (context, next) =>
+{
+    context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
+    context.Response.Headers.Append("X-Frame-Options", "DENY");
+    context.Response.Headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");
+    context.Response.Headers.Append("X-XSS-Protection", "0"); // deprecated — rely on CSP
+    await next();
+});
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -55,6 +84,7 @@ if (app.Environment.IsDevelopment())
 app.UseCors("AllowFrontend");
 app.UseRateLimiter();
 app.UseAuthentication();
+app.UseMiddleware<TokenBlacklistMiddleware>();
 app.UseAuthorization();
 app.MapControllers();
 app.MapHealthChecks("/health/live", new HealthCheckOptions

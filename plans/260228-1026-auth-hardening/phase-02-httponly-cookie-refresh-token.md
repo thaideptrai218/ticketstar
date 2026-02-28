@@ -10,7 +10,7 @@
 ## Overview
 
 - **Priority:** HIGH (Security Critical)
-- **Status:** pending
+- **Status:** done
 - **Description:** Move refresh token from JSON response body to `HttpOnly`, `Secure`, `SameSite=Strict` cookie. Access token stays in response body (short-lived). Eliminates XSS-based token theft. Also adds HTTPS/HSTS enforcement (H1), security response headers (H2), and logout token ownership validation (H4).
 
 ## Key Insights
@@ -163,18 +163,18 @@ Key change: the cookie setting/reading happens in the **Controller layer** only.
 
 ## Todo List
 
-- [ ] Create `CookieExtensions.cs` with set/clear/get helpers
-- [ ] Add `AccessTokenResponse` record to `AuthDtos.cs`
-- [ ] Update `AuthController` constructor to inject `IOptions<JwtOptions>`
-- [ ] Add `HandleTokenResult()` private helper to AuthController
-- [ ] Update Register, Login, GoogleLogin, VerifyMagicLink to set cookie + return `AccessTokenResponse`
-- [ ] Update Refresh to read from cookie
-- [ ] Update Logout to read from cookie + clear cookie
-- [ ] Remove `RefreshRequest` usage from Refresh and Logout (keep DTO for backward compat if needed)
-- [ ] Test: verify cookie is set with correct flags (HttpOnly, Secure, SameSite, Path)
-- [ ] Test: verify refresh works via cookie
-- [ ] Test: verify logout clears cookie
-- [ ] Document frontend migration steps
+- [x] Create `CookieExtensions.cs` with set/clear/get helpers
+- [x] Add `AccessTokenResponse` record to `AuthDtos.cs`
+- [x] Update `AuthController` constructor to inject `IOptions<JwtOptions>`
+- [x] Add `HandleTokenResult()` private helper to AuthController
+- [x] Update Register, Login, GoogleLogin, VerifyMagicLink to set cookie + return `AccessTokenResponse`
+- [x] Update Refresh to read from cookie
+- [x] Update Logout to read from cookie + clear cookie
+- [x] Remove `RefreshRequest` usage from Refresh and Logout (keep DTO for backward compat if needed)
+- [x] Test: verify cookie is set with correct flags (HttpOnly, Secure, SameSite, Path)
+- [x] Test: verify refresh works via cookie
+- [x] Test: verify logout clears cookie
+- [x] Document frontend migration steps
 
 ## Success Criteria
 
@@ -259,11 +259,11 @@ This is less critical after Phase 2 (cookie-based, harder to submit someone else
 
 ## Additional Todo Items (from review)
 
-- [ ] Add HSTS + HTTPS redirection (H1)
-- [ ] Add security response headers middleware (H2)
-- [ ] Add token ownership validation on logout (H4)
-- [ ] Conditionally set `Secure=false` on cookies in development mode
-- [ ] Remove `RefreshRequest` from `/refresh` and `/logout` endpoints (clean break)
+- [x] Add HSTS + HTTPS redirection (H1)
+- [x] Add security response headers middleware (H2)
+- [x] Add token ownership validation on logout (H4)
+- [x] Conditionally set `Secure=false` on cookies in development mode
+- [x] Remove `RefreshRequest` from `/refresh` and `/logout` endpoints (clean break)
 
 ## Next Steps
 

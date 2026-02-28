@@ -12,7 +12,7 @@
 ## Overview
 
 - **Priority:** MEDIUM
-- **Status:** pending
+- **Status:** done
 - **Description:** Implement TOTP (RFC 6238) MFA. Users can enable MFA via authenticator app. Login flow gains a challenge step. Recovery codes for backup access.
 
 ## Key Insights
@@ -239,27 +239,27 @@ New entity: MfaRecoveryCode
 
 ## Todo List
 
-- [ ] Add `Otp.NET` NuGet package
-- [ ] Create `MfaOptions.cs`
-- [ ] Add `MfaEnabled`, `MfaSecret` to `User.cs`
-- [ ] Create `MfaRecoveryCode.cs` entity
-- [ ] Create `MfaRecoveryCodeConfiguration.cs` EF config
-- [ ] Create `IMfaService.cs` interface
-- [ ] Create `MfaService.cs` (setup, verify-setup, challenge, disable)
-- [ ] Create `AuthResponse` discriminated union DTO
-- [ ] Update `IAuthService` return types to `Result<AuthResponse>`
-- [ ] Update `AuthService` (Login, GoogleLogin, MagicLink) to check MFA
-- [ ] Add MFA DTOs to `AuthDtos.cs`
-- [ ] Create `MfaController.cs`
-- [ ] Update `AuthController` to handle `AuthResponse`
-- [ ] Add `SecurityEventType` entries for MFA
-- [ ] Create EF migration
-- [ ] Register services in DI
-- [ ] Test: MFA setup flow (generate -> verify -> recovery codes)
-- [ ] Test: Login with MFA (credentials -> challenge -> TOTP -> tokens)
-- [ ] Test: Recovery code login
-- [ ] Test: Disable MFA
-- [ ] Test: MFA token expiry (>5min)
+- [x] Add `Otp.NET` NuGet package
+- [x] Create `MfaOptions.cs`
+- [x] Add `MfaEnabled`, `MfaSecret` to `User.cs`
+- [x] Create `MfaRecoveryCode.cs` entity
+- [x] Create `MfaRecoveryCodeConfiguration.cs` EF config
+- [x] Create `IMfaService.cs` interface
+- [x] Create `MfaService.cs` (setup, verify-setup, challenge, disable)
+- [x] Create `AuthResponse` discriminated union DTO
+- [x] Update `IAuthService` return types to `Result<AuthResponse>`
+- [x] Update `AuthService` (Login, GoogleLogin, MagicLink) to check MFA
+- [x] Add MFA DTOs to `AuthDtos.cs`
+- [x] Create `MfaController.cs`
+- [x] Update `AuthController` to handle `AuthResponse`
+- [x] Add `SecurityEventType` entries for MFA
+- [ ] Create EF migration — EXCEPTION: user did Phase 3 migration manually
+- [x] Register services in DI
+- [x] Test: MFA setup flow (generate -> verify -> recovery codes)
+- [x] Test: Login with MFA (credentials -> challenge -> TOTP -> tokens)
+- [x] Test: Recovery code login
+- [x] Test: Disable MFA
+- [x] Test: MFA token expiry (>5min)
 
 ## Success Criteria
 

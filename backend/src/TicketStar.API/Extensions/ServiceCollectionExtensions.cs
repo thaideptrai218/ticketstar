@@ -1,14 +1,15 @@
 using System.Text;
-using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using StackExchange.Redis;
+using TicketStar.API.RateLimiting;
 using TicketStar.Application.Interfaces;
 using TicketStar.Application.Options;
 using TicketStar.Application.Services;
 using TicketStar.Application.Services.Security;
 using TicketStar.Domain.Interfaces;
+using TicketStar.Infrastructure.Cache;
 using TicketStar.Infrastructure.Data;
 using TicketStar.Infrastructure.Repositories;
 
@@ -23,9 +24,14 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ITokenHasher, Sha256TokenHasher>();
         services.AddSingleton<ISecureRandom, CryptoRandomService>();
 
+        // Cache abstractions (Redis-backed)
+        services.AddScoped<IGracePeriodCache, TicketStar.Application.Services.RedisGracePeriodCache>();
+        services.AddSingleton<ITokenBlacklist, TicketStar.Application.Services.RedisTokenBlacklist>();
+
         // Business services — scoped (depend on DbContext)
         services.AddScoped<ISessionService, SessionService>();
         services.AddScoped<ITokenService, TokenService>();
+        services.AddScoped<IMfaService, MfaService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<DbSeeder>();
 
@@ -41,6 +47,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IMagicLinkRepository, MagicLinkRepository>();
         services.AddScoped<IAuthIdentityRepository, AuthIdentityRepository>();
         services.AddScoped<ISecurityEventRepository, SecurityEventRepository>();
+        services.AddScoped<IMfaRecoveryCodeRepository, MfaRecoveryCodeRepository>();
 
         return services;
     }
@@ -56,6 +63,10 @@ public static class ServiceCollectionExtensions
 
         services.AddOptions<GoogleAuthOptions>()
             .BindConfiguration(GoogleAuthOptions.SectionName);
+
+        services.AddOptions<MfaOptions>()
+            .BindConfiguration(MfaOptions.SectionName)
+            .ValidateOnStart();
 
         // JWT bearer
         var jwtSection = config.GetSection(JwtOptions.SectionName);
@@ -114,19 +125,42 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    public static IServiceCollection AddRateLimiting(this IServiceCollection services)
+    public static IConnectionMultiplexer AddRedis(
+        this IServiceCollection services, IConfiguration config)
+    {
+        services.AddOptions<RedisOptions>()
+            .BindConfiguration(RedisOptions.SectionName)
+            .ValidateOnStart();
+
+        var connStr = config.GetSection(RedisOptions.SectionName)["ConnectionString"]
+                      ?? "localhost:6379";
+
+        // Connect with AbortOnConnectFail=false so startup doesn't crash when Redis is down.
+        // The multiplexer will retry in background; rate limiting and cache methods fail-open.
+        var opts = ConfigurationOptions.Parse(connStr);
+        opts.AbortOnConnectFail = false;
+        var multiplexer = ConnectionMultiplexer.Connect(opts);
+
+        services.AddSingleton<IConnectionMultiplexer>(multiplexer);
+        services.AddSingleton<IRedisService, RedisService>();
+
+        return multiplexer;
+    }
+
+    public static IServiceCollection AddRateLimiting(
+        this IServiceCollection services, IConnectionMultiplexer redis)
     {
         services.AddRateLimiter(opt =>
         {
-            opt.AddPolicy("magic-link", ctx =>
-                RateLimitPartition.GetFixedWindowLimiter(
-                    ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-                    _ => new FixedWindowRateLimiterOptions
-                    {
-                        PermitLimit = 5,
-                        Window = TimeSpan.FromMinutes(15),
-                        QueueLimit = 0
-                    }));
+            opt.AddPolicy("login",
+                new RedisRateLimiterPolicy(redis, "login", permitLimit: 10, TimeSpan.FromMinutes(5)));
+            opt.AddPolicy("register",
+                new RedisRateLimiterPolicy(redis, "register", permitLimit: 5, TimeSpan.FromMinutes(15)));
+            opt.AddPolicy("refresh",
+                new RedisRateLimiterPolicy(redis, "refresh", permitLimit: 30, TimeSpan.FromMinutes(5)));
+            opt.AddPolicy("magic-link",
+                new RedisRateLimiterPolicy(redis, "magic-link", permitLimit: 5, TimeSpan.FromMinutes(15)));
+
             opt.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
         });
 

@@ -17,5 +17,10 @@ public enum SecurityEventType
     AllSessionsRevoked = 12,
     MagicLinkRequested = 13,
     MagicLinkVerified = 14,
-    GoogleOAuthLogin = 15
+    GoogleOAuthLogin = 15,
+    MfaEnabled = 16,
+    MfaDisabled = 17,
+    MfaChallengeSuccess = 18,
+    MfaChallengeFailed = 19,
+    MfaRecoveryCodeUsed = 20
 }
