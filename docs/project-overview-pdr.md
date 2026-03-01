@@ -13,7 +13,7 @@ TicketStar is a full-stack ticketing marketplace platform for event creation, ti
 - **Ticket Sales**: Attendees can browse events, purchase tickets via SePay (VietQR), and receive QR tickets
 - **QR Check-in**: Staff can scan attendee QR codes for event entry validation
 - **Role-Based Access**: 4 distinct roles with specific permissions (Admin, Organizer, Staff, Attendee)
-- **Authentication**: OAuth (Google) + Magic Link with JWT httpOnly cookies and refresh token rotation
+- **Authentication**: OAuth (Google) + Magic Link + TOTP MFA with JWT httpOnly cookies, refresh token rotation, Redis-backed rate limiting, and token blacklisting
 
 #### User Roles
 | Role | Permissions |
@@ -29,8 +29,10 @@ TicketStar is a full-stack ticketing marketplace platform for event creation, ti
 |----------|-------------|--------|
 | **Performance** | API response time | < 200ms (p95) |
 | **Scalability** | Concurrent users | Support 1000+ concurrent |
-| **Security** | Authentication | JWT with refresh token rotation |
+| **Security** | Authentication | JWT with refresh token rotation, TOTP MFA, token blacklisting |
 | **Security** | Authorization | Role-based with event-level permissions |
+| **Security** | MFA | TOTP with recovery codes |
+| **Security** | Rate Limiting | Redis distributed sliding-window per IP |
 | **Availability** | Uptime | 99.5% (dev environment) |
 | **Data Integrity** | Ticket quotas | Redis distributed locking |
 | **Payment** | Integration | Real SePay (VietQR) webhook processing |
@@ -129,8 +131,8 @@ ticketstar/
 | Phase | Status | Completion |
 |-------|--------|------------|
 | 1. Project Scaffolding | ✅ Complete | 100% |
-| 2. Database & Identity | 🔄 Pending | 0% |
-| 3. Backend API | 🔄 Pending | 0% |
+| 2. Database & Identity + Auth Hardening | ✅ Complete | 100% |
+| 3. Backend API | 🔄 In Progress | 0% |
 | 4. Frontend Auth & Layout | 🔄 Pending | 0% |
 | 5. Frontend Marketplace | 🔄 Pending | 0% |
 | 6. Frontend Attendee | 🔄 Pending | 0% |
@@ -140,6 +142,6 @@ ticketstar/
 
 ---
 
-**Last Updated:** 2026-02-26
-**Version:** 1.0.0
-**Status:** Phase 1 Complete - Project Scaffolding
+**Last Updated:** 2026-03-01
+**Version:** 1.1.0
+**Status:** Phase 2 Complete - Database, Identity & Security Hardening

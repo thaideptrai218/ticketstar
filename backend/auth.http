@@ -1,0 +1,495 @@
+### TicketStar Auth API — Manual Testing
+### Base URL: http://localhost:5010/api/auth
+### Requires: API running (`dotnet run`), MySQL on port 3307, Redis on port 6380
+###
+### IMPORTANT: Refresh tokens are stored in httpOnly cookies by the server.
+###   - VS Code REST Client: cookies are automatically sent on subsequent requests
+###   - JetBrains HTTP Client: cookies are automatically sent on subsequent requests
+###   - The `refresh_token` cookie is set by /register, /login, /magic-link/verify
+###
+### FLOW GUIDE:
+###   Basic Auth:   [1] Register → [2] Login → [5] Refresh → [6] Logout
+###   MFA Setup:    [2] Login → [7] MFA Setup → [8] MFA Verify Setup → [9] MFA Challenge
+###   Magic Link:   [3] Magic Link Request → (check logs) → [4] Magic Link Verify
+###   Cleanup:      [6] Logout  OR  [10] Revoke All Sessions
+
+@baseUrl = http://localhost:5010/api/auth
+@contentType = application/json
+
+# ── Paste values here after running Login or Register ──────────────────────────
+# Copy accessToken from the JSON response body
+@accessToken = PASTE_ACCESS_TOKEN_HERE
+
+# Copy mfaToken from login response when mfaRequired=true
+@mfaToken = PASTE_MFA_TOKEN_HERE
+
+
+### ═══════════════════════════════════════════════════════════════════
+### GROUP 1: BASIC AUTH FLOW
+### ═══════════════════════════════════════════════════════════════════
+
+### 1a. REGISTER — new account (expect 201 + accessToken + sets refresh_token cookie)
+# Returns: { accessToken, expiresAt, sessionId }
+# Error cases: 409 if email already registered, 400 for validation errors, 429 rate limit
+
+POST {{baseUrl}}/register
+Content-Type: {{contentType}}
+
+{
+  "email": "alice.morgan@devmail.io",
+  "password": "Secure#Pass2026!",
+  "fullName": "Alice Morgan"
+}
+
+###
+
+### 1b. REGISTER — duplicate email (expect 409 "Email already registered.")
+
+POST {{baseUrl}}/register
+Content-Type: {{contentType}}
+
+{
+  "email": "alice.morgan@devmail.io",
+  "password": "DifferentPass@99",
+  "fullName": "Alice Duplicate"
+}
+
+###
+
+### 1c. REGISTER — validation errors (expect 400 with field-level errors)
+# Missing fullName, password too short
+
+POST {{baseUrl}}/register
+Content-Type: {{contentType}}
+
+{
+  "email": "not-a-valid-email",
+  "password": "short"
+}
+
+###
+
+### 2a. LOGIN — valid credentials, no MFA (expect 200 + accessToken + sets refresh_token cookie)
+# Returns: { accessToken, expiresAt, sessionId }
+# Copy accessToken → paste into @accessToken above
+
+POST {{baseUrl}}/login
+Content-Type: {{contentType}}
+
+{
+  "email": "alice.morgan@devmail.io",
+  "password": "Secure#Pass2026!"
+}
+
+###
+
+### 2b. LOGIN — wrong password (expect 401 "Invalid credentials.")
+# Note: same error message regardless of whether email exists (prevents enumeration)
+
+POST {{baseUrl}}/login
+Content-Type: {{contentType}}
+
+{
+  "email": "alice.morgan@devmail.io",
+  "password": "WrongPassword999"
+}
+
+###
+
+### 2c. LOGIN — non-existent email (expect 401 "Invalid credentials." — same as wrong password)
+
+POST {{baseUrl}}/login
+Content-Type: {{contentType}}
+
+{
+  "email": "nobody.exists@devmail.io",
+  "password": "SomePassword123"
+}
+
+###
+
+### 2d. LOGIN — missing required fields (expect 400 validation error)
+
+POST {{baseUrl}}/login
+Content-Type: {{contentType}}
+
+{
+  "email": "alice.morgan@devmail.io"
+}
+
+###
+
+### 2e. BRUTE FORCE LOCKOUT TEST — run this 5+ times rapidly
+# After 5 failed attempts: account locks for 15 minutes
+# 6th+ attempt: expect 401 (same message — lockout not revealed)
+
+POST {{baseUrl}}/login
+Content-Type: {{contentType}}
+
+{
+  "email": "alice.morgan@devmail.io",
+  "password": "BruteForceAttempt!"
+}
+
+###
+
+### ═══════════════════════════════════════════════════════════════════
+### GROUP 2: MAGIC LINK FLOW
+### ═══════════════════════════════════════════════════════════════════
+
+### 3a. MAGIC LINK REQUEST — registered email (expect 200, link sent to email)
+# Always returns 200 regardless of whether email exists (prevents enumeration)
+# Token appears in API console logs when running in Development mode
+
+POST {{baseUrl}}/magic-link/request
+Content-Type: {{contentType}}
+
+{
+  "email": "alice.morgan@devmail.io"
+}
+
+###
+
+### 3b. MAGIC LINK REQUEST — non-existent email (expect 200 — same response, no enumeration)
+
+POST {{baseUrl}}/magic-link/request
+Content-Type: {{contentType}}
+
+{
+  "email": "ghost.user@nowhere.io"
+}
+
+###
+
+### 4a. MAGIC LINK VERIFY — valid token (expect 200 + accessToken + sets refresh_token cookie)
+# Step 1: Run request 3a above
+# Step 2: Check API console logs for the magic link token
+# Step 3: Paste the token (the part after ?token= in the link) below
+# Returns: { accessToken, expiresAt, sessionId } OR { mfaToken, mfaRequired: true }
+
+POST {{baseUrl}}/magic-link/verify
+Content-Type: {{contentType}}
+
+{
+  "token": "PASTE_MAGIC_LINK_TOKEN_FROM_CONSOLE_LOGS_HERE"
+}
+
+###
+
+### 4b. MAGIC LINK VERIFY — invalid/fake token (expect 401 "Invalid or used magic link.")
+
+POST {{baseUrl}}/magic-link/verify
+Content-Type: {{contentType}}
+
+{
+  "token": "aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899"
+}
+
+###
+
+### 4c. MAGIC LINK VERIFY — already-used token (expect 401 "Invalid or used magic link.")
+# Re-run request 4a after it succeeds — token is single-use
+
+POST {{baseUrl}}/magic-link/verify
+Content-Type: {{contentType}}
+
+{
+  "token": "PASTE_ALREADY_USED_TOKEN_HERE"
+}
+
+###
+
+### ═══════════════════════════════════════════════════════════════════
+### GROUP 3: GOOGLE OAUTH FLOW
+### ═══════════════════════════════════════════════════════════════════
+
+### 5a. GOOGLE LOGIN — placeholder token (expect 401 "Google authentication failed.")
+# To test successfully: obtain a real Google ID token from the frontend OAuth flow
+# The idToken is the JWT returned by Google after the user signs in with their Google account
+
+POST {{baseUrl}}/google-login
+Content-Type: {{contentType}}
+
+{
+  "idToken": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImV4YW1wbGVrZXkifQ.PLACEHOLDER_GOOGLE_ID_TOKEN"
+}
+
+###
+
+### 5b. GOOGLE LOGIN — email conflict (expect 409 "An account with this email exists...")
+# This would trigger if alice.morgan@devmail.io registered with email+password
+# and then tries to login via Google with the same email address
+
+# POST {{baseUrl}}/google-login
+# Content-Type: {{contentType}}
+#
+# {
+#   "idToken": "REAL_GOOGLE_TOKEN_FOR_EXISTING_EMAIL_ACCOUNT"
+# }
+
+###
+
+### ═══════════════════════════════════════════════════════════════════
+### GROUP 4: TOKEN MANAGEMENT
+### ═══════════════════════════════════════════════════════════════════
+
+### 6a. REFRESH TOKEN — rotate access + refresh tokens (expect 200 + new accessToken)
+# Reads refresh_token from httpOnly cookie (set automatically by login/register)
+# Returns: { accessToken, expiresAt, sessionId }
+# New refresh_token cookie is set automatically (token rotation)
+# No request body needed — cookie is sent automatically by the HTTP client
+
+POST {{baseUrl}}/refresh
+Content-Type: {{contentType}}
+
+###
+
+### 6b. REFRESH TOKEN — no cookie present (expect 401 "Refresh token is required.")
+# Simulates a fresh client with no session
+
+POST {{baseUrl}}/refresh
+Content-Type: {{contentType}}
+Cookie:
+
+###
+
+### 6c. REFRESH TOKEN — expired/invalid cookie value (expect 401 "Refresh token expired.")
+# Simulate expired token by setting an old-looking value in Cookie header
+
+POST {{baseUrl}}/refresh
+Content-Type: {{contentType}}
+Cookie: refresh_token=expiredOrInvalidTokenValueHere
+
+###
+
+### 7. LOGOUT — revoke current session (expect 200 + clears refresh_token cookie)
+# Requires: valid @accessToken from login/register (paste above)
+# After this: refresh_token cookie is cleared, session deactivated
+# Returns: { "message": "Logged out successfully." }
+
+POST {{baseUrl}}/logout
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+###
+
+### 8. REVOKE ALL SESSIONS — invalidate all tokens across all devices (expect 200)
+# Requires: valid @accessToken
+# Effect: rotates SecurityStamp, blacklists user in Redis, all JWTs immediately rejected
+# All devices must re-authenticate after this call
+# Returns: { "message": "All sessions revoked." }
+
+POST {{baseUrl}}/revoke-all
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+###
+
+### 8b. VERIFY REVOKE-ALL WORKED — reuse old token (expect 401 "Token revoked.")
+# After running request 8, try using the same accessToken — should be rejected immediately
+# TokenBlacklistMiddleware checks iat claim against Redis blacklist timestamp
+
+POST {{baseUrl}}/logout
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+###
+
+### ═══════════════════════════════════════════════════════════════════
+### GROUP 5: MFA FLOW
+### ═══════════════════════════════════════════════════════════════════
+### Prerequisites: be logged in (valid @accessToken from Group 1)
+### Flow: [9] Setup → [10] Verify Setup → [11] Challenge (after next login) → [12] Disable
+
+### 9. MFA SETUP — generate TOTP secret + QR code (expect 200)
+# Requires: valid @accessToken
+# Returns: { secret, qrCodeUri, qrCodeBase64 }
+# - Scan qrCodeBase64 QR image with Google Authenticator / Authy / 1Password
+# - OR enter `secret` manually into your authenticator app
+# - After scanning, proceed to request 10 to complete setup
+
+POST {{baseUrl}}/mfa/setup
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+###
+
+### 10. MFA VERIFY SETUP — confirm TOTP code to activate MFA (expect 200 + recovery codes)
+# Requires: valid @accessToken + 6-digit TOTP code from your authenticator app
+# Returns: { recoveryCodes: ["AB3KX7YZ", ...] }  — 8 codes, shown ONCE, save them!
+# After this: all future logins will require TOTP code
+
+POST {{baseUrl}}/mfa/verify-setup
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+{
+  "code": "ENTER_6_DIGIT_TOTP_CODE_FROM_AUTHENTICATOR_APP"
+}
+
+###
+
+### 10b. MFA VERIFY SETUP — invalid TOTP code (expect 401 "Invalid TOTP code.")
+
+POST {{baseUrl}}/mfa/verify-setup
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+{
+  "code": "000000"
+}
+
+###
+
+### 11. MFA CHALLENGE — complete MFA login after step 2a returns mfaRequired:true
+# Requires: @mfaToken from login response (valid for 5 minutes only)
+# Code: either 6-digit TOTP from authenticator OR 8-char recovery code (e.g. "AB3KX7YZ")
+# Returns: { accessToken, refreshToken, expiresAt, sessionId }
+# Note: refreshToken is returned in body (httpOnly cookie support coming in future update)
+
+POST {{baseUrl}}/mfa/challenge
+Content-Type: {{contentType}}
+
+{
+  "mfaToken": "{{mfaToken}}",
+  "code": "ENTER_6_DIGIT_TOTP_CODE_OR_8_CHAR_RECOVERY_CODE"
+}
+
+###
+
+### 11b. MFA CHALLENGE — invalid TOTP code (expect 401 "Invalid code.")
+
+POST {{baseUrl}}/mfa/challenge
+Content-Type: {{contentType}}
+
+{
+  "mfaToken": "{{mfaToken}}",
+  "code": "999999"
+}
+
+###
+
+### 11c. MFA CHALLENGE — expired/invalid mfaToken (expect 401 "Invalid or expired MFA token.")
+
+POST {{baseUrl}}/mfa/challenge
+Content-Type: {{contentType}}
+
+{
+  "mfaToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.expiredOrInvalidMfaToken.fakesignature",
+  "code": "123456"
+}
+
+###
+
+### 11d. MFA CHALLENGE — using recovery code (expect 200 — recovery code consumed)
+# Use one of the 8-char codes from request 10 response (e.g. "AB3KX7YZ")
+# Each recovery code can only be used once
+
+POST {{baseUrl}}/mfa/challenge
+Content-Type: {{contentType}}
+
+{
+  "mfaToken": "{{mfaToken}}",
+  "code": "PASTE_8_CHAR_RECOVERY_CODE_HERE"
+}
+
+###
+
+### 12. MFA DISABLE — turn off MFA entirely (expect 200)
+# Requires: valid @accessToken + current TOTP code OR recovery code
+# After this: logins no longer require TOTP
+
+POST {{baseUrl}}/mfa/disable
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+{
+  "code": "ENTER_6_DIGIT_TOTP_CODE_OR_8_CHAR_RECOVERY_CODE"
+}
+
+###
+
+### 12b. MFA DISABLE — wrong code (expect 401 "Invalid code.")
+
+POST {{baseUrl}}/mfa/disable
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+{
+  "code": "000000"
+}
+
+###
+
+### ═══════════════════════════════════════════════════════════════════
+### GROUP 6: RATE LIMIT SCENARIOS
+### ═══════════════════════════════════════════════════════════════════
+
+### 13a. RATE LIMIT — register endpoint (limit: 5 requests per 15 min per IP)
+# Run this 6+ times rapidly → 6th attempt should return 429 with Retry-After header
+
+POST {{baseUrl}}/register
+Content-Type: {{contentType}}
+
+{
+  "email": "ratelimit.test{{$timestamp}}@devmail.io",
+  "password": "RateLimit@Test2026",
+  "fullName": "Rate Limit Tester"
+}
+
+###
+
+### 13b. RATE LIMIT — magic link request (limit: 5 requests per 15 min per IP)
+# Run this 6+ times → 6th attempt should return 429
+
+POST {{baseUrl}}/magic-link/request
+Content-Type: {{contentType}}
+
+{
+  "email": "alice.morgan@devmail.io"
+}
+
+###
+
+### 13c. RATE LIMIT — refresh endpoint (limit: 30 requests per 5 min per IP)
+# Higher limit — designed to support multi-tab usage
+
+POST {{baseUrl}}/refresh
+Content-Type: {{contentType}}
+
+###
+
+### ═══════════════════════════════════════════════════════════════════
+### NOTES FOR TESTERS
+### ═══════════════════════════════════════════════════════════════════
+###
+### Cookie handling:
+###   VS Code REST Client & JetBrains HTTP Client automatically manage cookies.
+###   The refresh_token httpOnly cookie is set by the server on login/register
+###   and automatically included in subsequent requests to the same host.
+###
+### MFA testing tips:
+###   - Use Google Authenticator, Authy, or 1Password to scan the QR from request 9
+###   - TOTP codes are valid for ~90 seconds (±1 step tolerance)
+###   - Recovery codes are 8 uppercase alphanumeric chars (e.g. AB3KX7YZ)
+###
+### Magic link token:
+###   - When running the API in Development mode, the token appears in console logs
+###   - Look for a log line containing "magic-link?token=" or similar
+###   - Token is valid for 10 minutes and single-use
+###
+### Getting a Google ID token for testing:
+###   - Run the frontend app and complete Google Sign-In flow
+###   - Intercept the network request to /api/auth/google-login
+###   - Copy the idToken value and paste into request 5a
+###
+### Account lockout:
+###   - After 5 failed login attempts, account is locked for 15 minutes
+###   - To unlock immediately: update LockedUntil to NULL in MySQL
+###     psql equivalent: UPDATE Users SET LockedUntil = NULL, FailedLoginCount = 0
+###     WHERE Email = 'alice.morgan@devmail.io';
+###
+### Redis inspection (port 6380):
+###   - Token blacklist: GET user-bl:{userId}
+###   - Grace period cache: KEYS grace:*
+###   - Rate limit counters: KEYS rl:*

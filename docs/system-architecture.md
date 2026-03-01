@@ -12,22 +12,27 @@ TicketStar uses a **layered architecture** pattern with clear separation of conc
 ┌─────────────────────────────────────────────────────────────┐
 │                      TicketStar.API                         │
 │  - Controllers (Endpoints)                                  │
-│  - Filters/Middleware                                       │
-│  - JWT Authentication                                       │
+│  - Middleware (TokenBlacklist, RateLimiting, etc.)          │
+│  - RateLimiting (Redis-backed)                              │
+│  - MFA Controller                                           │
+│  - JWT Authentication & Cookie Extensions                  │
 │  - Program.cs (Configuration)                               │
 └────────────────────┬────────────────────────────────────────┘
                      │
 ┌────────────────────┴────────────────────────────────────────┐
 │                 TicketStar.Application                      │
 │  - Services (Business Logic)                                │
-│  - DTOs/Mappings                                            │
-│  - Validation                                               │
-│  - Business Rules                                           │
+│  - Security Services (Argon2, SHA-256, CSPRNG)              │
+│  - MFA Service & Crypto Helper                              │
+│  - Token Blacklist & Grace Period Cache                     │
+│  - DTOs/Mappings, Validation, Business Rules                │
+│  - Options Pattern (JwtOptions, MfaOptions, RedisOptions)   │
 └────────────────────┬────────────────────────────────────────┘
                      │
 ┌────────────────────┴────────────────────────────────────────┐
 │                   TicketStar.Domain                         │
 │  - Entities (Domain Models)                                 │
+│  - MFA Recovery Codes, Auth Sessions                        │
 │  - Value Objects                                            │
 │  - Interfaces (Repository, Service)                         │
 │  - Domain Events                                            │
@@ -37,7 +42,7 @@ TicketStar uses a **layered architecture** pattern with clear separation of conc
 │              TicketStar.Infrastructure                      │
 │  - EF Core DbContext                                        │
 │  - Repository Implementations                               │
-│  - Redis Cache Service                                      │
+│  - RedisService (low-level Redis operations)                │
 │  - RabbitMQ Consumers (MassTransit)                         │
 │  - External Services (SePay, Google OAuth)                  │
 └─────────────────────────────────────────────────────────────┘
@@ -68,16 +73,48 @@ backend/
 ├── src/
 │   ├── TicketStar.API/
 │   │   ├── Controllers/
+│   │   │   ├── AuthController.cs
+│   │   │   └── MfaController.cs
 │   │   ├── Middleware/
+│   │   │   └── TokenBlacklistMiddleware.cs
+│   │   ├── RateLimiting/
+│   │   │   ├── RedisRateLimiter.cs
+│   │   │   └── RedisRateLimiterPolicy.cs
+│   │   ├── Extensions/
+│   │   │   └── CookieExtensions.cs
 │   │   ├── Filters/
 │   │   └── Program.cs
 │   ├── TicketStar.Application/
 │   │   ├── Services/
+│   │   │   ├── Security/
+│   │   │   │   ├── Argon2PasswordHasher.cs
+│   │   │   │   ├── Sha256TokenHasher.cs
+│   │   │   │   └── CryptoRandomService.cs
+│   │   │   ├── MfaService.cs
+│   │   │   ├── MfaCryptoHelper.cs
+│   │   │   ├── RedisTokenBlacklist.cs
+│   │   │   ├── RedisGracePeriodCache.cs
+│   │   │   └── SessionService.cs
+│   │   ├── Interfaces/
+│   │   │   ├── IMfaService.cs
+│   │   │   ├── ITokenBlacklist.cs
+│   │   │   ├── IGracePeriodCache.cs
+│   │   │   ├── ISessionService.cs
+│   │   │   ├── ISecureRandom.cs
+│   │   │   ├── IPasswordHasher.cs
+│   │   │   └── ITokenHasher.cs
+│   │   ├── Options/
+│   │   │   ├── MfaOptions.cs
+│   │   │   └── RedisOptions.cs
 │   │   ├── DTOs/
 │   │   ├── Mappings/
 │   │   └── Validation/
 │   ├── TicketStar.Domain/
 │   │   ├── Entities/
+│   │   │   ├── MfaRecoveryCode.cs
+│   │   │   ├── AuthSession.cs
+│   │   │   ├── SecurityEvent.cs
+│   │   │   └── User.cs
 │   │   ├── ValueObjects/
 │   │   ├── Interfaces/
 │   │   └── Enums/
@@ -85,7 +122,9 @@ backend/
 │       ├── Data/
 │       │   └── AppDbContext.cs
 │       ├── Repositories/
+│       │   └── MfaRecoveryCodeRepository.cs
 │       ├── Cache/
+│       │   └── RedisService.cs
 │       ├── Messaging/
 │       └── ExternalServices/
 └── tests/
@@ -235,16 +274,18 @@ Services:
 6. Set httpOnly cookie
 ```
 
-### Refresh Token Rotation
+### Refresh Token Rotation & Grace Period
 
 ```
-Login → Access Token (15min) + Refresh Token (7d)
+Login → Access Token (5min) + Refresh Token (7d)
   ↓
 Access expires
   ↓
 Refresh request → Validate token → Rotate pair
   ↓
-Reuse detection → Revoke all sessions (security)
+Token family tracking → Reuse detection → Revoke all sessions (security)
+  ↓
+Grace Period (10s window) → Allow multi-tab refresh without revocation
 ```
 
 ### Magic Link Flow
@@ -258,13 +299,37 @@ Reuse detection → Revoke all sessions (security)
 6. Validate & create session
 ```
 
+### MFA (Multi-Factor Authentication) Flow
+
+```
+TOTP Setup:
+1. POST /mfa/setup → Generate TOTP secret (AES-256 encrypted)
+2. Return QR code for user to scan in authenticator app
+3. POST /mfa/verify-setup (code) → Verify TOTP, generate recovery codes (SHA-256 hashed)
+4. Return recovery codes to user (save securely)
+5. MFA enabled on account
+
+Login with MFA:
+1. POST /auth/login-email (email + password)
+2. If MFA enabled → Return MFA challenge token (5min expiry)
+3. POST /mfa/verify-challenge (code or recovery code)
+4. Return full JWT + Refresh Token pair
+
+Recovery Code Flow:
+1. User submits recovery code instead of TOTP
+2. Constant-time comparison of hashed codes
+3. Mark code as used, return JWT pair
+4. Warn user to regenerate codes
+```
+
 ### Security Services
 
-- **Argon2PasswordHasher** - OWASP 2025 password hashing (t=3, m=64MB, p=4)
+- **Argon2PasswordHasher** - OWASP 2025 password hashing
 - **Sha256TokenHasher** - Constant-time token verification
 - **CryptoRandomService** - Cryptographically secure random generation
-- **Account Lockout** - 5 failed login attempts → locked
-- **Security Events** - Audit trail for all auth actions
+- **AES-256 Encryption** - Protect TOTP secrets
+- **Account Lockout** - Failed login attempts → locked
+- **Security Events** - Audit trail for all auth actions (MfaEnabled, MfaDisabled, etc.)
 
 ## Key Architectural Decisions
 
@@ -282,23 +347,45 @@ Reuse detection → Revoke all sessions (security)
 
 ### Authentication Layers
 1. **Next.js Route Handlers**: Proxy auth requests, handle OAuth flow
-2. **.NET API**: JWT validation, refresh token rotation
+2. **.NET API**: JWT validation, refresh token rotation, token blacklisting
 3. **Authorization**: Role-based + event-level permissions
+4. **Middleware**: Token blacklist verification, rate limit enforcement
 
 ### Data Protection
+
 - Passwords: Argon2id hashed (OWASP 2025 compliant)
 - Refresh Tokens: SHA-256 hashed before storage (constant-time comparison)
 - Magic Link Tokens: CSPRNG generated, SHA-256 hashed
+- TOTP Secrets: AES-256 encrypted at rest
+- Recovery Codes: SHA-256 hashed before storage
 - QR Codes: HMAC-SHA256 signed payloads
-- JWT: Signed with secret key, 15min expiry
+- JWT: Signed with secret key, 5min expiry
 - Email Changes: Verification required before update
 
-### Rate Limiting
-- ASP.NET Core RateLimiter middleware
-- Per-IP limits on magic link endpoint
-- Redis-backed for distributed scenarios
+### Distributed Rate Limiting
+
+- **Redis-backed sliding window** per IP address
+- **Login endpoint**: 10 attempts per 5 minutes
+- **Register endpoint**: 5 attempts per 15 minutes
+- **Refresh endpoint**: 30 attempts per 5 minutes
+- **Magic link endpoint**: 5 attempts per 15 minutes
+- **Fail-open strategy**: All Redis operations degrade gracefully
+
+### Token Blacklisting & Grace Period
+
+- **Redis timestamp-based blacklist** checked on every authenticated request
+- **Token family tracking** for reuse detection
+- **Revoke all sessions** on detected token reuse
+- **10-second grace period** for multi-tab refresh scenarios
+- **Fail-open strategy**: If Redis unavailable, gracefully allow requests
+
+### Security Event Auditing
+
+- All auth actions logged (MfaEnabled, MfaDisabled, MfaChallengeSuccess, LoginAttempt, etc.)
+- Device fingerprinting: SHA-256(IP+UserAgent) for session tracking
+- Centralized audit trail for compliance and investigation
 
 ---
 
-**Last Updated:** 2026-02-27
-**Phase:** 2 Complete - Authentication System
+**Last Updated:** 2026-03-01
+**Phase:** 2 Complete - Authentication & Security Hardening

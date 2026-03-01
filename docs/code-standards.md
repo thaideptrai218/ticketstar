@@ -43,19 +43,48 @@ src/TicketStar.API/
 ├── Controllers/
 │   ├── EventsController.cs          # Event endpoints
 │   ├── TicketsController.cs         # Ticket endpoints
-│   └── AuthController.cs            # Auth endpoints
+│   ├── AuthController.cs            # Auth endpoints
+│   └── MfaController.cs             # MFA endpoints
 ├── Middleware/
 │   ├── ExceptionHandlerMiddleware.cs
-│   └── RateLimitingMiddleware.cs
+│   └── TokenBlacklistMiddleware.cs  # Token blacklist verification
+├── RateLimiting/
+│   ├── RedisRateLimiter.cs          # Distributed rate limiter
+│   └── RedisRateLimiterPolicy.cs    # Rate limit policy definitions
+├── Extensions/
+│   └── CookieExtensions.cs          # Cookie helper methods
 ├── Filters/
 │   └── ValidationFilter.cs
 └── Program.cs                       # App configuration
 
 src/TicketStar.Application/
 ├── Services/
+│   ├── Security/
+│   │   ├── Argon2PasswordHasher.cs  # OWASP 2025 password hashing
+│   │   ├── Sha256TokenHasher.cs     # Constant-time token hashing
+│   │   └── CryptoRandomService.cs   # Secure random generation
+│   ├── MfaService.cs                # TOTP & recovery code logic
+│   ├── MfaCryptoHelper.cs           # AES-256 encryption for secrets
+│   ├── RedisTokenBlacklist.cs       # Token blacklist management
+│   ├── RedisGracePeriodCache.cs     # Grace period for token refresh
+│   ├── SessionService.cs            # Session management
 │   ├── EventService.cs              # Event business logic
 │   ├── TicketService.cs             # Ticket business logic
 │   └── AuthService.cs               # Auth business logic
+├── Interfaces/
+│   ├── IMfaService.cs               # MFA service contract
+│   ├── ITokenBlacklist.cs           # Token blacklist contract
+│   ├── IGracePeriodCache.cs         # Grace period cache contract
+│   ├── ISessionService.cs           # Session service contract
+│   ├── ISecureRandom.cs             # Secure random contract
+│   ├── IPasswordHasher.cs           # Password hasher contract
+│   ├── ITokenHasher.cs              # Token hasher contract
+│   ├── IEventRepository.cs          # Repository contracts
+│   └── IEventService.cs             # Service contracts
+├── Options/
+│   ├── JwtOptions.cs                # JWT configuration
+│   ├── MfaOptions.cs                # MFA configuration
+│   └── RedisOptions.cs              # Redis configuration
 ├── DTOs/
 │   ├── EventDto.cs
 │   └── TicketDto.cs
@@ -68,22 +97,27 @@ src/TicketStar.Domain/
 ├── Entities/
 │   ├── Event.cs                     # Domain entities
 │   ├── Ticket.cs
-│   └── User.cs
+│   ├── User.cs
+│   ├── MfaRecoveryCode.cs           # MFA recovery codes
+│   ├── AuthSession.cs               # Auth session tracking
+│   └── SecurityEvent.cs             # Audit events
 ├── ValueObjects/
 │   └── Money.cs                     # Immutable value types
 ├── Interfaces/
 │   ├── IEventRepository.cs          # Repository contracts
 │   └── IEventService.cs             # Service contracts
 └── Enums/
-    └── UserRole.cs                  # User roles
+    ├── UserRole.cs                  # User roles
+    └── SecurityEventType.cs         # Audit event types
 
 src/TicketStar.Infrastructure/
 ├── Data/
 │   └── AppDbContext.cs              # EF Core context
 ├── Repositories/
-│   └── EventRepository.cs           # Repository implementations
+│   ├── EventRepository.cs           # Repository implementations
+│   └── MfaRecoveryCodeRepository.cs # MFA recovery code repository
 ├── Cache/
-│   └── RedisCacheService.cs         # Redis wrapper
+│   └── RedisService.cs              # Low-level Redis operations
 ├── Messaging/
 │   └── MessageBusService.cs         # RabbitMQ/MassTransit
 └── ExternalServices/
@@ -377,14 +411,23 @@ Each major directory should have a README.md explaining:
 - Never commit `.env` files
 - Use `.env.example` for template
 - Rotate secrets before production
-- Hash passwords with ASP.NET Core Identity
+- Hash passwords with Argon2id (OWASP 2025)
+- Encrypt sensitive data (TOTP secrets) with AES-256
+- Use constant-time comparison for token verification
 
 ### API Security
 - Validate all inputs (DataAnnotations)
 - Use parameterized queries (EF Core)
-- Implement rate limiting
-- Validate JWT on every request
+- Implement distributed rate limiting (Redis-backed)
+- Validate JWT on every request + check token blacklist
 - Use httpOnly cookies for auth tokens
+- Log all security events for audit trail
+
+### Fail-Open Strategy
+- Redis-dependent features degrade gracefully if Redis unavailable
+- Rate limiting: Allows requests if Redis check fails
+- Token blacklist: Allows requests if Redis check fails
+- Log failures for monitoring and alerts
 
 ### Frontend Security
 - Never store tokens in localStorage
@@ -392,7 +435,23 @@ Each major directory should have a README.md explaining:
 - Sanitize user input (React default)
 - Use CSP headers in production
 
+## Security Service Patterns
+
+### Interface-Based Abstractions
+- **IPasswordHasher**: Pluggable password hashing (Argon2)
+- **ITokenHasher**: Pluggable token hashing (SHA-256)
+- **ISecureRandom**: Pluggable CSPRNG implementation
+- **IMfaService**: Pluggable MFA implementation
+- **ITokenBlacklist**: Pluggable token blacklist storage
+- **IGracePeriodCache**: Pluggable grace period implementation
+
+### Options Pattern
+- **JwtOptions**: JWT configuration with startup validation
+- **MfaOptions**: MFA settings with algorithm selection
+- **RedisOptions**: Redis connection and timeout settings
+- Centralized configuration, environment-specific overrides via .env
+
 ---
 
-**Last Updated:** 2026-02-26
-**Version:** 1.0.0
+**Last Updated:** 2026-03-01
+**Version:** 1.1.0
