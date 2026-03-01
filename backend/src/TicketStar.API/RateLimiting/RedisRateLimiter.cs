@@ -31,14 +31,29 @@ public sealed class RedisRateLimiter : RateLimiter
 
     public override TimeSpan? IdleDuration => null;
 
-    protected override ValueTask<RateLimitLease> AcquireAsyncCore(
+    protected override async ValueTask<RateLimitLease> AcquireAsyncCore(
         int permitCount, CancellationToken cancellationToken)
-        => new(AcquireCore());
+    {
+        try
+        {
+            var db = _redis.GetDatabase();
+            var count = (long)await db.ScriptEvaluateAsync(
+                AtomicIncrLua,
+                keys: [(RedisKey)_key],
+                values: [(RedisValue)_windowSeconds]);
+
+            return count <= _permitLimit
+                ? new GrantedLease()
+                : new DeniedLease(_windowSeconds);
+        }
+        catch
+        {
+            // Redis unavailable — fail open, allow the request
+            return new GrantedLease();
+        }
+    }
 
     protected override RateLimitLease AttemptAcquireCore(int permitCount)
-        => AcquireCore();
-
-    private RateLimitLease AcquireCore()
     {
         try
         {
@@ -54,7 +69,6 @@ public sealed class RedisRateLimiter : RateLimiter
         }
         catch
         {
-            // Redis unavailable — fail open, allow the request
             return new GrantedLease();
         }
     }

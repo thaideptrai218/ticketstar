@@ -92,6 +92,19 @@ public static class ServiceCollectionExtensions
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret)),
                 ClockSkew = TimeSpan.Zero
             };
+
+            // C2: Reject MFA challenge tokens — they must not be used as access tokens.
+            opt.Events = new JwtBearerEvents
+            {
+                OnTokenValidated = ctx =>
+                {
+                    var purpose = ctx.Principal?.Claims
+                        .FirstOrDefault(c => c.Type == "purpose")?.Value;
+                    if (purpose == "mfa_challenge")
+                        ctx.Fail("MFA challenge tokens cannot be used as access tokens.");
+                    return Task.CompletedTask;
+                }
+            };
         });
 
         return services;

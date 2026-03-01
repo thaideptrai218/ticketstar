@@ -1,3 +1,5 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using TicketStar.API.Models;
 using TicketStar.Application.Common;
@@ -7,6 +9,17 @@ namespace TicketStar.API.Controllers;
 [ApiController]
 public abstract class ApiControllerBase : ControllerBase
 {
+    protected string? GetUserId()
+        => User.FindFirstValue(ClaimTypes.NameIdentifier)
+           ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+
+    protected string? GetIp() => HttpContext.Connection.RemoteIpAddress?.ToString();
+
+    protected string? GetUserAgent() => Request.Headers.UserAgent.ToString();
+
+    protected bool IsHttps => Request.IsHttps || Request.Headers["X-Forwarded-Proto"] == "https";
+
+
     /// <summary>
     /// Maps transport-agnostic ResultError to HTTP status codes.
     /// Single mapping point — Application layer stays HTTP-unaware.

@@ -38,11 +38,11 @@ public record AccessTokenResponse(
 
 // MFA DTOs
 public record MfaSetupResponse(string Secret, string QrCodeUri, string QrCodeBase64);
-public record MfaVerifySetupRequest([Required] string Code);
-public record MfaChallengeRequest([Required] string MfaToken, [Required] string Code);
+public record MfaVerifySetupRequest([Required, StringLength(8)] string Code);
+public record MfaChallengeRequest([Required] string MfaToken, [Required, StringLength(8)] string Code);
 public record MfaChallengeResponse(string MfaToken, bool MfaRequired = true);
 public record MfaRecoveryCodesResponse(List<string> RecoveryCodes);
-public record MfaDisableRequest([Required] string Code);
+public record MfaDisableRequest([Required, StringLength(8)] string Code);
 
 /// <summary>
 /// Discriminated union returned by Login/GoogleLogin/VerifyMagicLink.

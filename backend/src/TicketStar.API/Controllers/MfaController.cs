@@ -1,12 +1,13 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Options;
 using QRCoder;
+using TicketStar.API.Extensions;
 using TicketStar.API.Models;
 using TicketStar.Application.DTOs.Auth;
 using TicketStar.Application.Interfaces;
+using TicketStar.Application.Options;
 
 namespace TicketStar.API.Controllers;
 
@@ -14,10 +15,12 @@ namespace TicketStar.API.Controllers;
 public class MfaController : ApiControllerBase
 {
     private readonly IMfaService _mfaService;
+    private readonly JwtOptions _jwtOptions;
 
-    public MfaController(IMfaService mfaService)
+    public MfaController(IMfaService mfaService, IOptions<JwtOptions> jwtOptions)
     {
         _mfaService = mfaService;
+        _jwtOptions = jwtOptions.Value;
     }
 
     /// <summary>
@@ -68,9 +71,11 @@ public class MfaController : ApiControllerBase
         if (!result.IsSuccess)
             return FromResult(result);
 
-        // Challenge completes MFA — return the full token. The client should store the
-        // refresh token securely; ideally wire this through a shared cookie-setting helper.
-        return Ok(ApiResponse<TokenResponse>.Ok(result.Value!, HttpContext.TraceIdentifier));
+        // Set refresh token as HttpOnly cookie, return only access token in body.
+        var tokens = result.Value!;
+        Response.SetRefreshTokenCookie(tokens.RefreshToken, _jwtOptions.RefreshTokenDays, IsHttps);
+        var body = new AccessTokenResponse(tokens.AccessToken, tokens.ExpiresAt, tokens.SessionId);
+        return Ok(ApiResponse<AccessTokenResponse>.Ok(body, HttpContext.TraceIdentifier));
     }
 
     /// <summary>
@@ -88,13 +93,6 @@ public class MfaController : ApiControllerBase
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
-
-    private string? GetUserId()
-        => User.FindFirstValue(ClaimTypes.NameIdentifier)
-           ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
-
-    private string? GetIp() => HttpContext.Connection.RemoteIpAddress?.ToString();
-    private string? GetUserAgent() => Request.Headers.UserAgent.ToString();
 
     private static string RenderQrCode(string content)
     {

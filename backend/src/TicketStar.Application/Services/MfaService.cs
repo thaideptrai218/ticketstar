@@ -1,5 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -53,6 +54,10 @@ public class MfaService : IMfaService
     {
         var user = await _userRepo.GetByIdAsync(userId)
             ?? throw new InvalidOperationException("User not found.");
+
+        // H2: Prevent concurrent setup from overwriting an already-enabled MFA secret.
+        if (user.MfaEnabled)
+            throw new InvalidOperationException("MFA is already enabled for this account.");
 
         var base32Secret = MfaCryptoHelper.GenerateTotpSecret();
         user.MfaSecret = MfaCryptoHelper.Encrypt(base32Secret, _encryptionKey);
@@ -185,7 +190,11 @@ public class MfaService : IMfaService
     {
         var hash = MfaCryptoHelper.HashCode(code);
         var codes = await _recoveryCodeRepo.GetByUserAsync(userId);
-        var match = codes.FirstOrDefault(rc => !rc.IsUsed && rc.CodeHash == hash);
+        var hashBytes = Encoding.UTF8.GetBytes(hash);
+        var match = codes.FirstOrDefault(rc =>
+            !rc.IsUsed &&
+            CryptographicOperations.FixedTimeEquals(
+                Encoding.UTF8.GetBytes(rc.CodeHash), hashBytes));
         if (match is null) return false;
 
         match.UsedAt = DateTime.UtcNow;

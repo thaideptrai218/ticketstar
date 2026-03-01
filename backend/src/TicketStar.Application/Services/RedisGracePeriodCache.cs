@@ -44,7 +44,9 @@ public class RedisGracePeriodCache : IGracePeriodCache
         try
         {
             var db = _redis.GetDatabase();
-            var json = JsonSerializer.Serialize(response);
+            // M2: Strip refresh token before storing — it's in an HttpOnly cookie, not needed here.
+            var sanitized = response with { RefreshToken = string.Empty };
+            var json = JsonSerializer.Serialize(sanitized);
             await db.StringSetAsync($"grace:{oldTokenHash}", json, ttl);
         }
         catch (Exception ex)

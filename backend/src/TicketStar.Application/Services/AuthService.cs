@@ -345,11 +345,11 @@ public class AuthService : IAuthService
                 await _unitOfWork.SaveChangesAsync();
             }
 
-            // Immediately blacklist all active access tokens for this user
+            await _unitOfWork.CommitTransactionAsync();
+
+            // H3: Blacklist after DB commit succeeds — avoid Redis side-effect on rollback.
             await _tokenBlacklist.BlacklistUserAsync(
                 userId, TimeSpan.FromMinutes(_jwtOptions.AccessTokenMinutes));
-
-            await _unitOfWork.CommitTransactionAsync();
         }
         catch
         {

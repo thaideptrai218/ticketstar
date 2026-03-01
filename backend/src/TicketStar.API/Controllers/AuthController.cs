@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -99,8 +98,7 @@ public class AuthController : ApiControllerBase
     [HttpPost("revoke-all")]
     public async Task<IActionResult> RevokeAllSessions()
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? User.FindFirstValue("sub");
+        var userId = GetUserId();
         if (userId is null) return Unauthorized();
 
         return FromResult(await _authService.RevokeAllSessionsAsync(userId), "All sessions revoked.");
@@ -151,8 +149,4 @@ public class AuthController : ApiControllerBase
         Response.SetRefreshTokenCookie(tokens.RefreshToken, _jwtOptions.RefreshTokenDays, IsHttps);
     }
 
-    private bool IsHttps => Request.IsHttps || Request.Headers["X-Forwarded-Proto"] == "https";
-
-    private string? GetIp() => HttpContext.Connection.RemoteIpAddress?.ToString();
-    private string? GetUserAgent() => Request.Headers.UserAgent.ToString();
 }

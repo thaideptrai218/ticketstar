@@ -27,7 +27,7 @@ public class RedisService : IRedisService
         {
             await Db.StringSetAsync(key, value, ttl);
         }
-        catch (RedisException ex)
+        catch (Exception ex)
         {
             _logger.LogWarning(ex, "Redis SET failed for key {Key}", key);
         }
@@ -40,7 +40,7 @@ public class RedisService : IRedisService
             var value = await Db.StringGetAsync(key);
             return value.HasValue ? (string?)value : null;
         }
-        catch (RedisException ex)
+        catch (Exception ex)
         {
             _logger.LogWarning(ex, "Redis GET failed for key {Key}", key);
             return null;
@@ -53,7 +53,7 @@ public class RedisService : IRedisService
         {
             return await Db.KeyDeleteAsync(key);
         }
-        catch (RedisException ex)
+        catch (Exception ex)
         {
             _logger.LogWarning(ex, "Redis DEL failed for key {Key}", key);
             return false;
@@ -66,7 +66,7 @@ public class RedisService : IRedisService
         {
             return await Db.KeyExistsAsync(key);
         }
-        catch (RedisException ex)
+        catch (Exception ex)
         {
             _logger.LogWarning(ex, "Redis EXISTS failed for key {Key}", key);
             return false;
@@ -79,7 +79,7 @@ public class RedisService : IRedisService
         {
             return await Db.StringIncrementAsync(key);
         }
-        catch (RedisException ex)
+        catch (Exception ex)
         {
             _logger.LogWarning(ex, "Redis INCR failed for key {Key}", key);
             return 0;
@@ -92,7 +92,7 @@ public class RedisService : IRedisService
         {
             await Db.KeyExpireAsync(key, ttl);
         }
-        catch (RedisException ex)
+        catch (Exception ex)
         {
             _logger.LogWarning(ex, "Redis EXPIRE failed for key {Key}", key);
         }
