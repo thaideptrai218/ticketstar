@@ -24,7 +24,11 @@ infra:
     @echo "Waiting for services to be healthy..."
     @sleep 3
 
-# Stop Docker infrastructure
+# Stop all dev processes (backend on 5010, frontend on 3001) and Docker infrastructure
+down:
+    -fuser -k 5010/tcp 2>/dev/null
+    -fuser -k 3001/tcp 2>/dev/null
+# Stop Docker infrastructure only
 infra-down:
     docker compose down
 

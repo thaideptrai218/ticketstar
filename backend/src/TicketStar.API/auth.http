@@ -9,7 +9,7 @@
 @contentType = application/json
 
 # After login/register, paste the access_token here:
-@accessToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkYzk4MjljZC1jNWIzLTRjOTItYWYxMy0yOWMwYzlmODhhYTgiLCJlbWFpbCI6InRlc3R1c2VyQGV4YW1wbGUuY29tIiwianRpIjoiYjViYjkzZjYtYWUzZi00NmI3LTk3YTgtMmQwODE3NzZjNTdlIiwiZW1haWxfdmVyaWZpZWQiOiJmYWxzZSIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IlVzZXIiLCJzaWQiOiJmYTQwMjJjM2Q4Mzc0OTEzYWJjNzI1NjJkOWQ1OGMzZSIsInNzdGFtcCI6IjlkMjFjNTYxIiwiZXhwIjoxNzcyMTkwMzMwLCJpc3MiOiJUaWNrZXRTdGFyIiwiYXVkIjoiVGlja2V0U3RhciJ9.lUk2Nvt7RYNgbFJ0fDHhBjFxd8B4ouBMraVkfBGjjJE
+@accessToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjMzBkNzI1MS1jYTQ1LTQ2YzgtOWNjYy1kYTNiM2E2MTI4YzQiLCJlbWFpbCI6InRlc3R1c2VyMjE4QGV4YW1wbGUuY29tIiwianRpIjoiMzFhYTE0MWUtMTgzYi00YTYwLWE5YTYtOWQ2MTNjNTI5NWI5IiwiZW1haWxfdmVyaWZpZWQiOiJmYWxzZSIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IlVzZXIiLCJzaWQiOiJiOTBmMDI1NWJlMTk0Mjc5OTFlY2FiZTEyNWFjMDY4NiIsInNzdGFtcCI6ImQ4ZThkOWZkIiwiZXhwIjoxNzcyMzUwMzIzLCJpc3MiOiJUaWNrZXRTdGFyIiwiYXVkIjoiVGlja2V0U3RhciJ9.yPh9i9jjq0r5TrmkHTGeK4V_tm1AyzTmQiX7ZGqMrA0
 # After login/register, paste the refresh_token here:
 @refreshToken = QjGbhVCbrDbdVmXjtZIit23BiEsKYl2WeV2v1zAqcsYyaOD2LDgg-zSt9-An4O97uE-uuCwbtJf1731iMYt2bg
 
@@ -22,7 +22,7 @@ POST {{baseUrl}}/api/auth/register
 Content-Type: {{contentType}}
 
 {
-  "email": "testuser@example.com",
+  "email": "testuser218@example.com",
   "password": "TestPass@123",
   "fullName": "Test User"
 }
@@ -107,7 +107,7 @@ POST {{baseUrl}}/api/auth/magic-link/verify
 Content-Type: {{contentType}}
 
 {
-  "token": "PASTE_MAGIC_LINK_TOKEN_FROM_LOGS_HERE"
+  "token": "Y9cbVcCXYMcoAGaRsh2HT3lWDznIDdxpEXupBUCuJkw"
 }
 
 ### ─────────────────────────────────────────
