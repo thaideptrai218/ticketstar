@@ -317,6 +317,10 @@ Authorization: Bearer <accessToken>
 }
 ```
 
+| Field | Type   | Validation    |
+| ----- | ------ | ------------- |
+| code  | string | Required, 6-8 digits/characters |
+
 **Success (200):**
 
 ```json
@@ -340,6 +344,7 @@ Authorization: Bearer <accessToken>
 
 | Status | Message              | Cause                                   |
 | ------ | -------------------- | --------------------------------------- |
+| 409    | "MFA already enabled."| MFA already active (race condition guard) |
 | 401    | "Invalid TOTP code." | Wrong code or too far from current time |
 
 ---
@@ -366,13 +371,12 @@ The `code` can be either a 6-digit TOTP code or an 8-character recovery code.
 ```json
 {
     "accessToken": "eyJhbGciOiJIUzI1...",
-    "refreshToken": "abc123...",
     "expiresAt": "2026-03-01T12:10:00Z",
     "sessionId": "a1b2c3d4e5f6..."
 }
 ```
 
-> Note: This endpoint currently returns `refreshToken` in the response body. Store it securely or discard it — the server will set the httpOnly cookie in a future update.
+Sets `refresh_token` httpOnly cookie automatically. The response body contains only the access token (not the refresh token).
 
 **Errors:**
 
@@ -398,7 +402,7 @@ Authorization: Bearer <accessToken>
 }
 ```
 
-Accepts TOTP code or recovery code.
+Accepts TOTP code or recovery code. Code field requires minimum 6 characters.
 
 **Success (200):**
 
@@ -410,9 +414,10 @@ Accepts TOTP code or recovery code.
 
 **Errors:**
 
-| Status | Message         | Cause      |
-| ------ | --------------- | ---------- |
-| 401    | "Invalid code." | Wrong code |
+| Status | Message                       | Cause                        |
+| ------ | ----------------------------- | ---------------------------- |
+| 401    | "Invalid code."               | Wrong code                   |
+| 400    | Validation error              | Code field too short         |
 
 ---
 
@@ -506,6 +511,7 @@ if (data.mfaRequired) {
     "role": "User",
     "sid": "d4e5f6a1b2c3",
     "sstamp": "ab12cd34",
+    "purpose": "full_access",
     "jti": "unique-id",
     "exp": 1709294400,
     "iss": "TicketStar",
@@ -517,6 +523,7 @@ Useful claims for frontend:
 
 - `role` — for conditional UI (Admin, Organizer, Staff, User)
 - `email_verified` — show verification banner if false
+- `purpose` — should be "full_access" for normal tokens; "mfa_challenge" tokens cannot access protected endpoints
 - `exp` — schedule token refresh before expiry
 
 ### Error Response Format

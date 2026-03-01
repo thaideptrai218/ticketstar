@@ -16,8 +16,8 @@ GlobalExceptionMiddleware → Security Headers → CORS → RateLimiter
 ## Service Architecture
 
 ```
-Controllers (API layer)
-    ↓
+Controllers (API layer) — inherit from ApiControllerBase
+    ↓ (helpers: GetUserId, GetIp, GetUserAgent, IsHttps)
 AuthService / MfaService (orchestration)
     ↓
 TokenService / SessionService (token & session management)
@@ -26,6 +26,13 @@ Security Services (IPasswordHasher, ITokenHasher, ISecureRandom)
     ↓
 Repositories → AppDbContext (MySQL) + RedisService (Redis)
 ```
+
+**ApiControllerBase** provides shared helpers:
+- `GetUserId()` — extract sub/NameIdentifier claim
+- `GetIp()` — remote IP address
+- `GetUserAgent()` — User-Agent header
+- `IsHttps` — detect HTTPS (includes X-Forwarded-Proto check for proxies)
+- `FromResult<T>(result)` — maps Result<T> to HTTP response with proper status codes
 
 ### DI Lifetimes
 
@@ -127,12 +134,14 @@ POST /api/auth/revoke-all [Authorize]
 
 ```
 POST /api/auth/mfa/setup [Authorize]
+  → Guard: reject if MfaEnabled already true (race condition protection)
   → Generate 20-byte TOTP secret (Base32)
   → AES-256 encrypt → store in user.MfaSecret
   → Return secret + otpauth:// URI + QR code (PNG base64)
 
 POST /api/auth/mfa/verify-setup [Authorize]
   → Decrypt secret → verify TOTP code (±1 step / 90s tolerance)
+  → Validate code field: StringLength(8) minimum
   → Set MfaEnabled=true
   → Generate 8 recovery codes (8 chars, uppercase alphanumeric)
   → Store as SHA-256 hashes, return plaintext codes once
@@ -143,9 +152,10 @@ POST /api/auth/mfa/verify-setup [Authorize]
 ```
 POST /api/auth/mfa/challenge (rate: login policy)
   → Validate mfaToken JWT (purpose="mfa_challenge", 5min expiry)
-  → Verify TOTP code OR consume recovery code
+  → Verify TOTP code OR consume recovery code (constant-time comparison for recovery codes)
   → Create session + generate full token pair
-  → Returns TokenResponse in body (NOTE: includes refresh token)
+  → Set refresh_token as HttpOnly cookie
+  → Returns AccessTokenResponse (body contains only accessToken + expiresAt + sessionId)
 ```
 
 ### Disable
@@ -169,6 +179,9 @@ POST /api/auth/mfa/disable [Authorize]
 | `role`           | User.Role.ToString()              |
 | `sid`            | AuthSession.Id (GUID, no hyphens) |
 | `sstamp`         | User.SecurityStamp first 8 chars  |
+| `purpose`        | "full_access" or "mfa_challenge"  |
+
+**Token Validation:** TokenBlacklistMiddleware rejects tokens with `purpose=mfa_challenge` — they cannot access protected endpoints. Only `purpose=full_access` tokens are allowed past authorization.
 
 ## Database Schema
 
@@ -262,7 +275,7 @@ POST /api/auth/mfa/disable [Authorize]
 | Pattern                | Purpose                                    | TTL                |
 | ---------------------- | ------------------------------------------ | ------------------ |
 | `user-bl:{userId}`     | Token blacklist timestamp                  | AccessTokenMinutes |
-| `grace:{oldTokenHash}` | Cached TokenResponse for multi-tab refresh | 10 seconds         |
+| `grace:{oldTokenHash}` | Cached AccessTokenResponse (no refresh token) for multi-tab refresh | 10 seconds         |
 | `rl:{policy}:{ip}`     | Rate limit counter                         | Window seconds     |
 
 **All Redis operations fail-open** — Redis unavailable = requests pass through.
@@ -272,11 +285,11 @@ POST /api/auth/mfa/disable [Authorize]
 | Operation          | Algorithm | Details                                  |
 | ------------------ | --------- | ---------------------------------------- |
 | Password hashing   | Argon2id  | t=3, m=64MB, p=4 (OWASP 2025)            |
-| Token hashing      | SHA-256   | Constant-time comparison                 |
+| Token hashing      | SHA-256   | Constant-time comparison (FixedTimeEquals) |
 | Random generation  | CSPRNG    | URL-safe Base64, configurable length     |
 | TOTP secrets       | AES-256   | Random 16-byte IV prepended              |
 | TOTP verification  | OtpNet    | 6 digits, SHA1, 30s period, ±1 step      |
-| Recovery codes     | SHA-256   | 8 codes, 8 chars, uppercase alphanumeric |
+| Recovery codes     | SHA-256   | Constant-time comparison, 8 codes, 8 chars, uppercase alphanumeric |
 | Device fingerprint | SHA-256   | SHA-256(IP\|UserAgent)                   |
 
 ## Configuration (appsettings.json)
@@ -293,10 +306,9 @@ All options validated at startup.
 
 ## Known Issues
 
-1. **MFA challenge endpoint** returns `RefreshToken` in response body instead of setting httpOnly cookie — needs shared cookie helper
-2. **AuthIdentity.AccessToken/ProviderRefreshToken** not yet AES-256 encrypted — deferred
-3. **WebAuthnCredential** DbSet exists but no controller/service — future feature
-4. **RefreshRequest DTO** defined but unused (refresh reads from cookie)
+1. **AuthIdentity.AccessToken/ProviderRefreshToken** not yet AES-256 encrypted — deferred
+2. **WebAuthnCredential** DbSet exists but no controller/service — future feature
+3. **RefreshRequest DTO** defined but unused (refresh reads from cookie)
 
 ---
 
