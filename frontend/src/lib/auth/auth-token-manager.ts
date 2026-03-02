@@ -37,7 +37,8 @@ function getCookie(): string | null {
   const match = document.cookie
     .split("; ")
     .find((row) => row.startsWith(`${COOKIE_NAME}=`));
-  return match ? decodeURIComponent(match.split("=")[1]) : null;
+  // Use substring to avoid truncating values containing '='
+  return match ? decodeURIComponent(match.substring(match.indexOf("=") + 1)) : null;
 }
 
 function deleteCookie(): void {

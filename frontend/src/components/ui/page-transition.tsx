@@ -22,9 +22,11 @@ export function PageTransition({ children }: { children: React.ReactNode }) {
   return (
     <div
       key={animKey}
-      style={{
-        animation: "page-slide-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both",
-      }}
+      style={
+        animKey > 0
+          ? { animation: "page-slide-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both" }
+          : undefined
+      }
     >
       {children}
     </div>

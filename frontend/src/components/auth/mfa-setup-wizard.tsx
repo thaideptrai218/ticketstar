@@ -62,6 +62,9 @@ export function MfaSetupWizard({ onComplete, onCancel }: MfaSetupWizardProps) {
     if (!token) return;
     try {
       const res = await authApi.verifyMfaSetup({ code: data.code }, token);
+      // Clear sensitive data from state after successful verification
+      setQrUri("");
+      setSecret("");
       setRecoveryCodes(res.recoveryCodes);
       setStep("done");
     } catch (err) {

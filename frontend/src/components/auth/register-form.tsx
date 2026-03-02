@@ -1,10 +1,10 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail, Ticket, User } from "lucide-react";
+import { AlertCircle, Loader2, Lock, Mail, Ticket, User } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { forwardRef, useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -13,26 +13,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/auth-context";
 import { authApi, AuthApiError } from "@/lib/auth/auth-api-client";
 import { registerSchema, type RegisterFormData } from "@/lib/auth/auth-types";
-
-const PasswordInput = forwardRef<HTMLInputElement, React.ComponentProps<typeof Input>>(
-  (props, ref) => {
-    const [show, setShow] = useState(false);
-    return (
-      <div className="relative">
-        <Input ref={ref} type={show ? "text" : "password"} className="pr-10" {...props} />
-        <button
-          type="button"
-          onClick={() => setShow((s) => !s)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
-          aria-label={show ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
-        >
-          {show ? <EyeOff className="size-4" aria-hidden="true" /> : <Eye className="size-4" aria-hidden="true" />}
-        </button>
-      </div>
-    );
-  },
-);
-PasswordInput.displayName = "PasswordInput";
+import { PasswordInput } from "./password-input";
 
 export function RegisterForm() {
   const [serverError, setServerError] = useState<string | null>(null);

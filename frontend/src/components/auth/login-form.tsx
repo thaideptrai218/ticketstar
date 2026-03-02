@@ -1,10 +1,10 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail, Ticket, Wand2 } from "lucide-react";
+import { AlertCircle, Loader2, Lock, Mail, Ticket, Wand2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { forwardRef, useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -15,30 +15,9 @@ import { useAuth } from "@/contexts/auth-context";
 import { authApi, AuthApiError } from "@/lib/auth/auth-api-client";
 import { isMfaChallenge, loginSchema, type LoginFormData } from "@/lib/auth/auth-types";
 import { GoogleLoginButton } from "./google-login-button";
-import { MfaChallengeForm } from "./mfa-challenge-form";
 import { MagicLinkRequestForm } from "./magic-link-request-form";
-
-// ─── Password input with show/hide toggle ────────────────────────────────────
-
-const PasswordInput = forwardRef<HTMLInputElement, React.ComponentProps<typeof Input>>(
-  (props, ref) => {
-    const [show, setShow] = useState(false);
-    return (
-      <div className="relative">
-        <Input ref={ref} type={show ? "text" : "password"} className="pr-10" {...props} />
-        <button
-          type="button"
-          onClick={() => setShow((s) => !s)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
-          aria-label={show ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
-        >
-          {show ? <EyeOff className="size-4" aria-hidden="true" /> : <Eye className="size-4" aria-hidden="true" />}
-        </button>
-      </div>
-    );
-  },
-);
-PasswordInput.displayName = "PasswordInput";
+import { MfaChallengeForm } from "./mfa-challenge-form";
+import { PasswordInput } from "./password-input";
 
 // ─── Main Login Form ──────────────────────────────────────────────────────────
 
@@ -52,7 +31,11 @@ export function LoginForm() {
   const { handleTokenReceived } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const returnUrl = searchParams.get("returnUrl") ?? "/";
+  // Validate returnUrl is same-origin to prevent open redirect attacks
+  const rawReturnUrl = searchParams.get("returnUrl");
+  const returnUrl = rawReturnUrl?.startsWith("/") && !rawReturnUrl.startsWith("//")
+    ? rawReturnUrl
+    : "/";
 
   const {
     register,

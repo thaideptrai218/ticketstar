@@ -24,6 +24,7 @@ interface ApiEnvelope<T> {
     data?: T;
     error?: string;
     message?: string;
+    errors?: Record<string, string[]>;
     traceId?: string;
 }
 
@@ -59,12 +60,18 @@ async function authFetch<T>(
     });
 
     const text = await response.text();
-    const body: ApiEnvelope<T> | null = text ? JSON.parse(text) : null;
+    let body: ApiEnvelope<T> | null = null;
+    try {
+        body = text ? JSON.parse(text) : null;
+    } catch {
+        // Non-JSON response (e.g. 502 proxy error)
+        throw new AuthApiError("Đã xảy ra lỗi máy chủ. Vui lòng thử lại.", response.status);
+    }
 
     if (!response.ok || body?.success === false) {
         const message =
             body?.error ?? body?.message ?? "Đã xảy ra lỗi. Vui lòng thử lại.";
-        throw new AuthApiError(message, response.status);
+        throw new AuthApiError(message, response.status, body?.errors);
     }
 
     // Return unwrapped data (or empty object for void endpoints)
