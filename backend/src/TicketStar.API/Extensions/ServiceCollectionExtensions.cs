@@ -170,7 +170,7 @@ public static class ServiceCollectionExtensions
             opt.AddPolicy("register",
                 new RedisRateLimiterPolicy(redis, "register", permitLimit: 5, TimeSpan.FromMinutes(15)));
             opt.AddPolicy("refresh",
-                new RedisRateLimiterPolicy(redis, "refresh", permitLimit: 30, TimeSpan.FromMinutes(5)));
+                new RedisRateLimiterPolicy(redis, "refresh", permitLimit: 120, TimeSpan.FromMinutes(5)));
             opt.AddPolicy("magic-link",
                 new RedisRateLimiterPolicy(redis, "magic-link", permitLimit: 5, TimeSpan.FromMinutes(15)));
 

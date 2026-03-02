@@ -34,7 +34,7 @@ infra-down:
 
 # Run backend API (port 5010)
 backend:
-    cd {{api_dir}} && dotnet run
+    cd {{api_dir}} && dotnet watch run
 
 # Run frontend dev server (port 3001)
 frontend:
