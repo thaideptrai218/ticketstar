@@ -5,17 +5,26 @@ namespace TicketStar.Application.Interfaces;
 
 public interface IMfaService
 {
-    /// <summary>Generates TOTP secret and QR code. Stores encrypted secret but does NOT enable MFA yet.</summary>
-    Task<MfaSetupResponse> GenerateSetupAsync(string userId);
+    /// <summary>Sends a 6-digit OTP to the user's email. Does NOT enable MFA yet.</summary>
+    Task<Result<MfaSetupResponse>> SetupAsync(string userId);
 
-    /// <summary>Validates TOTP code to confirm setup. Enables MFA and returns plaintext recovery codes.</summary>
-    Task<Result<MfaRecoveryCodesResponse>> VerifySetupAsync(string userId, string code);
+    /// <summary>Validates OTP to confirm setup. Enables MFA on success.</summary>
+    Task<Result> VerifySetupAsync(string userId, string code);
 
-    /// <summary>Validates mfaToken + TOTP/recovery code, issues full token pair on success.</summary>
+    /// <summary>Sends OTP to email for MFA challenge during login.</summary>
+    Task<Result> SendChallengeOtpAsync(string mfaToken);
+
+    /// <summary>Validates mfaToken + OTP code, issues full token pair on success.</summary>
     Task<Result<TokenResponse>> VerifyChallengeAsync(string mfaToken, string code, string? ip, string? ua);
 
-    /// <summary>Disables MFA after validating TOTP code. Deletes recovery codes.</summary>
+    /// <summary>Sends OTP to email for MFA disable confirmation.</summary>
+    Task<Result> SendDisableOtpAsync(string userId);
+
+    /// <summary>Disables MFA after validating OTP code.</summary>
     Task<Result> DisableAsync(string userId, string code);
+
+    /// <summary>Returns current MFA status for the user.</summary>
+    Task<MfaStatusResponse> GetStatusAsync(string userId);
 
     /// <summary>Generates a short-lived (5min) JWT used as the MFA challenge token.</summary>
     string GenerateMfaToken(string userId);

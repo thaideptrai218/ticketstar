@@ -47,8 +47,6 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IMagicLinkRepository, MagicLinkRepository>();
         services.AddScoped<IAuthIdentityRepository, AuthIdentityRepository>();
         services.AddScoped<ISecurityEventRepository, SecurityEventRepository>();
-        services.AddScoped<IMfaRecoveryCodeRepository, MfaRecoveryCodeRepository>();
-
         return services;
     }
 
@@ -65,8 +63,7 @@ public static class ServiceCollectionExtensions
             .BindConfiguration(GoogleAuthOptions.SectionName);
 
         services.AddOptions<MfaOptions>()
-            .BindConfiguration(MfaOptions.SectionName)
-            .ValidateOnStart();
+            .BindConfiguration(MfaOptions.SectionName);
 
         // JWT bearer
         var jwtSection = config.GetSection(JwtOptions.SectionName);

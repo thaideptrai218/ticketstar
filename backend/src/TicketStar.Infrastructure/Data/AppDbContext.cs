@@ -17,8 +17,6 @@ public class AppDbContext : DbContext
     public DbSet<WebAuthnCredential> WebAuthnCredentials => Set<WebAuthnCredential>();
     public DbSet<SecurityEvent> SecurityEvents => Set<SecurityEvent>();
     public DbSet<EmailChangeRequest> EmailChangeRequests => Set<EmailChangeRequest>();
-    public DbSet<MfaRecoveryCode> MfaRecoveryCodes => Set<MfaRecoveryCode>();
-
     // Business entities
     public DbSet<Event> Events => Set<Event>();
     public DbSet<TicketType> TicketTypes => Set<TicketType>();

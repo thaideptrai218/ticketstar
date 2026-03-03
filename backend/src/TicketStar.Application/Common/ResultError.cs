@@ -10,5 +10,6 @@ public enum ResultError
     Forbidden,     // Not authorized (HTTP 403)
     NotFound,      // Resource missing (HTTP 404)
     Conflict,      // Duplicate / state conflict (HTTP 409)
+    RateLimited,   // Too many requests (HTTP 429)
     Internal       // Unexpected failure (HTTP 500)
 }

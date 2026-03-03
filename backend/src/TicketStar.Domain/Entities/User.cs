@@ -26,7 +26,6 @@ public class User
 
     // MFA
     public bool MfaEnabled { get; set; }
-    public string? MfaSecret { get; set; } // AES-256 encrypted TOTP secret
 
     // Auth navigation properties
     public UserProfile? Profile { get; set; }
@@ -36,7 +35,6 @@ public class User
     public ICollection<AuthSession> AuthSessions { get; set; } = [];
     public ICollection<SecurityEvent> SecurityEvents { get; set; } = [];
     public ICollection<EmailChangeRequest> EmailChangeRequests { get; set; } = [];
-    public ICollection<MfaRecoveryCode> MfaRecoveryCodes { get; set; } = [];
 
     // Business entity navigation
     public ICollection<Event> OrganizedEvents { get; set; } = [];

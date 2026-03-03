@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using TicketStar.Application.Common;
@@ -18,102 +19,101 @@ public class MfaService : IMfaService
 {
     private const string MfaPurposeClaim = "mfa_challenge";
     private const int MfaTokenMinutes = 5;
+    private const int OtpLength = 6;
+    private const int OtpTtlMinutes = 5;
+    private const int RateLimitSeconds = 60;
+    private const int MaxAttempts = 5;
 
     private readonly IUserRepository _userRepo;
-    private readonly IMfaRecoveryCodeRepository _recoveryCodeRepo;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ISecurityEventRepository _securityEventRepo;
     private readonly ISessionService _sessionService;
     private readonly ITokenService _tokenService;
-    private readonly MfaOptions _mfaOptions;
+    private readonly IRedisService _redis;
     private readonly JwtOptions _jwtOptions;
-    private readonly byte[] _encryptionKey;
+    private readonly ILogger<MfaService> _logger;
 
     public MfaService(
         IUserRepository userRepo,
-        IMfaRecoveryCodeRepository recoveryCodeRepo,
         IUnitOfWork unitOfWork,
         ISecurityEventRepository securityEventRepo,
         ISessionService sessionService,
         ITokenService tokenService,
-        IOptions<MfaOptions> mfaOptions,
-        IOptions<JwtOptions> jwtOptions)
+        IRedisService redis,
+        IOptions<JwtOptions> jwtOptions,
+        ILogger<MfaService> logger)
     {
         _userRepo = userRepo;
-        _recoveryCodeRepo = recoveryCodeRepo;
         _unitOfWork = unitOfWork;
         _securityEventRepo = securityEventRepo;
         _sessionService = sessionService;
         _tokenService = tokenService;
-        _mfaOptions = mfaOptions.Value;
+        _redis = redis;
         _jwtOptions = jwtOptions.Value;
-        _encryptionKey = Convert.FromBase64String(_mfaOptions.EncryptionKey);
+        _logger = logger;
     }
 
-    public async Task<MfaSetupResponse> GenerateSetupAsync(string userId)
-    {
-        var user = await _userRepo.GetByIdAsync(userId)
-            ?? throw new InvalidOperationException("User not found.");
-
-        // H2: Prevent concurrent setup from overwriting an already-enabled MFA secret.
-        if (user.MfaEnabled)
-            throw new InvalidOperationException("MFA is already enabled for this account.");
-
-        var base32Secret = MfaCryptoHelper.GenerateTotpSecret();
-        user.MfaSecret = MfaCryptoHelper.Encrypt(base32Secret, _encryptionKey);
-        await _unitOfWork.SaveChangesAsync();
-
-        var uri = MfaCryptoHelper.BuildOtpAuthUri(base32Secret, user.Email, _mfaOptions.Issuer);
-        return new MfaSetupResponse(base32Secret, uri, QrCodeBase64: "");
-        // Note: QR image is generated in MfaController (QRCoder lives in API layer).
-    }
-
-    public async Task<Result<MfaRecoveryCodesResponse>> VerifySetupAsync(string userId, string code)
+    public async Task<Result<MfaSetupResponse>> SetupAsync(string userId)
     {
         var user = await _userRepo.GetByIdAsync(userId);
-        if (user?.MfaSecret is null)
-            return Result<MfaRecoveryCodesResponse>.Failure("MFA setup not initiated.", ResultError.Validation);
+        if (user is null)
+            return Result<MfaSetupResponse>.Failure("User not found.", ResultError.NotFound);
 
-        var base32Secret = MfaCryptoHelper.Decrypt(user.MfaSecret, _encryptionKey);
-        if (!MfaCryptoHelper.VerifyTotp(base32Secret, code))
-            return Result<MfaRecoveryCodesResponse>.Failure("Invalid TOTP code.", ResultError.Unauthorized);
+        if (user.MfaEnabled)
+            return Result<MfaSetupResponse>.Failure("MFA is already enabled.", ResultError.Validation);
 
-        user.MfaEnabled = true;
+        var sendResult = await GenerateAndStoreOtpAsync(userId, user.Email);
+        if (!sendResult.IsSuccess)
+            return Result<MfaSetupResponse>.Failure(sendResult.Error!, sendResult.ErrorType ?? ResultError.Validation);
 
-        // Replace any existing recovery codes
-        await _recoveryCodeRepo.DeleteAllByUserAsync(userId);
-
-        var (plainCodes, hashes) = MfaCryptoHelper.GenerateRecoveryCodes();
-        foreach (var hash in hashes)
-            _recoveryCodeRepo.Add(new MfaRecoveryCode { UserId = userId, CodeHash = hash });
-
-        await _unitOfWork.SaveChangesAsync();
-        await LogEventAsync(userId, SecurityEventType.MfaEnabled, true);
-        return Result<MfaRecoveryCodesResponse>.Success(new MfaRecoveryCodesResponse(plainCodes));
+        return Result<MfaSetupResponse>.Success(new MfaSetupResponse("OTP sent to your email."));
     }
 
-    public async Task<Result<TokenResponse>> VerifyChallengeAsync(string mfaToken, string code, string? ip, string? ua)
+    public async Task<Result> VerifySetupAsync(string userId, string code)
+    {
+        var validateResult = await ValidateOtpAsync(userId, code);
+        if (!validateResult.IsSuccess)
+            return validateResult;
+
+        var user = await _userRepo.GetByIdAsync(userId);
+        if (user is null)
+            return Result.Failure("User not found.", ResultError.NotFound);
+
+        user.MfaEnabled = true;
+        await _unitOfWork.SaveChangesAsync();
+        await LogEventAsync(userId, SecurityEventType.MfaEnabled, true);
+        return Result.Success();
+    }
+
+    public async Task<Result> SendChallengeOtpAsync(string mfaToken)
+    {
+        var userId = ValidateMfaToken(mfaToken);
+        if (userId is null)
+            return Result.Failure("Invalid or expired MFA token.", ResultError.Unauthorized);
+
+        var user = await _userRepo.GetByIdAsync(userId);
+        if (user is null || !user.MfaEnabled)
+            return Result.Failure("MFA not configured.", ResultError.Unauthorized);
+
+        return await GenerateAndStoreOtpAsync(userId, user.Email);
+    }
+
+    public async Task<Result<TokenResponse>> VerifyChallengeAsync(
+        string mfaToken, string code, string? ip, string? ua)
     {
         var userId = ValidateMfaToken(mfaToken);
         if (userId is null)
             return Result<TokenResponse>.Failure("Invalid or expired MFA token.", ResultError.Unauthorized);
 
         var user = await _userRepo.GetByIdAsync(userId);
-        if (user is null || !user.MfaEnabled || user.MfaSecret is null)
+        if (user is null || !user.MfaEnabled)
             return Result<TokenResponse>.Failure("MFA not configured.", ResultError.Unauthorized);
 
-        var base32Secret = MfaCryptoHelper.Decrypt(user.MfaSecret, _encryptionKey);
-        bool valid = MfaCryptoHelper.VerifyTotp(base32Secret, code);
-
-        if (!valid)
+        var validateResult = await ValidateOtpAsync(userId, code);
+        if (!validateResult.IsSuccess)
         {
-            bool consumed = await TryConsumeRecoveryCodeAsync(userId, code);
-            if (!consumed)
-            {
-                await LogEventAsync(userId, SecurityEventType.MfaChallengeFailed, false, ip, ua);
-                return Result<TokenResponse>.Failure("Invalid code.", ResultError.Unauthorized);
-            }
-            await LogEventAsync(userId, SecurityEventType.MfaRecoveryCodeUsed, true, ip, ua);
+            await LogEventAsync(userId, SecurityEventType.MfaChallengeFailed, false, ip, ua);
+            return Result<TokenResponse>.Failure(validateResult.Error!, validateResult.ErrorType ?? ResultError.Validation);
         }
 
         var session = await _sessionService.CreateSessionAsync(userId, ip, ua);
@@ -122,25 +122,35 @@ public class MfaService : IMfaService
         return Result<TokenResponse>.Success(tokens);
     }
 
+    public async Task<Result> SendDisableOtpAsync(string userId)
+    {
+        var user = await _userRepo.GetByIdAsync(userId);
+        if (user is null || !user.MfaEnabled)
+            return Result.Failure("MFA is not enabled.", ResultError.Validation);
+
+        return await GenerateAndStoreOtpAsync(userId, user.Email);
+    }
+
     public async Task<Result> DisableAsync(string userId, string code)
     {
         var user = await _userRepo.GetByIdAsync(userId);
-        if (user is null || !user.MfaEnabled || user.MfaSecret is null)
+        if (user is null || !user.MfaEnabled)
             return Result.Failure("MFA is not enabled.", ResultError.Validation);
 
-        var base32Secret = MfaCryptoHelper.Decrypt(user.MfaSecret, _encryptionKey);
-        bool valid = MfaCryptoHelper.VerifyTotp(base32Secret, code)
-                     || await TryConsumeRecoveryCodeAsync(userId, code);
-
-        if (!valid)
-            return Result.Failure("Invalid code.", ResultError.Unauthorized);
+        var validateResult = await ValidateOtpAsync(userId, code);
+        if (!validateResult.IsSuccess)
+            return validateResult;
 
         user.MfaEnabled = false;
-        user.MfaSecret = null;
-        await _recoveryCodeRepo.DeleteAllByUserAsync(userId);
         await _unitOfWork.SaveChangesAsync();
         await LogEventAsync(userId, SecurityEventType.MfaDisabled, true);
         return Result.Success();
+    }
+
+    public async Task<MfaStatusResponse> GetStatusAsync(string userId)
+    {
+        var user = await _userRepo.GetByIdAsync(userId);
+        return new MfaStatusResponse(user?.MfaEnabled ?? false);
     }
 
     public string GenerateMfaToken(string userId)
@@ -186,20 +196,60 @@ public class MfaService : IMfaService
 
     // ── Private helpers ───────────────────────────────────────────────────────
 
-    private async Task<bool> TryConsumeRecoveryCodeAsync(string userId, string code)
+    private async Task<Result> GenerateAndStoreOtpAsync(string userId, string email)
     {
-        var hash = MfaCryptoHelper.HashCode(code);
-        var codes = await _recoveryCodeRepo.GetByUserAsync(userId);
-        var hashBytes = Encoding.UTF8.GetBytes(hash);
-        var match = codes.FirstOrDefault(rc =>
-            !rc.IsUsed &&
-            CryptographicOperations.FixedTimeEquals(
-                Encoding.UTF8.GetBytes(rc.CodeHash), hashBytes));
-        if (match is null) return false;
+        // Rate limit: 1 OTP per 60s
+        var rateKey = $"mfa:rate:{userId}";
+        if (await _redis.ExistsAsync(rateKey))
+            return Result.Failure("Please wait before requesting a new code.", ResultError.RateLimited);
 
-        match.UsedAt = DateTime.UtcNow;
-        await _unitOfWork.SaveChangesAsync();
-        return true;
+        // Generate 6-digit code
+        var code = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
+
+        // Store SHA-256 hash in Redis with 5min TTL
+        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(code))).ToLowerInvariant();
+        await _redis.SetAsync($"mfa:otp:{userId}", hash, TimeSpan.FromMinutes(OtpTtlMinutes));
+
+        // Reset attempt counter
+        await _redis.DeleteAsync($"mfa:attempts:{userId}");
+
+        // Set rate limit key
+        await _redis.SetAsync(rateKey, "1", TimeSpan.FromSeconds(RateLimitSeconds));
+
+        // Log OTP to console (dev only — Debug level filtered in production)
+        _logger.LogDebug("=== DEV ONLY - MFA OTP for {Email}: {Code} ===", email, code);
+
+        return Result.Success();
+    }
+
+    private async Task<Result> ValidateOtpAsync(string userId, string code)
+    {
+        // Check attempt counter
+        var attemptsKey = $"mfa:attempts:{userId}";
+        var attempts = await _redis.IncrementAsync(attemptsKey);
+        if (attempts == 1)
+            await _redis.ExpireAsync(attemptsKey, TimeSpan.FromMinutes(OtpTtlMinutes));
+
+        if (attempts > MaxAttempts)
+        {
+            // Delete the OTP to force re-request
+            await _redis.DeleteAsync($"mfa:otp:{userId}");
+            return Result.Failure("Too many attempts. Please request a new code.", ResultError.RateLimited);
+        }
+
+        var storedHash = await _redis.GetAsync($"mfa:otp:{userId}");
+        if (storedHash is null)
+            return Result.Failure("No active OTP. Please request a new code.", ResultError.Validation);
+
+        var inputHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(code))).ToLowerInvariant();
+        if (!CryptographicOperations.FixedTimeEquals(
+                Encoding.UTF8.GetBytes(storedHash), Encoding.UTF8.GetBytes(inputHash)))
+            return Result.Failure("Invalid code.", ResultError.Unauthorized);
+
+        // OTP is single-use — delete on success
+        await _redis.DeleteAsync($"mfa:otp:{userId}");
+        await _redis.DeleteAsync(attemptsKey);
+        return Result.Success();
     }
 
     private async Task LogEventAsync(string userId, SecurityEventType type, bool success,

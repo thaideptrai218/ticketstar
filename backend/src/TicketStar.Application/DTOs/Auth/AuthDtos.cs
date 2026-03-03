@@ -37,12 +37,13 @@ public record AccessTokenResponse(
     string SessionId);
 
 // MFA DTOs
-public record MfaSetupResponse(string Secret, string QrCodeUri, string QrCodeBase64);
-public record MfaVerifySetupRequest([Required, StringLength(8)] string Code);
-public record MfaChallengeRequest([Required] string MfaToken, [Required, StringLength(8)] string Code);
+public record MfaSetupResponse(string Message);
+public record MfaVerifySetupRequest([Required, StringLength(6, MinimumLength = 6)] string Code);
+public record MfaSendOtpRequest([Required] string MfaToken);
+public record MfaChallengeRequest([Required] string MfaToken, [Required, StringLength(6, MinimumLength = 6)] string Code);
 public record MfaChallengeResponse(string MfaToken, bool MfaRequired = true);
-public record MfaRecoveryCodesResponse(List<string> RecoveryCodes);
-public record MfaDisableRequest([Required, StringLength(8)] string Code);
+public record MfaDisableRequest([Required, StringLength(6, MinimumLength = 6)] string Code);
+public record MfaStatusResponse(bool MfaEnabled);
 
 /// <summary>
 /// Discriminated union returned by Login/GoogleLogin/VerifyMagicLink.

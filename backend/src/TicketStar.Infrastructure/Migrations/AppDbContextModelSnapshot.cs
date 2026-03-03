@@ -73,7 +73,7 @@ namespace TicketStar.Infrastructure.Migrations
                     b.HasIndex("Provider", "ProviderUserId")
                         .IsUnique();
 
-                    b.ToTable("AuthIdentities");
+                    b.ToTable("AuthIdentities", (string)null);
                 });
 
             modelBuilder.Entity("TicketStar.Domain.Entities.AuthSession", b =>
@@ -117,7 +117,7 @@ namespace TicketStar.Infrastructure.Migrations
 
                     b.HasIndex("UserId", "IsActive");
 
-                    b.ToTable("AuthSessions");
+                    b.ToTable("AuthSessions", (string)null);
                 });
 
             modelBuilder.Entity("TicketStar.Domain.Entities.CheckIn", b =>
@@ -149,7 +149,7 @@ namespace TicketStar.Infrastructure.Migrations
 
                     b.HasIndex("EventId", "ScannedAt");
 
-                    b.ToTable("CheckIns");
+                    b.ToTable("CheckIns", (string)null);
                 });
 
             modelBuilder.Entity("TicketStar.Domain.Entities.EmailChangeRequest", b =>
@@ -191,7 +191,7 @@ namespace TicketStar.Infrastructure.Migrations
 
                     b.HasIndex("UserId", "CreatedAt");
 
-                    b.ToTable("EmailChangeRequests");
+                    b.ToTable("EmailChangeRequests", (string)null);
                 });
 
             modelBuilder.Entity("TicketStar.Domain.Entities.Event", b =>
@@ -257,7 +257,7 @@ namespace TicketStar.Infrastructure.Migrations
 
                     b.HasIndex("Status", "StartAt");
 
-                    b.ToTable("Events");
+                    b.ToTable("Events", (string)null);
                 });
 
             modelBuilder.Entity("TicketStar.Domain.Entities.MagicLink", b =>
@@ -302,33 +302,7 @@ namespace TicketStar.Infrastructure.Migrations
 
                     b.HasIndex("UserId", "CreatedAt");
 
-                    b.ToTable("MagicLinks");
-                });
-
-            modelBuilder.Entity("TicketStar.Domain.Entities.MfaRecoveryCode", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)");
-
-                    b.Property<string>("CodeHash")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)");
-
-                    b.Property<DateTime?>("UsedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasMaxLength(36)
-                        .HasColumnType("varchar(36)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("MfaRecoveryCodes", (string)null);
+                    b.ToTable("MagicLinks", (string)null);
                 });
 
             modelBuilder.Entity("TicketStar.Domain.Entities.Order", b =>
@@ -372,7 +346,7 @@ namespace TicketStar.Infrastructure.Migrations
 
                     b.HasIndex("Status", "CreatedAt");
 
-                    b.ToTable("Orders");
+                    b.ToTable("Orders", (string)null);
                 });
 
             modelBuilder.Entity("TicketStar.Domain.Entities.OrderItem", b =>
@@ -404,7 +378,7 @@ namespace TicketStar.Infrastructure.Migrations
 
                     b.HasIndex("TicketTypeId");
 
-                    b.ToTable("OrderItems");
+                    b.ToTable("OrderItems", (string)null);
                 });
 
             modelBuilder.Entity("TicketStar.Domain.Entities.Payment", b =>
@@ -453,7 +427,7 @@ namespace TicketStar.Infrastructure.Migrations
                     b.HasIndex("OrderId")
                         .IsUnique();
 
-                    b.ToTable("Payments");
+                    b.ToTable("Payments", (string)null);
                 });
 
             modelBuilder.Entity("TicketStar.Domain.Entities.RefreshToken", b =>
@@ -506,7 +480,7 @@ namespace TicketStar.Infrastructure.Migrations
 
                     b.HasIndex("UserId", "FamilyId");
 
-                    b.ToTable("RefreshTokens");
+                    b.ToTable("RefreshTokens", (string)null);
                 });
 
             modelBuilder.Entity("TicketStar.Domain.Entities.SecurityEvent", b =>
@@ -556,7 +530,7 @@ namespace TicketStar.Infrastructure.Migrations
 
                     b.HasIndex("UserId", "CreatedAt");
 
-                    b.ToTable("SecurityEvents");
+                    b.ToTable("SecurityEvents", (string)null);
                 });
 
             modelBuilder.Entity("TicketStar.Domain.Entities.StaffAssignment", b =>
@@ -590,7 +564,7 @@ namespace TicketStar.Infrastructure.Migrations
                     b.HasIndex("UserId", "EventId")
                         .IsUnique();
 
-                    b.ToTable("StaffAssignments");
+                    b.ToTable("StaffAssignments", (string)null);
                 });
 
             modelBuilder.Entity("TicketStar.Domain.Entities.Ticket", b =>
@@ -639,7 +613,7 @@ namespace TicketStar.Infrastructure.Migrations
 
                     b.HasIndex("EventId", "UserId");
 
-                    b.ToTable("Tickets");
+                    b.ToTable("Tickets", (string)null);
                 });
 
             modelBuilder.Entity("TicketStar.Domain.Entities.TicketType", b =>
@@ -685,7 +659,7 @@ namespace TicketStar.Infrastructure.Migrations
 
                     b.HasIndex("EventId");
 
-                    b.ToTable("TicketTypes");
+                    b.ToTable("TicketTypes", (string)null);
                 });
 
             modelBuilder.Entity("TicketStar.Domain.Entities.User", b =>
@@ -718,12 +692,6 @@ namespace TicketStar.Infrastructure.Migrations
                     b.Property<DateTime?>("LockedUntil")
                         .HasColumnType("datetime(6)");
 
-                    b.Property<bool>("MfaEnabled")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<string>("MfaSecret")
-                        .HasColumnType("longtext");
-
                     b.Property<string>("PasswordHash")
                         .HasMaxLength(500)
                         .HasColumnType("varchar(500)");
@@ -750,7 +718,7 @@ namespace TicketStar.Infrastructure.Migrations
                     b.HasIndex("Email")
                         .IsUnique();
 
-                    b.ToTable("Users");
+                    b.ToTable("Users", (string)null);
                 });
 
             modelBuilder.Entity("TicketStar.Domain.Entities.UserProfile", b =>
@@ -786,7 +754,7 @@ namespace TicketStar.Infrastructure.Migrations
 
                     b.HasKey("UserId");
 
-                    b.ToTable("UserProfiles");
+                    b.ToTable("UserProfiles", (string)null);
                 });
 
             modelBuilder.Entity("TicketStar.Domain.Entities.WebAuthnCredential", b =>
@@ -832,7 +800,7 @@ namespace TicketStar.Infrastructure.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("WebAuthnCredentials");
+                    b.ToTable("WebAuthnCredentials", (string)null);
                 });
 
             modelBuilder.Entity("TicketStar.Domain.Entities.AuthIdentity", b =>
@@ -910,17 +878,6 @@ namespace TicketStar.Infrastructure.Migrations
                 {
                     b.HasOne("TicketStar.Domain.Entities.User", "User")
                         .WithMany("MagicLinks")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("TicketStar.Domain.Entities.MfaRecoveryCode", b =>
-                {
-                    b.HasOne("TicketStar.Domain.Entities.User", "User")
-                        .WithMany("MfaRecoveryCodes")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -1142,8 +1099,6 @@ namespace TicketStar.Infrastructure.Migrations
                     b.Navigation("EmailChangeRequests");
 
                     b.Navigation("MagicLinks");
-
-                    b.Navigation("MfaRecoveryCodes");
 
                     b.Navigation("Orders");
 
