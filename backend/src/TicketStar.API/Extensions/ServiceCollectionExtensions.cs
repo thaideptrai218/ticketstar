@@ -7,6 +7,8 @@ using TicketStar.API.RateLimiting;
 using TicketStar.Application.Interfaces;
 using TicketStar.Application.Options;
 using TicketStar.Application.Services;
+using TicketStar.Application.Services.Qr;
+using TicketStar.Application.Services.SePay;
 using TicketStar.Application.Services.Security;
 using TicketStar.Domain.Interfaces;
 using TicketStar.Infrastructure.Cache;
@@ -35,6 +37,14 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<DbSeeder>();
 
+        // Phase 3: Backend API services
+        services.AddSingleton<IQrCodeService, QrCodeService>();
+        services.AddScoped<IDistributedLock, RedisDistributedLock>();
+        services.AddScoped<ISePayWebhookHandler, SePayWebhookHandler>();
+        services.AddScoped<IEventService, EventService>();
+        services.AddScoped<IOrderService, OrderService>();
+        services.AddScoped<ICheckInService, CheckInService>();
+
         return services;
     }
 
@@ -47,6 +57,16 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IMagicLinkRepository, MagicLinkRepository>();
         services.AddScoped<IAuthIdentityRepository, AuthIdentityRepository>();
         services.AddScoped<ISecurityEventRepository, SecurityEventRepository>();
+
+        // Phase 3: Backend API repositories
+        services.AddScoped<IEventRepository, EventRepository>();
+        services.AddScoped<ITicketTypeRepository, TicketTypeRepository>();
+        services.AddScoped<IOrderRepository, OrderRepository>();
+        services.AddScoped<ITicketRepository, TicketRepository>();
+        services.AddScoped<IPaymentRepository, PaymentRepository>();
+        services.AddScoped<ICheckInRepository, CheckInRepository>();
+        services.AddScoped<IStaffAssignmentRepository, StaffAssignmentRepository>();
+
         return services;
     }
 

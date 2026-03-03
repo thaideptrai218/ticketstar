@@ -4,6 +4,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using TicketStar.API.Extensions;
 using TicketStar.API.Middleware;
 using TicketStar.Application.Interfaces;
+using TicketStar.Application.Options;
 using TicketStar.Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,20 +19,31 @@ builder.Services.AddJwtAuthentication(builder.Configuration);
 var redisMultiplexer = builder.Services.AddRedis(builder.Configuration);
 builder.Services.AddApplicationServices();
 builder.Services.AddRepositories();
+
+// Health checks - create builder before MassTransit to pass it in
+var redisConnStr = builder.Configuration.GetSection("Redis")["ConnectionString"] ?? "localhost:6379";
+var healthChecksBuilder = builder.Services.AddHealthChecks()
+    .AddMySql(connStr, name: "mysql", tags: ["db", "ready"])
+    .AddRedis(redisConnStr, name: "redis", tags: ["infra", "ready"])
+    .AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["live"]);
+builder.Services.AddMassTransitWithRabbitMQ(builder.Configuration, healthChecksBuilder);
 builder.Services.AddSwaggerWithAuth();
 builder.Services.AddRateLimiting(redisMultiplexer);
+
+// Phase 3: Backend API options
+builder.Services.AddOptions<QrOptions>()
+    .BindConfiguration(QrOptions.SectionName)
+    .Validate(o => o.HmacSecret.Length >= 32, "QR HMAC secret must be at least 32 characters")
+    .ValidateOnStart();
+
+builder.Services.AddOptions<SePayOptions>()
+    .BindConfiguration(SePayOptions.SectionName);
 builder.Services.AddHsts(options =>
 {
     options.MaxAge = TimeSpan.FromDays(365);
     options.IncludeSubDomains = true;
     options.Preload = true;
 });
-
-var redisConnStr = builder.Configuration.GetSection("Redis")["ConnectionString"] ?? "localhost:6379";
-builder.Services.AddHealthChecks()
-    .AddMySql(connStr, name: "mysql", tags: ["db", "ready"])
-    .AddRedis(redisConnStr, name: "redis", tags: ["infra", "ready"])
-    .AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["live"]);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];

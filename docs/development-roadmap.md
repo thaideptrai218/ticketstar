@@ -8,7 +8,7 @@
 | 2 | Database & Identity | 10h | ✅ Complete | 100% |
 | 2b | Auth Hardening (Security) | 22h | ✅ Complete | 100% |
 | 3 | Backend API | 16h | 🔄 Pending | 0% |
-| 4 | Frontend Auth & Layout | 8h | 🔄 Pending | 0% |
+| 4 | Frontend Auth & Layout | 8h | 🔄 In Progress | 60% |
 | 5 | Frontend Marketplace | 10h | 🔄 Pending | 0% |
 | 6 | Frontend Attendee | 6h | 🔄 Pending | 0% |
 | 7 | Frontend Organizer | 10h | 🔄 Pending | 0% |
@@ -259,38 +259,67 @@
 
 ---
 
-## Phase 4: Frontend Auth & Layout 🔄 Pending
+## Phase 4: Frontend Auth & Layout 🔄 In Progress
 
-**Status:** Pending
-**Estimated Start:** 2026-03-02
-**Effort:** 8 hours
+**Status:** In Progress (60% complete)
+**Started:** 2026-03-02
+**Effort:** 8 hours (5h remaining)
 **Dependencies:** Phase 1
 
-### Planned Deliverables
+### Completed Deliverables
 
-#### Authentication
-- [ ] Login page (Google OAuth)
-- [ ] Magic link request page
-- [ ] Auth context/provider
-- [ ] Protected route wrapper
+#### Landing Page ✅
+- [x] Hero section with flip cards
+- [x] Features section
+- [x] How it works section (step illustrations)
+- [x] Featured events section
+- [x] Footer section
+- [x] Navigation bar
+- [x] Scroll reveal animations
 
-#### Layout
-- [ ] Root layout with navigation
-- [ ] Dashboard layout (sidebar)
-- [ ] Responsive design
-- [ ] Loading states
+#### Authentication Pages ✅
+- [x] Login page (email/password + Google OAuth)
+- [x] Register page
+- [x] Magic link verify page
+- [x] Protected route wrapper
+- [x] Settings/security page (MFA)
 
-#### API Integration
+#### Auth Components ✅
+- [x] MFA challenge form
+- [x] MFA setup wizard
+- [x] Recovery codes display
+- [x] Magic link request form
+- [x] Google login button
+- [x] Password input
+- [x] User menu
+- [x] Login/register forms
+
+#### UI Components ✅
+- [x] shadcn/ui integration (15+ components)
+- [x] Page transitions
+- [x] Loading states (skeleton)
+
+### Remaining Deliverables
+
+#### API Integration ⏳
 - [ ] API client with fetch wrapper
-- [ ] React Query setup
+- [ ] React Query setup (TanStack Query)
 - [ ] Error handling
-- [ ] Type definitions
+- [ ] Type definitions (DTOs)
+
+#### Layout ⏳
+- [ ] Dashboard layout (sidebar)
+- [ ] Role-based routing
+- [ ] Auth context/provider
 
 ### Success Criteria
+- [x] Landing page renders
+- [x] Auth forms visible
 - [ ] Google OAuth redirects correctly
 - [ ] Magic link form submits
-- [ ] Protected routes redirect guests
-- [ ] Layout renders on all pages
+- [x] Protected routes wrapper exists
+- [x] Layout renders on all pages
+- [ ] API client functional
 
 ---
 
@@ -487,14 +516,15 @@ Phase 2   Phase 4
 | Infrastructure Ready | Phase 1 | ✅ Complete |
 | Data Layer Complete | Phase 2 | ✅ Complete |
 | Auth Security Hardened | Phase 2b | ✅ Complete |
-| Auth Functional | Phase 2-4 | ✅ Complete (Phase 2 + 2b) |
-| Core API Ready | Phase 3 | 🔄 In Progress |
+| Auth UI (Landing) | Phase 4 | ✅ Complete |
+| Auth API Integration | Phase 4 | 🔄 In Progress |
+| Core API Ready | Phase 3 | 🔄 Pending |
 | Marketplace Live | Phase 5 | 🔄 Pending |
 | All Roles Implemented | Phase 6-8 | 🔄 Pending |
 | Production Ready | Phase 9 | 🔄 Pending |
 
 ---
 
-**Last Updated:** 2026-03-01
-**Overall Progress:** 28% (2.5/9 phases complete)
-**Next Milestone:** Backend API (Phase 3)
+**Last Updated:** 2026-03-03
+**Overall Progress:** 33% (3/9 phases: 3 complete, 1 in progress)
+**Next Milestone:** Complete Phase 4 API Integration OR Start Phase 3 Backend API

@@ -13,13 +13,22 @@ default:
     @just --list
 
 # Start everything (infra + backend + frontend)
-dev: infra
+dev: stop-infra
     #!/bin/sh
     echo "Starting backend and frontend..."
     trap 'just stop' EXIT INT TERM
     just backend &
     just frontend &
     wait
+
+# Stop only dev processes (not Docker infra)
+stop-infra:
+    #!/bin/sh
+    echo "Cleaning up ports 3001 and 5010..."
+    lsof -ti :5010 2>/dev/null | xargs -r kill -9 2>/dev/null || true
+    lsof -ti :3001 2>/dev/null | xargs -r kill -9 2>/dev/null || true
+    pkill -9 -f "next dev" 2>/dev/null || true
+    pkill -9 -f "dotnet watch run" 2>/dev/null || true
 
 # Start Docker infrastructure (MySQL, Redis, RabbitMQ)
 infra:
