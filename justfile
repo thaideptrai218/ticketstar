@@ -2,6 +2,7 @@
 # Install just: https://github.com/casey/just
 
 set dotenv-load
+set shell := ["sh", "-cu"]
 
 api_dir := "backend/src/TicketStar.API"
 infra_dir := "backend/src/TicketStar.Infrastructure"
@@ -13,7 +14,9 @@ default:
 
 # Start everything (infra + backend + frontend)
 dev: infra
-    @echo "Starting backend and frontend..."
+    #!/bin/sh
+    echo "Starting backend and frontend..."
+    trap 'just stop' EXIT INT TERM
     just backend &
     just frontend &
     wait
@@ -24,10 +27,18 @@ infra:
     @echo "Waiting for services to be healthy..."
     @sleep 3
 
-# Stop all dev processes (backend on 5010, frontend on 3001) and Docker infrastructure
-down:
-    -fuser -k 5010/tcp 2>/dev/null
-    -fuser -k 3001/tcp 2>/dev/null
+# Stop all dev processes (backend on 5010, frontend on 3001)
+stop:
+    #!/bin/sh
+    echo "Stopping all dev processes..."
+    lsof -ti :5010 | xargs -r kill -9 2>/dev/null || true
+    lsof -ti :3001 | xargs -r kill -9 2>/dev/null || true
+    pkill -9 -f "next dev" 2>/dev/null || true
+    pkill -9 -f "dotnet watch run" 2>/dev/null || true
+    echo "All dev processes stopped"
+
+# Stop all dev processes and Docker infrastructure
+down: stop infra-down
 # Stop Docker infrastructure only
 infra-down:
     docker compose down

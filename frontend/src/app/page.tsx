@@ -1,6 +1,7 @@
 import { Source_Serif_4, Be_Vietnam_Pro } from "next/font/google";
 import { NavigationBar } from "@/components/landing/navigation-bar";
 import { HeroSection } from "@/components/landing/hero-section";
+import { FeaturedEventsSection } from "@/components/landing/featured-events-section";
 import { FeaturesSection } from "@/components/landing/features-section";
 import { HowItWorksSection } from "@/components/landing/how-it-works-section";
 import { FooterSection } from "@/components/landing/footer-section";
@@ -24,6 +25,7 @@ export default function Home() {
     >
       <NavigationBar />
       <HeroSection />
+      <FeaturedEventsSection />
       <FeaturesSection />
       <HowItWorksSection />
       <FooterSection />
