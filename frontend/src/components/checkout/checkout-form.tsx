@@ -35,17 +35,17 @@ export function CheckoutForm({
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold text-stone-900">Xac nhan don hang</h2>
+      <h2 className="text-xl font-semibold text-stone-900">Xác nhận đơn hàng</h2>
 
       {/* Order items table */}
       <div className="rounded-xl border border-stone-200 overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-stone-50 text-stone-500">
             <tr>
-              <th className="px-4 py-3 text-left font-medium">Loai ve</th>
+              <th className="px-4 py-3 text-left font-medium">Loại vé</th>
               <th className="px-4 py-3 text-center font-medium">SL</th>
-              <th className="px-4 py-3 text-right font-medium">Don gia</th>
-              <th className="px-4 py-3 text-right font-medium">Thanh tien</th>
+              <th className="px-4 py-3 text-right font-medium">Đơn giá</th>
+              <th className="px-4 py-3 text-right font-medium">Thành tiền</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-stone-100">
@@ -61,7 +61,7 @@ export function CheckoutForm({
           <tfoot className="border-t border-stone-200 bg-amber-50/50">
             <tr>
               <td colSpan={3} className="px-4 py-3 text-right font-semibold text-stone-900">
-                Tong cong
+                Tổng cộng
               </td>
               <td className="px-4 py-3 text-right text-lg font-bold text-amber-700">
                 {formatPrice(total)}
@@ -79,7 +79,7 @@ export function CheckoutForm({
           disabled={isSubmitting}
           className="border-stone-200"
         >
-          Quay lai
+          Quay lại
         </Button>
         <Button
           onClick={onConfirm}
@@ -89,10 +89,10 @@ export function CheckoutForm({
           {isSubmitting ? (
             <>
               <Loader2 className="size-4 animate-spin" />
-              Dang xu ly...
+              Đang xử lý...
             </>
           ) : (
-            "Dat ve"
+            "Đặt vé"
           )}
         </Button>
       </div>

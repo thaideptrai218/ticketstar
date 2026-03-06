@@ -14,7 +14,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const event = await apiFetchServer<EventDetail>(`/api/events/slug/${slug}`);
     return {
       title: `${event.title} — TicketStar`,
-      description: event.description ?? `Dat ve ${event.title} tren TicketStar`,
+      description: event.description ?? `Đặt vé ${event.title} trên TicketStar`,
       openGraph: {
         title: event.title,
         description: event.description ?? undefined,
@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       },
     };
   } catch {
-    return { title: "Su kien — TicketStar" };
+    return { title: "Sự kiện — TicketStar" };
   }
 }
 

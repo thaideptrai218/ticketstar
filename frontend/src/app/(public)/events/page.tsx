@@ -20,9 +20,9 @@ function EventListingContent() {
           className="text-3xl font-semibold tracking-tight text-stone-900"
           style={{ fontFamily: "var(--font-display)" }}
         >
-          Su kien
+          Sự kiện
         </h1>
-        <p className="mt-2 text-stone-500">Tim kiem va dat ve su kien yeu thich</p>
+        <p className="mt-2 text-stone-500">Tìm kiếm và đặt vé sự kiện yêu thích</p>
       </div>
 
       {/* Filters */}
@@ -49,7 +49,7 @@ function EventListingContent() {
         <div className="py-16 text-center text-red-500">{error}</div>
       ) : (
         <>
-          <EventGrid events={events} emptyMessage="Khong tim thay su kien phu hop." />
+          <EventGrid events={events} emptyMessage="Không tìm thấy sự kiện phù hợp." />
 
           {/* Pagination */}
           {totalPages > 1 && (

@@ -34,7 +34,7 @@ export function EventCard({ event }: EventCardProps) {
         )}
         <div className="absolute top-3 right-3 flex items-center gap-1.5 rounded-full bg-white/90 backdrop-blur-sm px-3 py-1.5 text-sm font-medium text-stone-900 shadow-sm">
           <TicketIcon className="size-3.5 text-amber-700" />
-          {isSoldOut ? "Het ve" : formatPrice(event.minPrice)}
+          {isSoldOut ? "Hết vé" : formatPrice(event.minPrice)}
         </div>
       </div>
 
@@ -65,7 +65,7 @@ export function EventCard({ event }: EventCardProps) {
           className="mt-4 w-full border-amber-200 text-amber-700 hover:bg-amber-50 hover:border-amber-300"
           asChild
         >
-          <span>{isSoldOut ? "Xem chi tiet" : "Dat ve ngay"}</span>
+          <span>{isSoldOut ? "Xem chi tiết" : "Đặt vé ngay"}</span>
         </Button>
       </div>
     </Link>

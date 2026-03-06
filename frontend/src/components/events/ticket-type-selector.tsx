@@ -47,7 +47,7 @@ export function TicketTypeSelector({
                 <h4 className="font-medium text-stone-900">{tt.name}</h4>
                 {soldOut && (
                   <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-600">
-                    Het ve
+                    Hết vé
                   </span>
                 )}
               </div>
@@ -55,7 +55,7 @@ export function TicketTypeSelector({
               <div className="mt-1 flex items-center gap-3 text-sm">
                 <span className="font-semibold text-amber-700">{formatPrice(tt.price)}</span>
                 <span className="text-stone-400">
-                  Con {tt.availableCount}/{tt.quota}
+                  Còn {tt.availableCount}/{tt.quota}
                 </span>
               </div>
             </div>

@@ -22,7 +22,16 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 async function fetchCurrentUser(): Promise<AuthUser | null> {
   try {
-    const res = await fetch("/api/auth/me", { credentials: "include" });
+    let res = await fetch("/api/auth/me", { credentials: "include" });
+
+    // If access token expired, try refreshing then retry
+    if (res.status === 401) {
+      const refreshRes = await fetch("/api/auth/refresh", { method: "POST", credentials: "include" });
+      if (refreshRes.ok) {
+        res = await fetch("/api/auth/me", { credentials: "include" });
+      }
+    }
+
     if (!res.ok) return null;
     const json = await res.json() as { success: boolean; data?: AuthUser };
     return json.success && json.data ? json.data : null;

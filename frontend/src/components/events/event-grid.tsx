@@ -6,7 +6,7 @@ interface EventGridProps {
   emptyMessage?: string;
 }
 
-export function EventGrid({ events, emptyMessage = "Khong tim thay su kien nao." }: EventGridProps) {
+export function EventGrid({ events, emptyMessage = "Không tìm thấy sự kiện nào." }: EventGridProps) {
   if (events.length === 0) {
     return (
       <div className="py-16 text-center text-stone-500">

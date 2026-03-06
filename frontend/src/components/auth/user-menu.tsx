@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut, Settings, Shield, User } from "lucide-react";
+import { LogOut, Settings, Shield, ShoppingBag, Ticket, User } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -20,6 +20,7 @@ const ROLE_LABELS: Record<string, string> = {
   Admin: "Quản trị",
   Organizer: "Ban tổ chức",
   Staff: "Nhân viên",
+  User: "Khán giả",
   Attendee: "Khán giả",
 };
 
@@ -62,11 +63,20 @@ export function UserMenu() {
         <DropdownMenuSeparator />
 
         <DropdownMenuItem asChild>
-          <Link href="/profile" className="cursor-pointer">
-            <User className="size-4" aria-hidden="true" />
-            Hồ sơ
+          <Link href="/attendee/my-tickets" className="cursor-pointer">
+            <Ticket className="size-4" aria-hidden="true" />
+            Vé của tôi
           </Link>
         </DropdownMenuItem>
+
+        <DropdownMenuItem asChild>
+          <Link href="/attendee/orders" className="cursor-pointer">
+            <ShoppingBag className="size-4" aria-hidden="true" />
+            Đơn hàng
+          </Link>
+        </DropdownMenuItem>
+
+        <DropdownMenuSeparator />
 
         <DropdownMenuItem asChild>
           <Link href="/settings/security" className="cursor-pointer">

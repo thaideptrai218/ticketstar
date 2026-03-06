@@ -36,6 +36,7 @@ export default function RootLayout({
       <body
         className={`${serif.variable} ${body.variable} ${geistMono.variable} antialiased`}
         style={{ fontFamily: "var(--font-body), sans-serif" }}
+        suppressHydrationWarning
       >
         <AppProviders>
           <PageTransition>{children}</PageTransition>

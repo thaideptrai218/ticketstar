@@ -1,12 +1,12 @@
 # Phase 6 — Frontend Attendee Pages
 
 ## Context Links
-- [Plan Overview](plan.md) | [Phase 4](phase-04-frontend-auth-and-layout.md)
+- [Plan Overview](plan.md) | [Phase 5](phase-05-frontend-marketplace.md) | [Phase 7](phase-07-frontend-organizer.md)
 
 ## Overview
-- **Priority:** P2 | **Status:** pending | **Effort:** 6h
+- **Priority:** P2 | **Status:** completed | **Effort:** 6h
 - **Depends on:** Phase 3, 4
-- My Tickets (QR display), Order History, Ticket Transfer
+- My Tickets (QR display), Order History, Ticket Transfer — ALL COMPLETE
 
 ## Related Code Files
 **Create:**
@@ -46,18 +46,18 @@
 4. Refund button for Paid orders → `POST /api/orders/{id}/refund`
 
 ## Todo List
-- [ ] Create My Tickets page with QR display
-- [ ] Create TicketCard + TicketQrDisplay components
-- [ ] Create TicketTransferDialog
-- [ ] Create Orders list page
-- [ ] Create Order detail page with cancel/refund actions
-- [ ] Mobile responsive layout
+- [x] Create My Tickets page with QR display
+- [x] Create TicketCard + TicketQrDisplay components
+- [x] Create TicketTransferDialog
+- [x] Create Orders list page
+- [x] Create Order detail page with cancel/refund actions
+- [x] Mobile responsive layout
 
 ## Success Criteria
-- My Tickets shows all tickets with scannable QR codes
-- Transfer changes ticket ownership and regenerates QR
-- Order history shows correct statuses
-- Cancel/refund actions work from order detail
+- [x] My Tickets shows all tickets with scannable QR codes
+- [x] Transfer changes ticket ownership and regenerates QR
+- [x] Order history shows correct statuses
+- [x] Cancel action works from order detail (refund deferred to organizer-only endpoint)
 
 ## Risk Assessment
 - **Large QR images on mobile:** SVG scales well, no issue
@@ -67,5 +67,29 @@
 - All pages auth-gated via middleware
 - Transfer requires ticket ownership validation (backend)
 
+## Implementation Details
+
+### Files Created
+- `frontend/src/types/tickets.ts` — MyTicket, TicketDetail, TransferTicketRequest types
+- `frontend/src/lib/order-status-config.ts` — shared order status badge config
+- `frontend/src/components/tickets/ticket-card.tsx` — ticket display with transfer button
+- `frontend/src/components/tickets/ticket-qr-display.tsx` — QR code renderer (base64 PNG from backend)
+- `frontend/src/components/tickets/ticket-transfer-dialog.tsx` — email-based transfer dialog with validation
+- `frontend/src/components/orders/order-card.tsx` — order list item with status badge
+- `frontend/src/components/orders/order-detail.tsx` — full order details + cancel action
+
+### Files Modified
+- `frontend/src/app/(attendee)/layout.tsx` — horizontal tab nav (Vé của tôi / Đơn hàng / Cài đặt)
+- `frontend/src/app/(attendee)/attendee/my-tickets/page.tsx` — server component + grid layout
+- `frontend/src/app/(attendee)/attendee/orders/page.tsx` — paginated order history
+- `frontend/src/app/(attendee)/attendee/orders/[id]/page.tsx` — order detail with items + payment
+- `frontend/src/app/(attendee)/attendee/settings/page.tsx` — redirect to /settings/security
+
+### Design Decisions
+- QR codes: base64 PNG inline (from backend) vs react-qr-code (chose backend PNG for consistency)
+- Refund button: deferred (organizer-only endpoint, not in attendee UI)
+- Layout: horizontal tabs instead of sidebar (mobile-friendly, compact)
+- Vietnamese labels throughout (matching backend domain language)
+
 ## Next Steps
-- Phase 7: Organizer pages
+- Phase 7: Organizer pages (event creation, editing, statistics)

@@ -18,7 +18,7 @@ export function EventFilters({ search, onSearchChange }: EventFiltersProps) {
           type="text"
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="Tim kiem su kien..."
+          placeholder="Tìm kiếm sự kiện..."
           className="h-11 rounded-xl border-stone-200 bg-stone-50/80 pl-10 focus:border-amber-300 focus:ring-2 focus:ring-amber-100"
         />
         {search && (

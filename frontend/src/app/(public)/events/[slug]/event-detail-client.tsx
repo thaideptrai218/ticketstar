@@ -89,7 +89,7 @@ export function EventDetailClient({ event }: EventDetailClientProps) {
         {/* Right: ticket selection */}
         <div className="lg:sticky lg:top-24 h-fit">
           <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-stone-900 mb-4">Chon ve</h2>
+            <h2 className="text-lg font-semibold text-stone-900 mb-4">Chọn vé</h2>
             <TicketTypeSelector
               ticketTypes={event.ticketTypes}
               selection={selection}
@@ -101,8 +101,8 @@ export function EventDetailClient({ event }: EventDetailClientProps) {
               className="mt-6 w-full h-11 bg-amber-800 hover:bg-amber-900"
             >
               {totalQty === 0
-                ? "Chon ve de tiep tuc"
-                : `Mua ${totalQty} ve`}
+                ? "Chọn vé để tiếp tục"
+                : `Mua ${totalQty} vé`}
             </Button>
           </div>
         </div>
