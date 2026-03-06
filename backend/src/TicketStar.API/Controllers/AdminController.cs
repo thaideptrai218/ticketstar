@@ -1,0 +1,36 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using TicketStar.Application.Interfaces;
+
+namespace TicketStar.API.Controllers;
+
+[Authorize(Roles = "Admin")]
+[ApiController]
+[Route("api/admin")]
+public class AdminController : ApiControllerBase
+{
+    private readonly IAdminService _adminService;
+
+    public AdminController(IAdminService adminService)
+    {
+        _adminService = adminService;
+    }
+
+    [HttpGet("users")]
+    public async Task<IActionResult> ListUsers([FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
+    {
+        return FromResult(await _adminService.ListUsersAsync(page, pageSize, ct));
+    }
+
+    [HttpPost("users/{id}/lock")]
+    public async Task<IActionResult> LockUser(string id, CancellationToken ct)
+    {
+        return FromResult(await _adminService.LockUserAsync(id, ct));
+    }
+
+    [HttpPost("users/{id}/unlock")]
+    public async Task<IActionResult> UnlockUser(string id, CancellationToken ct)
+    {
+        return FromResult(await _adminService.UnlockUserAsync(id, ct));
+    }
+}

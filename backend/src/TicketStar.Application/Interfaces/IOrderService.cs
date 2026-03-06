@@ -10,4 +10,5 @@ public interface IOrderService
     Task<Result<List<OrderResponse>>> GetUserOrdersAsync(string userId, CancellationToken ct);
     Task<Result<OrderDetailResponse>> ProcessSePayWebhookAsync(string jsonPayload, string signature, CancellationToken ct);
     Task<Result<bool>> CancelOrderAsync(Guid orderId, string userId, CancellationToken ct);
+    Task<Result<bool>> RefundOrderAsync(Guid orderId, string userId, CancellationToken ct);
 }

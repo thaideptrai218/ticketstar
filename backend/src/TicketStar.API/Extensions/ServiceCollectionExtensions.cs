@@ -44,6 +44,14 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IEventService, EventService>();
         services.AddScoped<IOrderService, OrderService>();
         services.AddScoped<ICheckInService, CheckInService>();
+        services.AddScoped<ITicketService, TicketService>();
+        services.AddScoped<ITicketTypeService, TicketTypeService>();
+        services.AddScoped<IStaffService, StaffService>();
+        services.AddScoped<IPayoutService, PayoutService>();
+        services.AddScoped<IAdminService, AdminService>();
+
+        // Background services
+        services.AddHostedService<OrderExpiryService>();
 
         return services;
     }

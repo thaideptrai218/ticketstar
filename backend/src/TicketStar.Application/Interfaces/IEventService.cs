@@ -12,5 +12,6 @@ public interface IEventService
     Task<Result<PaginatedResponse<EventListItemResponse>>> ListEventsAsync(PaginatedRequest request, CancellationToken ct);
     Task<Result<List<EventListItemResponse>>> GetOrganizerEventsAsync(string organizerId, CancellationToken ct);
     Task<Result<EventDetailResponse>> PublishEventAsync(string userId, Guid eventId, CancellationToken ct);
+    Task<Result<EventDetailResponse>> UnpublishEventAsync(string userId, Guid eventId, CancellationToken ct);
     Task<Result<EventDetailResponse>> GetEventByIdAsync(Guid eventId, string userId, CancellationToken ct);
 }

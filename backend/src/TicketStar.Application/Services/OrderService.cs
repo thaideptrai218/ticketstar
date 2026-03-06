@@ -22,6 +22,7 @@ public class OrderService : IOrderService
     private readonly IUnitOfWork _unitOfWork;
     private readonly IDistributedLock _distributedLock;
     private readonly IQrCodeService _qrCodeService;
+    private readonly IPaymentRepository _paymentRepo;
     private readonly ISePayWebhookHandler _sePayHandler;
     private readonly ILogger<OrderService> _logger;
 
@@ -30,6 +31,7 @@ public class OrderService : IOrderService
         ITicketRepository ticketRepo,
         ITicketTypeRepository ticketTypeRepo,
         IEventRepository eventRepo,
+        IPaymentRepository paymentRepo,
         IUnitOfWork unitOfWork,
         IDistributedLock distributedLock,
         IQrCodeService qrCodeService,
@@ -40,6 +42,7 @@ public class OrderService : IOrderService
         _ticketRepo = ticketRepo;
         _ticketTypeRepo = ticketTypeRepo;
         _eventRepo = eventRepo;
+        _paymentRepo = paymentRepo;
         _unitOfWork = unitOfWork;
         _distributedLock = distributedLock;
         _qrCodeService = qrCodeService;
@@ -116,8 +119,12 @@ public class OrderService : IOrderService
                 Status = PaymentStatus.Pending,
                 Amount = totalAmount,
                 ExternalRef = order.Id.ToString(),
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             };
+
+            _paymentRepo.Add(payment);
+            await _unitOfWork.SaveChangesAsync(ct);
 
             var response = new OrderResponse(
                 order.Id,
@@ -315,7 +322,7 @@ public class OrderService : IOrderService
 
     public async Task<Result<bool>> CancelOrderAsync(Guid orderId, string userId, CancellationToken ct)
     {
-        var order = await _orderRepo.GetByIdAsync(orderId, ct);
+        var order = await _orderRepo.GetByIdWithItemsAsync(orderId, ct);
         if (order == null)
             return Result<bool>.Failure("Order not found", ResultError.NotFound);
 
@@ -328,6 +335,59 @@ public class OrderService : IOrderService
         order.Status = OrderStatus.Cancelled;
         order.UpdatedAt = DateTime.UtcNow;
 
+        // Release ticket reservations
+        foreach (var item in order.Items)
+        {
+            await _ticketTypeRepo.IncrementSoldCountAsync(item.TicketTypeId, -item.Quantity, ct);
+        }
+
+        _orderRepo.Update(order);
+        await _unitOfWork.SaveChangesAsync(ct);
+        return Result<bool>.Success(true);
+    }
+
+    public async Task<Result<bool>> RefundOrderAsync(Guid orderId, string userId, CancellationToken ct)
+    {
+        var order = await _orderRepo.GetByIdWithItemsAsync(orderId, ct);
+        if (order == null)
+            return Result<bool>.Failure("Order not found", ResultError.NotFound);
+
+        // Only the event organizer can issue refunds
+        if (order.Items.Count == 0)
+            return Result<bool>.Failure("Order has no items");
+
+        var ticketType = await _ticketTypeRepo.GetByIdAsync(order.Items.First().TicketTypeId, ct);
+        var eventEntity = ticketType != null ? await _eventRepo.GetByIdAsync(ticketType.EventId, ct) : null;
+        if (eventEntity == null || eventEntity.OrganizerId != userId)
+            return Result<bool>.Failure("Only the event organizer can refund orders", ResultError.Forbidden);
+
+        if (order.Status != OrderStatus.Paid)
+            return Result<bool>.Failure("Only paid orders can be refunded");
+
+        order.Status = OrderStatus.Refunded;
+        order.UpdatedAt = DateTime.UtcNow;
+
+        // Release ticket counts
+        foreach (var item in order.Items)
+        {
+            await _ticketTypeRepo.IncrementSoldCountAsync(item.TicketTypeId, -item.Quantity, ct);
+        }
+
+        // Cancel issued tickets
+        var tickets = await _ticketRepo.GetByOrderAsync(orderId, ct);
+        foreach (var ticket in tickets)
+        {
+            _ticketRepo.Remove(ticket);
+        }
+
+        // Update payment status
+        if (order.Payment != null)
+        {
+            order.Payment.Status = PaymentStatus.Refunded;
+            order.Payment.UpdatedAt = DateTime.UtcNow;
+        }
+
+        _orderRepo.Update(order);
         await _unitOfWork.SaveChangesAsync(ct);
         return Result<bool>.Success(true);
     }

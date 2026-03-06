@@ -1,15 +1,14 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
-using TicketStar.Application.Interfaces;
 using TicketStar.Application.DTOs.CheckIn;
+using TicketStar.Application.Interfaces;
 
 namespace TicketStar.API.Controllers;
 
 [Authorize]
 [ApiController]
 [Route("api/checkin")]
-public class CheckInController : ControllerBase
+public class CheckInController : ApiControllerBase
 {
     private readonly ICheckInService _checkInService;
 
@@ -18,30 +17,22 @@ public class CheckInController : ControllerBase
         _checkInService = checkInService;
     }
 
-    [HttpPost("scan")]
-    public async Task<IActionResult> ScanTicket([FromBody] CheckInTicketRequest request, CancellationToken ct)
+    [HttpPost("events/{eventId:guid}/scan")]
+    public async Task<IActionResult> ScanTicket(Guid eventId, [FromBody] CheckInTicketRequest request, CancellationToken ct)
     {
-        var scannerId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
-        // EventId would come from staff context or request
-        // For now, we'd need to derive it from the ticket
-        var result = await _checkInService.ScanTicketAsync(request.QrCode, scannerId, Guid.Empty, ct);
-
-        return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Error);
+        var scannerId = GetUserId() ?? "";
+        return FromResult(await _checkInService.ScanTicketAsync(request.QrCode, scannerId, eventId, ct));
     }
 
     [HttpGet("events/{eventId:guid}/stats")]
     public async Task<IActionResult> GetEventStats(Guid eventId, CancellationToken ct)
     {
-        var result = await _checkInService.GetEventStatsAsync(eventId, ct);
-
-        return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Error);
+        return FromResult(await _checkInService.GetEventStatsAsync(eventId, ct));
     }
 
     [HttpGet("events/{eventId:guid}/checkins")]
     public async Task<IActionResult> GetEventCheckIns(Guid eventId, CancellationToken ct)
     {
-        var result = await _checkInService.GetEventCheckInsAsync(eventId, ct);
-
-        return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Error);
+        return FromResult(await _checkInService.GetEventCheckInsAsync(eventId, ct));
     }
 }

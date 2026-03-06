@@ -231,6 +231,34 @@ public class EventService : IEventService
         }
     }
 
+    public async Task<Result<EventDetailResponse>> UnpublishEventAsync(string userId, Guid eventId, CancellationToken ct)
+    {
+        var eventEntity = await _eventRepo.GetByIdAsync(eventId, ct);
+        if (eventEntity == null)
+            return Result<EventDetailResponse>.Failure("Event not found", ResultError.NotFound);
+
+        if (eventEntity.OrganizerId != userId)
+            return Result<EventDetailResponse>.Failure("Not authorized", ResultError.Forbidden);
+
+        eventEntity.Status = EventStatus.Draft;
+        eventEntity.UpdatedAt = DateTime.UtcNow;
+
+        try
+        {
+            _eventRepo.Update(eventEntity);
+            await _unitOfWork.SaveChangesAsync(ct);
+            await InvalidateEventCacheAsync(eventEntity.Slug, eventId, ct);
+
+            var response = await MapToDetailResponseAsync(eventId, ct);
+            return Result<EventDetailResponse>.Success(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to unpublish event");
+            return Result<EventDetailResponse>.Failure("Failed to unpublish event");
+        }
+    }
+
     public async Task<Result<EventDetailResponse>> GetEventByIdAsync(Guid eventId, string userId, CancellationToken ct)
     {
         var eventEntity = await _eventRepo.GetByIdAsync(eventId, ct);
