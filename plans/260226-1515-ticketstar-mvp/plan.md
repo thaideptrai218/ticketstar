@@ -24,8 +24,8 @@ created: 2026-02-26
 | 1   | [Project Scaffolding](phase-01-project-scaffolding.md)         | 6h     | completed | —          |
 | 2   | [Database & Identity](phase-02-database-and-identity.md)       | 10h    | completed | 1          |
 | 3   | [Backend API](phase-03-backend-api.md)                         | 16h    | completed | 2          |
-| 4   | [Frontend Auth & Layout](phase-04-frontend-auth-and-layout.md) | 8h     | pending   | 1          |
-| 5   | [Frontend Marketplace](phase-05-frontend-marketplace.md)       | 10h    | pending   | 3, 4       |
+| 4   | [Frontend Auth & Layout](phase-04-frontend-auth-and-layout.md) | 8h     | completed | 1          |
+| 5   | [Frontend Marketplace](phase-05-frontend-marketplace.md)       | 10h    | completed | 3, 4       |
 | 6   | [Frontend Attendee](phase-06-frontend-attendee.md)             | 6h     | pending   | 3, 4       |
 | 7   | [Frontend Organizer](phase-07-frontend-organizer.md)           | 10h    | pending   | 3, 4       |
 | 8   | [Frontend Staff & Admin](phase-08-frontend-staff-admin.md)     | 6h     | pending   | 3, 4       |
@@ -47,6 +47,24 @@ created: 2026-02-26
 - QR payload: `ticketId|eventId|userId|timestamp` + HMAC-SHA256
 
 ## Validation Log
+
+### Session 7 — 2026-03-07 (Phase 5 Implementation Complete)
+
+| Phase   | Status    | Completion Details                                                            |
+| ------- | --------- | ----------------------------------------------------------------------------- |
+| Phase 4 | completed | ✅ Auth proxy layer with role-based middleware (auth.ts, api/auth/*)          |
+|         |           | ✅ Role-based layouts (AdminLayout, OrganizerLayout, StaffLayout, AttendeeLayout) |
+|         |           | ✅ Protected route wrappers with automatic redirects                         |
+|         |           | ✅ Navigation enhancements (role-aware menus, breadcrumbs)                   |
+| Phase 5 | completed | ✅ TypeScript types: events.ts, orders.ts (Event, TicketType, Order, OrderItem) |
+|         |           | ✅ Event components: EventCard, EventGrid, EventFilters, TicketTypeSelector  |
+|         |           | ✅ Checkout components: CheckoutForm, PaymentStatus                         |
+|         |           | ✅ Hooks: useEventSearch (debounced search, URL params), useCheckout (polling state machine) |
+|         |           | ✅ Pages: (public)/layout, (public)/events/page, events/[slug]/page, checkout/page |
+|         |           | ✅ Format utilities: formatPrice, formatDate, formatVenue (DRY)              |
+|         |           | ✅ Homepage wired: search → /events, "Xem tat ca" → /events                 |
+|         |           | ✅ Build passes: 0 errors                                                   |
+|         |           | ✅ Code review fixes: OrderDetail type, debounce polish, recursive setTimeout, formatPrice DRY, param validation |
 
 ### Session 6 — 2026-03-06 (Phase 3 Implementation Complete)
 

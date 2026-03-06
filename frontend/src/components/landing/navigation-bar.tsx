@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Ticket, Search, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
@@ -10,11 +11,15 @@ import { useState } from "react";
 export function NavigationBar() {
   const { isAuthenticated, isLoading } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
+  const router = useRouter();
 
   const handleSearch = (e: React.SyntheticEvent) => {
     e.preventDefault();
-    console.log("Search:", searchQuery);
-    // TODO: Navigate to search results
+    if (searchQuery.trim()) {
+      router.push(`/events?q=${encodeURIComponent(searchQuery.trim())}`);
+    } else {
+      router.push("/events");
+    }
   };
 
   return (

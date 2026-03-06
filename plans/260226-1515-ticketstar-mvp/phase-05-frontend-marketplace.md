@@ -4,7 +4,7 @@
 - [Plan Overview](plan.md) | [Phase 4](phase-04-frontend-auth-and-layout.md)
 
 ## Overview
-- **Priority:** P1 | **Status:** pending | **Effort:** 10h
+- **Priority:** P1 | **Status:** completed | **Effort:** 10h
 - **Depends on:** Phase 3, 4
 - Homepage, event search/filter, event detail, checkout flow, mock payment UI
 
@@ -80,17 +80,17 @@
 6. `PaymentStatus`: loading spinner (processing), success check, error state
 
 ## Todo List
-- [ ] Define event + order TypeScript types
-- [ ] Create homepage with EventGrid (ISR)
-- [ ] Create event listing with search/filter (CSR)
-- [ ] Create event detail page (SSR + metadata)
-- [ ] Create TicketTypeSelector component
-- [ ] Create checkout page with state machine
-- [ ] Create PaymentStatus component (processing/success/fail)
-- [ ] Implement order polling after payment
-- [ ] Handle sold-out (409) gracefully
-- [ ] Add skeleton loading states
-- [ ] Mobile responsive design
+- [x] Define event + order TypeScript types
+- [x] Create homepage with EventGrid (ISR)
+- [x] Create event listing with search/filter (CSR)
+- [x] Create event detail page (SSR + metadata)
+- [x] Create TicketTypeSelector component
+- [x] Create checkout page with state machine
+- [x] Create PaymentStatus component (processing/success/fail)
+- [x] Implement order polling after payment
+- [x] Handle sold-out (409) gracefully
+- [x] Add skeleton loading states
+- [x] Mobile responsive design
 
 ## Success Criteria
 - Homepage loads with events, SEO metadata present

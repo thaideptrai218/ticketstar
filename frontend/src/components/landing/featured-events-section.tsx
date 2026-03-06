@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Calendar, MapPin, TicketIcon } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ScrollReveal } from "./scroll-reveal";
 import Image from "next/image";
@@ -184,8 +185,9 @@ export function FeaturedEventsSection() {
               variant="outline"
               size="lg"
               className="border-stone-300 text-stone-700 hover:bg-stone-50"
+              asChild
             >
-              Xem tất cả sự kiện
+              <Link href="/events">Xem tất cả sự kiện</Link>
             </Button>
           </div>
         </ScrollReveal>

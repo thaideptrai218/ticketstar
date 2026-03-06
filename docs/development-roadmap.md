@@ -7,9 +7,9 @@
 | 1 | Project Scaffolding | 6h | ✅ Complete | 100% |
 | 2 | Database & Identity | 10h | ✅ Complete | 100% |
 | 2b | Auth Hardening (Security) | 22h | ✅ Complete | 100% |
-| 3 | Backend API | 16h | 🔄 Pending | 0% |
+| 3 | Backend API | 16h | ✅ Complete | 100% |
 | 4 | Frontend Auth & Layout | 8h | ✅ Complete | 100% |
-| 5 | Frontend Marketplace | 10h | 🔄 Pending | 0% |
+| 5 | Frontend Marketplace | 10h | ✅ Complete | 100% |
 | 6 | Frontend Attendee | 6h | 🔄 Pending | 0% |
 | 7 | Frontend Organizer | 10h | 🔄 Pending | 0% |
 | 8 | Frontend Staff & Admin | 6h | 🔄 Pending | 0% |
@@ -215,47 +215,60 @@
 
 ---
 
-## Phase 3: Backend API 🔄 Pending
+## Phase 3: Backend API ✅ Complete
 
-**Status:** Pending
-**Estimated Start:** 2026-02-28
+**Status:** Complete
+**Completed:** 2026-03-04
 **Effort:** 16 hours
 **Dependencies:** Phase 2
 
-### Planned Deliverables
+### Completed Deliverables
 
-#### Core Services
-- [ ] EventService (CRUD + quota logic)
-- [ ] TicketService (purchase + QR generation)
-- [ ] OrderService (SePay integration)
-- [ ] CheckInService (QR validation)
+#### Core Services ✅
+- [x] EventService (CRUD + quota logic)
+- [x] TicketService (purchase + QR generation)
+- [x] OrderService (SePay integration)
+- [x] CheckInService (QR validation)
+- [x] TicketTypeService (tier management)
+- [x] PayoutService (organizer earnings)
+- [x] QrCodeService (HMAC-signed QR generation)
 
-#### Controllers
-- [ ] EventsController
-- [ ] TicketsController
-- [ ] OrdersController
-- [ ] CheckInController
+#### Controllers ✅
+- [x] EventsController (list, detail, search)
+- [x] TicketsController (purchase, list)
+- [x] OrdersController (status polling)
+- [x] CheckInController (QR scan validation)
+- [x] TicketTypesController (create, update, delete)
+- [x] PayoutController (withdrawal)
+- [x] WebhooksController (SePay payments)
+- [x] AdminController (user/event management)
+- [x] StaffController (event check-ins)
 
-#### Caching
-- [ ] Redis cache service
-- [ ] Distributed lock for ticket quota
-- [ ] Cache invalidation strategy
+#### Caching ✅
+- [x] Redis cache service
+- [x] Distributed lock for ticket quota
+- [x] Cache invalidation strategy
+- [x] Event detail caching (1h TTL)
 
-#### Messaging
-- [ ] MassTransit setup
-- [ ] Email stub consumers (console log)
-- [ ] Order confirmation message
+#### Messaging ✅
+- [x] MassTransit + RabbitMQ setup
+- [x] Email stub consumers (console log)
+- [x] Order confirmation message (OrderCreated event)
+- [x] Email notification messages
 
-#### External Services
-- [ ] SePay webhook handler
-- [ ] Google token validation
+#### External Services ✅
+- [x] SePay webhook handler (payment confirmation)
+- [x] QR code signature validation
+- [x] Ticket quota enforcement with Redis lock
 
 ### Success Criteria
-- [ ] All CRUD operations functional
-- [ ] Ticket quota enforcement (Redis lock)
-- [ ] QR code generation with HMAC signature
-- [ ] SePay webhook processing
-- [ ] RabbitMQ messages published
+- [x] All CRUD operations functional
+- [x] Ticket quota enforcement (Redis lock)
+- [x] QR code generation with HMAC signature
+- [x] SePay webhook processing
+- [x] RabbitMQ messages published
+- [x] Search/filter endpoints
+- [x] Pagination support
 
 ---
 
@@ -336,39 +349,57 @@
 
 ---
 
-## Phase 5: Frontend Marketplace 🔄 Pending
+## Phase 5: Frontend Marketplace ✅ Complete
 
-**Status:** Pending
-**Estimated Start:** 2026-03-04
+**Status:** Complete
+**Completed:** 2026-03-06
 **Effort:** 10 hours
 **Dependencies:** Phase 3, Phase 4
 
-### Planned Deliverables
+### Completed Deliverables
 
-#### Public Pages
-- [ ] Home/event listing page
-- [ ] Event detail page
-- [ ] Ticket tier selection
-- [ ] Checkout flow
+#### Public Pages ✅
+- [x] Event listing page (`/events`) with search & filters
+- [x] Event detail page (`/events/[slug]`) with SSR + metadata
+- [x] Checkout page (`/app/checkout`) with ProtectedRoute
+- [x] Landing page integrated with marketplace
 
-#### Components
-- [ ] EventCard component
-- [ ] EventList component
-- [ ] TicketSelector component
-- [ ] CheckoutForm component
-- [ ] OrderConfirmation component
+#### Components ✅
+- [x] EventCard component (image, title, date, price, availability)
+- [x] EventGrid component (responsive layout)
+- [x] EventFilters component (category, date range, price)
+- [x] TicketTypeSelector component (tier selection + quantity)
+- [x] CheckoutForm component (form state + validation)
+- [x] PaymentStatus component (order polling + result display)
 
-#### Features
-- [ ] Event search/filter
-- [ ] QR code display after purchase
-- [ ] Order status polling
+#### Hooks ✅
+- [x] useEventSearch (debounced, URL-synced search + filters)
+- [x] useCheckout (state machine, order polling with recursive setTimeout)
+
+#### Features ✅
+- [x] Event search/filter (debounced, updates URL)
+- [x] SSR event detail with generateMetadata (SEO + OpenGraph)
+- [x] QR code display after purchase (PaymentStatus component)
+- [x] Order status polling (2s interval, 2min max, handles 409 conflict)
+- [x] Responsive design (mobile-first)
+- [x] Format utilities (formatPrice, formatDate, formatTime)
+
+#### Architecture Decisions ✅
+- [x] Event detail: SSR (SEO) + generateMetadata for social cards
+- [x] Event listing: CSR (interactive filters)
+- [x] Checkout: Protected route under (app) layout with ProtectedRoute wrapper
+- [x] Order polling: Recursive setTimeout (no overlapping), 2s interval, 2min max
+- [x] 409 conflict handling: Graceful sold-out ticket feedback
 
 ### Success Criteria
-- [ ] Browse all events
-- [ ] View event details
-- [ ] Select tickets
-- [ ] Complete checkout (SePay stub)
-- [ ] View QR ticket
+- [x] Browse all events with search/filter
+- [x] View event details with rich metadata
+- [x] Select ticket tiers and quantities
+- [x] Complete checkout flow
+- [x] View QR code after successful purchase
+- [x] Order status polls correctly
+- [x] Responsive across mobile/tablet/desktop
+- [x] SEO metadata renders for social sharing
 
 ---
 
@@ -530,13 +561,13 @@ Phase 2   Phase 4
 | Data Layer Complete | Phase 2 | ✅ Complete |
 | Auth Security Hardened | Phase 2b | ✅ Complete |
 | Frontend Auth Proxy & API Integration | Phase 4 | ✅ Complete |
-| Core API Ready | Phase 3 | 🔄 Pending |
-| Marketplace Live | Phase 5 | 🔄 Pending |
-| All Roles Implemented | Phase 6-8 | 🔄 Pending |
+| Core API Ready | Phase 3 | ✅ Complete |
+| Marketplace Live | Phase 5 | ✅ Complete |
+| All Roles Implemented | Phase 6-8 | 🔄 In Progress |
 | Production Ready | Phase 9 | 🔄 Pending |
 
 ---
 
-**Last Updated:** 2026-03-06
-**Overall Progress:** 44% (4/9 phases complete: 1, 2, 2b, 4)
-**Next Milestone:** Complete Phase 3 (Backend API) - unblocks Phase 5 (Marketplace)
+**Last Updated:** 2026-03-07
+**Overall Progress:** 66% (6/9 phases complete: 1, 2, 2b, 3, 4, 5)
+**Next Milestone:** Complete Phase 6 (Frontend Attendee) - user ticket dashboard

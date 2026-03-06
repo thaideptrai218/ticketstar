@@ -367,7 +367,10 @@ MfaSetupResponse {
 | Server API client | ✅ Complete | 4 |
 | shadcn/ui components | ✅ Complete | 4 |
 | Landing page | ✅ Complete | 4 |
-| **Event listing (marketplace)** | 🔄 Pending | 5 |
+| Event listing (marketplace) | ✅ Complete | 5 |
+| Event detail (SSR + SEO) | ✅ Complete | 5 |
+| Checkout flow (protected) | ✅ Complete | 5 |
+| Order polling & QR display | ✅ Complete | 5 |
 | **Organizer dashboard** | 🔄 Pending | 7 |
 | **Admin dashboard** | 🔄 Pending | 8 |
 | **Staff check-in page** | 🔄 Pending | 8 |
@@ -389,16 +392,147 @@ MfaSetupResponse {
 
 ---
 
-## Next Steps (Phase 5+)
+## Phase 5: Frontend Marketplace
 
-1. **Phase 3** — Backend API (events, orders, check-in)
-2. **Phase 5** — Marketplace pages (event listing, detail, checkout)
-3. **Phase 6** — Attendee dashboard (my tickets, QR display)
-4. **Phase 7** — Organizer dashboard (event creation, stats)
-5. **Phase 8** — Staff/Admin dashboards (check-in scanner, user mgmt)
-6. **Phase 9** — E2E & unit tests
+### Public Route Group (`(public)`)
+
+```
+frontend/src/app/
+├── (public)/
+│   ├── page.tsx                    # Landing page (hero, features, events)
+│   └── events/
+│       ├── page.tsx                # Event listing (CSR, search + filters)
+│       ├── [slug]/
+│       │   ├── page.tsx            # Event detail (SSR, metadata)
+│       │   └── event-detail-client.tsx # Client interactivity
+```
+
+**Key Features:**
+- **Event Listing** (`/events`): CSR with `useEventSearch` hook (debounced, URL-synced filters)
+- **Event Detail** (`/events/[slug]`): SSR with `generateMetadata()` for OpenGraph/Twitter cards
+- **Client-Side Rendering:** Event listing uses interactive filters; landing page integrates featured events
+
+### Marketplace Components
+
+```
+components/
+├── events/
+│   ├── event-card.tsx              # Card UI (image, title, date, price, availability)
+│   ├── event-grid.tsx              # Grid layout (responsive, pagination)
+│   ├── event-filters.tsx           # Search, category, date range, price filters
+│   └── ticket-type-selector.tsx    # Quantity picker for each ticket tier
+│
+└── checkout/
+    ├── checkout-form.tsx           # Form (email validation, tier selection)
+    └── payment-status.tsx          # Order polling + QR code display
+```
+
+### Protected Checkout (`(app)`)
+
+```
+frontend/src/app/
+└── (app)/
+    └── checkout/
+        └── page.tsx                # Checkout (ProtectedRoute wrapper)
+```
+
+**Architecture:**
+- Checkout route protected by `ProtectedRoute` wrapper (requires authentication)
+- Under `(app)` layout (shows sidebar)
+- Form submission → POST /api/orders/create
+- Order polling via `useCheckout` hook (2s interval, 2min max, recursive setTimeout)
+
+### Custom Hooks
+
+```
+hooks/
+├── useEventSearch.ts               # Debounced search, URL-synced filters
+└── useCheckout.ts                  # Order polling state machine, QR handling
+```
+
+**useEventSearch:**
+- Debounced (500ms) search input
+- Syncs filters to URL query params
+- Returns: events[], isLoading, totalCount, pagination controls
+
+**useCheckout:**
+- Polls POST /api/orders/{orderId}/status every 2s
+- Max 2min polling (60 requests)
+- Handles 409 conflict (sold-out gracefully)
+- Returns: order state, QR code URL, payment status
+
+### Format Utilities
+
+```
+lib/utils.ts
+├── formatPrice(amount, currency)    # $12.99 format
+├── formatDate(date)                 # Mar 15, 2026
+└── formatTime(date)                 # 7:30 PM
+```
+
+### Types
+
+```
+types/api.ts
+├── Event                            # EventId, Name, Description, Date, Price, Quota
+├── TicketType                       # TierId, Name, Price, Quantity, Available
+├── Order                            # OrderId, Status, Items[], Total, QrCode
+├── CreateOrderRequest               # { eventId, items: [ { ticketTypeId, quantity } ] }
+└── OrderStatusResponse              # { status, qrCode?, message? }
+```
+
+### SEO & Metadata
+
+Event detail page uses Next.js `generateMetadata()`:
+
+```typescript
+// /events/[slug]/page.tsx
+export async function generateMetadata({ params }): Promise<Metadata> {
+  const event = await fetchEventDetail(params.slug);
+  return {
+    title: event.name,
+    description: event.description,
+    openGraph: {
+      title: event.name,
+      description: event.description,
+      images: [{ url: event.imageUrl }],
+      type: 'website',
+    },
+  };
+}
+```
+
+### Order Polling Implementation
+
+```typescript
+// Recursive setTimeout (no overlapping requests)
+const pollOrder = async () => {
+  const response = await apiFetch(`/api/orders/${orderId}/status`);
+
+  if (response.status === 'completed') {
+    setPaymentStatus('success');
+    setQrCode(response.qrCode);
+    return; // Stop polling
+  }
+
+  if (response.status === 'pending') {
+    setTimeout(pollOrder, 2000); // Next poll in 2s
+  }
+};
+```
+
+**409 Conflict Handling:**
+- When ticket type is sold out: Handle gracefully with user-friendly message
+- Don't retry; show "Sold out" and suggest alternative tiers
+
+## Next Steps (Phase 6+)
+
+1. **Phase 6** — Attendee dashboard (my tickets, QR display, filter by date)
+2. **Phase 7** — Organizer dashboard (event creation, edit, stats, payouts)
+3. **Phase 8** — Staff/Admin dashboards (check-in scanner, user management)
+4. **Phase 9** — E2E & unit tests
 
 ---
 
-**Last Updated:** 2026-03-06
-**Phase:** 4 Complete - Frontend Auth & Layout
+**Last Updated:** 2026-03-07
+**Phase:** 5 Complete - Frontend Marketplace

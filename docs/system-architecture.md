@@ -168,12 +168,23 @@ Browser          Next.js            .NET Backend
 ```
 frontend/
 ├── app/
+│   ├── (public)/                 # Public route group
+│   │   ├── page.tsx              # Landing page (hero, features)
+│   │   └── events/
+│   │       ├── page.tsx          # Event listing (CSR, search + filters)
+│   │       └── [slug]/
+│   │           ├── page.tsx      # Event detail (SSR, metadata)
+│   │           └── event-detail-client.tsx # Client interactivity
+│   │
 │   ├── (auth)/                   # Auth route group (public)
 │   │   ├── login/
 │   │   ├── register/
 │   │   └── magic-link/verify/
-│   ├── (app)/                    # Protected app routes
-│   │   └── settings/security/    # MFA management
+│   │
+│   ├── (app)/                    # Protected app routes (sidebar layout)
+│   │   ├── settings/security/    # MFA management
+│   │   └── checkout/             # Checkout (ProtectedRoute wrapper)
+│   │
 │   ├── (organizer)/              # Organizer dashboard (role-based)
 │   ├── (admin)/                  # Admin dashboard (role-based)
 │   ├── (attendee)/               # Attendee dashboard (role-based)
@@ -188,17 +199,24 @@ frontend/
 │   │   └── mfa/...
 │   ├── unauthorized/             # 403 error page
 │   ├── layout.tsx
-│   └── page.tsx                  # Landing page
+│   └── page.tsx                  # Redirects to (public)/page.tsx
 ├── components/
 │   ├── ui/                       # shadcn/ui base components
 │   ├── auth/                     # Auth forms + MFA components
 │   ├── layout/                   # Navigation, sidebars
-│   ├── events/                   # Event components
-│   ├── tickets/                  # Ticket components
-│   └── checkout/                 # Checkout flow
+│   ├── events/
+│   │   ├── event-card.tsx        # Event card UI
+│   │   ├── event-grid.tsx        # Grid layout
+│   │   ├── event-filters.tsx     # Search + filters
+│   │   └── ticket-type-selector.tsx # Tier selection
+│   └── checkout/
+│       ├── checkout-form.tsx     # Checkout form
+│       └── payment-status.tsx    # Order polling + QR display
 ├── contexts/
 │   └── auth-context.tsx          # User state + login/logout
-├── hooks/                        # Custom React hooks
+├── hooks/
+│   ├── useEventSearch.ts         # Debounced search, URL-synced
+│   └── useCheckout.ts            # Order polling state machine
 ├── lib/
 │   ├── api-client.ts             # Browser fetch (auto-refresh on 401)
 │   ├── api-server.ts             # Server fetch (forwards cookies)
@@ -206,9 +224,9 @@ frontend/
 │   │   ├── auth-api-client.ts    # Typed auth endpoint calls
 │   │   ├── auth-token-manager.ts # Token lifecycle management
 │   │   └── auth-types.ts         # Auth DTOs
-│   └── utils.ts
+│   └── utils.ts                  # formatPrice, formatDate, formatTime
 ├── types/
-│   └── api.ts                    # ApiResponse<T>, PagedResult<T>
+│   └── api.ts                    # ApiResponse<T>, PagedResult<T>, Event, Order
 └── middleware.ts                 # Role-based route protection
 ```
 
@@ -250,6 +268,46 @@ frontend/
 - **Client Components** (`"use client"`): Interactive UI, forms, use `apiFetch()` or `authApi.*`
 - **Route Handlers** (`app/api/auth/*`): Proxy to backend, manage cookies transparently
 - **Middleware** (`middleware.ts`): JWT decode + role validation for protected routes
+- **Protected Route Wrapper**: Checks user auth before rendering; redirects to `/login` if missing
+
+### Marketplace Architecture (Phase 5)
+
+**Public Marketplace Routes:**
+```
+GET /events                 # Event listing (CSR with filters)
+  ├─ useEventSearch hook (debounced, URL-synced)
+  ├─ EventGrid component (responsive)
+  └─ EventFilters component (category, date, price)
+
+GET /events/[slug]          # Event detail (SSR with metadata)
+  ├─ generateMetadata() for OpenGraph/Twitter cards
+  ├─ Event description, image, ticket types
+  └─ TicketTypeSelector component (quantity picker)
+```
+
+**Protected Checkout Route:**
+```
+GET /app/checkout           # Checkout page (requires auth)
+  ├─ ProtectedRoute wrapper (redirects to /login)
+  ├─ CheckoutForm component (billing, tier selection)
+  └─ Order submission → POST /api/orders/create
+```
+
+**Order Status Polling:**
+```
+POST /api/orders/{orderId}/status  # Client polls every 2s
+  ├─ Max polling: 2 minutes (60 requests)
+  ├─ Recursive setTimeout (no overlapping requests)
+  ├─ Returns: { status, qrCode, message }
+  └─ 409 Conflict handling for sold-out tiers
+```
+
+**Key Decisions:**
+- **Event Listing:** CSR (enables real-time filters without page reload)
+- **Event Detail:** SSR (SEO importance; generateMetadata ensures social cards work)
+- **Checkout:** Protected (requires authentication; uses ProtectedRoute wrapper)
+- **Order Polling:** Recursive setTimeout avoids race conditions; 2s interval balances UX + backend load
+- **Sold-Out Handling:** 409 response triggers user-friendly message (no retry)
 
 ### API Client Architecture
 
@@ -479,5 +537,5 @@ Recovery Code Flow:
 
 ---
 
-**Last Updated:** 2026-03-06
-**Phase:** 4 Complete - Frontend Auth & Layout
+**Last Updated:** 2026-03-07
+**Phase:** 5 Complete - Frontend Marketplace
