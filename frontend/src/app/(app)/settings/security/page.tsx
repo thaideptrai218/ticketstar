@@ -12,7 +12,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/auth-context";
 import { authApi, AuthApiError } from "@/lib/auth/auth-api-client";
-import { getToken } from "@/lib/auth/auth-token-manager";
 
 const disableSchema = z.object({
   code: z.string().min(1, "Vui lòng nhập mã xác thực"),
@@ -23,9 +22,6 @@ type View = "status" | "setup" | "disable";
 
 export default function SecuritySettingsPage() {
   const { user } = useAuth();
-  // We detect MFA state via a local flag toggled on setup/disable actions.
-  // Initial state inferred from context isn't available yet, so we default to
-  // unknown and rely on the action results.
   const [mfaEnabled, setMfaEnabled] = useState<boolean | null>(null);
   const [view, setView] = useState<View>("status");
   const [disableError, setDisableError] = useState<string | null>(null);
@@ -38,11 +34,9 @@ export default function SecuritySettingsPage() {
   } = useForm<DisableFormData>({ resolver: zodResolver(disableSchema) });
 
   const onDisable = async (data: DisableFormData) => {
-    const token = getToken();
-    if (!token) return;
     setDisableError(null);
     try {
-      await authApi.disableMfa({ code: data.code }, token);
+      await authApi.disableMfa({ code: data.code });
       setMfaEnabled(false);
       setView("status");
       reset();
@@ -143,7 +137,6 @@ export default function SecuritySettingsPage() {
 
   // ── Status view ────────────────────────────────────────────────────────────
   const isMfaOn = mfaEnabled === true;
-  const isMfaOff = mfaEnabled === false;
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -160,7 +153,7 @@ export default function SecuritySettingsPage() {
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-4">
             <div className={`flex size-10 items-center justify-center rounded-xl ${
-              isMfaOn ? "bg-emerald-50" : isMfaOff ? "bg-stone-100" : "bg-amber-50"
+              isMfaOn ? "bg-emerald-50" : "bg-amber-50"
             }`}>
               {isMfaOn ? (
                 <ShieldCheck className="size-5 text-emerald-600" aria-hidden="true" />

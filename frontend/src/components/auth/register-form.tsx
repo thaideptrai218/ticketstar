@@ -17,7 +17,7 @@ import { PasswordInput } from "./password-input";
 
 export function RegisterForm() {
   const [serverError, setServerError] = useState<string | null>(null);
-  const { handleTokenReceived } = useAuth();
+  const { refreshUser } = useAuth();
   const router = useRouter();
 
   const {
@@ -29,8 +29,8 @@ export function RegisterForm() {
   const onSubmit = async (data: RegisterFormData) => {
     setServerError(null);
     try {
-      const res = await authApi.register(data);
-      handleTokenReceived(res.accessToken);
+      await authApi.register(data);
+      await refreshUser();
       toast.success("Tạo tài khoản thành công! Chào mừng bạn đến TicketStar.");
       router.push("/");
     } catch (err) {

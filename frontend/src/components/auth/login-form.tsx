@@ -28,7 +28,7 @@ export function LoginForm() {
   const [mfaToken, setMfaToken] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
 
-  const { handleTokenReceived } = useAuth();
+  const { refreshUser } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   // Validate returnUrl is same-origin to prevent open redirect attacks
@@ -43,8 +43,8 @@ export function LoginForm() {
     formState: { errors, isSubmitting },
   } = useForm<LoginFormData>({ resolver: zodResolver(loginSchema) });
 
-  const handleSuccess = (token: string) => {
-    handleTokenReceived(token);
+  const handleSuccess = async () => {
+    await refreshUser();
     router.push(returnUrl);
   };
 
@@ -60,7 +60,7 @@ export function LoginForm() {
       if (isMfaChallenge(res)) {
         handleMfaRequired(res.mfaToken);
       } else {
-        handleSuccess(res.accessToken);
+        await handleSuccess();
         toast.success("Đăng nhập thành công!");
       }
     } catch (err) {
@@ -75,8 +75,8 @@ export function LoginForm() {
     return (
       <MfaChallengeForm
         mfaToken={mfaToken}
-        onSuccess={(token) => {
-          handleSuccess(token);
+        onSuccess={async () => {
+          await handleSuccess();
           toast.success("Đăng nhập thành công!");
         }}
         onBack={() => {
@@ -112,8 +112,8 @@ export function LoginForm() {
 
       {/* Google login */}
       <GoogleLoginButton
-        onSuccess={(token) => {
-          handleSuccess(token);
+        onSuccess={async () => {
+          await handleSuccess();
           toast.success("Đăng nhập thành công!");
         }}
         onMfaRequired={handleMfaRequired}

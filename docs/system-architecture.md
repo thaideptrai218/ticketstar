@@ -133,67 +133,146 @@ backend/
 
 ## Frontend Architecture (Next.js 15)
 
+### Auth Proxy Layer (Phase 4)
+
+Browser requests never call the .NET backend directly for auth. Instead:
+
+```
+Browser          Next.js            .NET Backend
+  │              Proxy Routes       API
+  ├─ POST /api/auth/login ──────→ POST /auth/login-email
+  │  (credentials: 'include')       │
+  │                                 ├─ Validate password
+  │                                 ├─ Generate JWT
+  │                                 ├─ Set httpOnly cookie
+  │  ←──────────── HttpOnly Cookie ──┤ (Set-Cookie: ts_at)
+  │  (ts_at in secure httpOnly)      │
+  │
+  ├─ Next request with ts_at ──→ POST /api/auth/me
+  │  (auto-sent by browser)         │
+  │  Proxy reads ts_at cookie        ├─ Decode JWT
+  │  Forwards as Bearer:             ├─ Return user info
+  │  Authorization: Bearer <ts_at>   │
+  │  ←──────────── User data ────────┘
+```
+
+**Key Points:**
+- Client-side JS never sees or touches tokens (httpOnly)
+- Proxy routes (`/api/auth/*`) handle cookie forwarding
+- Access token (`ts_at`) is server-set via Set-Cookie header
+- Refresh token lives in httpOnly cookie with SameSite=Strict, Path=/api/auth
+- Auto-refresh on 401 via `apiFetch()` concurrent-safe queue
+
 ### App Router Structure
 
 ```
 frontend/
-├── app/                          # App Router
-│   ├── (auth)/                   # Auth route group
+├── app/
+│   ├── (auth)/                   # Auth route group (public)
 │   │   ├── login/
-│   │   └── magic-link/
-│   ├── (dashboard)/              # Dashboard route group
-│   │   ├── organizer/
-│   │   ├── staff/
-│   │   └── admin/
-│   ├── (marketplace)/            # Public marketplace
-│   │   ├── events/
-│   │   └── tickets/
-│   ├── api/                      # Route handlers (API proxy)
-│   │   └── auth/
+│   │   ├── register/
+│   │   └── magic-link/verify/
+│   ├── (app)/                    # Protected app routes
+│   │   └── settings/security/    # MFA management
+│   ├── (organizer)/              # Organizer dashboard (role-based)
+│   ├── (admin)/                  # Admin dashboard (role-based)
+│   ├── (attendee)/               # Attendee dashboard (role-based)
+│   ├── (staff)/                  # Staff dashboard (role-based)
+│   ├── api/auth/                 # Proxy route handlers
+│   │   ├── login/route.ts
+│   │   ├── register/route.ts
+│   │   ├── me/route.ts
+│   │   ├── refresh/route.ts
+│   │   ├── logout/route.ts
+│   │   ├── google/route.ts
+│   │   └── mfa/...
+│   ├── unauthorized/             # 403 error page
 │   ├── layout.tsx
-│   └── page.tsx
-├── components/                   # React components
+│   └── page.tsx                  # Landing page
+├── components/
 │   ├── ui/                       # shadcn/ui base components
-│   ├── auth/                     # Auth-specific components
+│   ├── auth/                     # Auth forms + MFA components
+│   ├── layout/                   # Navigation, sidebars
 │   ├── events/                   # Event components
 │   ├── tickets/                  # Ticket components
-│   └── checkout/                 # Checkout components
+│   └── checkout/                 # Checkout flow
+├── contexts/
+│   └── auth-context.tsx          # User state + login/logout
 ├── hooks/                        # Custom React hooks
-├── lib/                          # Utilities
-│   ├── api.ts                    # API client
-│   ├── query.ts                  # React Query setup
-│   └── utils.ts                  # Helper functions
-└── types/                        # TypeScript types
+├── lib/
+│   ├── api-client.ts             # Browser fetch (auto-refresh on 401)
+│   ├── api-server.ts             # Server fetch (forwards cookies)
+│   ├── auth/
+│   │   ├── auth-api-client.ts    # Typed auth endpoint calls
+│   │   ├── auth-token-manager.ts # Token lifecycle management
+│   │   └── auth-types.ts         # Auth DTOs
+│   └── utils.ts
+├── types/
+│   └── api.ts                    # ApiResponse<T>, PagedResult<T>
+└── middleware.ts                 # Role-based route protection
+```
+
+### Authentication Data Flow
+
+```
+1. Login
+   User submits email/password
+        ↓
+   POST /api/auth/login
+        ↓
+   Proxy: fetch POST /auth/login-email (backend)
+        ↓
+   Backend generates JWT, sets Set-Cookie: ts_at
+        ↓
+   Browser receives httpOnly cookie (ts_at)
+        ↓
+   AuthProvider.useEffect hydrates user from /api/auth/me
+
+2. Subsequent API Calls
+   apiFetch<T>(path) with credentials: 'include'
+        ↓
+   Browser auto-sends ts_at cookie
+        ↓
+   Backend validates JWT, returns data
+        ↓
+   If 401: apiFetch triggers concurrent-safe refresh
+        ↓
+   Proxy calls POST /api/auth/refresh (sends refresh_token cookie)
+        ↓
+   Backend rotates tokens, sets new ts_at
+        ↓
+   apiFetch retries original request with new ts_at
 ```
 
 ### Component Patterns
 
-- **Server Components** (default): Data fetching, static content
-- **Client Components** (`"use client"`): Interactive UI, forms, real-time updates
-- **Route Handlers**: Proxy API calls, handle auth cookies
+- **Server Components** (default): Data fetching, static content, use `apiFetchServer()`
+- **Client Components** (`"use client"`): Interactive UI, forms, use `apiFetch()` or `authApi.*`
+- **Route Handlers** (`app/api/auth/*`): Proxy to backend, manage cookies transparently
+- **Middleware** (`middleware.ts`): JWT decode + role validation for protected routes
 
-### Data Flow
+### API Client Architecture
 
+**Browser-side (`apiFetch`):**
+```typescript
+// Calls backend directly with credentials: 'include'
+// ts_at cookie auto-sent by browser
+// Concurrent 401s share one refresh attempt
+const user = await apiFetch<User>('/api/users/me');
 ```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   Browser   │────▶│ Next.js     │────▶│  .NET API   │
-│             │     │ Route       │     │             │
-│             │     │ Handlers    │     │             │
-└─────────────┘     └──────┬──────┘     └──────┬──────┘
-                          │                    │
-                    ┌─────┴─────┐      ┌───────┴───────┐
-                    │ React Query│      │  Controller  │
-                    │ (Client)   │      │     ↓        │
-                    └───────────┘      │  Service      │
-                                       │     ↓        │
-                                       │ Repository   │
-                                       └──────┬───────┘
-                                              │
-                                 ┌────────────┴────────────┐
-                                 ▼                         ▼
-                          ┌──────────┐            ┌──────────┐
-                          │  MySQL   │            │  Redis   │
-                          └──────────┘            └──────────┘
+
+**Server-side (`apiFetchServer`):**
+```typescript
+// Forwards cookies from incoming request to backend
+// No retry logic (runs in server context)
+const user = await apiFetchServer<User>('/api/users/me');
+```
+
+**Auth-specific (`authApi`):**
+```typescript
+// Typed calls to auth proxy endpoints
+// Always use for login, register, MFA flows
+const response = await authApi.login({ email, password });
 ```
 
 ## Infrastructure Architecture
@@ -239,29 +318,42 @@ Services:
 
 ## Authentication Architecture
 
-### JWT Flow (httpOnly Cookies)
+### JWT Flow (httpOnly Cookies + Next.js Proxy)
+
+Phase 4 introduces a Next.js proxy layer that sits between the browser and the .NET backend:
 
 ```
-┌─────────────┐                ┌─────────────┐
-│   Browser   │                │   .NET API  │
-└──────┬──────┘                └──────┬──────┘
-       │                              │
-       │ 1. POST /auth/login-email    │
-       │─────────────────────────────▶│
-       │                              │
-       │ 2. Validate password (Argon2)│
-       │    Generate JWT              │
-       │    Set httpOnly cookie       │
-       │◀─────────────────────────────│
-       │                              │
-       │ 3. Subsequent requests       │
-       │    include cookie            │
-       │─────────────────────────────▶│
-       │                              │
-       │ 4. Validate JWT              │
-       │    Return data               │
-       │◀─────────────────────────────│
+┌─────────────┐     ┌──────────────────┐     ┌─────────────┐
+│   Browser   │     │   Next.js Proxy  │     │   .NET API  │
+└──────┬──────┘     └────────┬─────────┘     └──────┬──────┘
+       │                     │                      │
+       │ 1. POST /api/auth/  │                      │
+       │    login            │ 2. POST /auth/       │
+       │    (no token in JS) │    login-email       │
+       │────────────────────▶│─────────────────────▶│
+       │                     │                      │
+       │                     │ 3. Validate password │
+       │                     │    Generate JWT (ts_at)
+       │                     │    Set-Cookie: ts_at │
+       │                     │◀─────────────────────│
+       │ 4. Browser receives │                      │
+       │    Set-Cookie:ts_at │                      │
+       │◀────────────────────│ (httpOnly, Secure)   │
+       │                     │                      │
+       │ 5. GET /api/auth/me │                      │
+       │    (ts_at cookie    │ 6. GET /api/users/me│
+       │     auto-sent)      │    (Bearer <ts_at>) │
+       │────────────────────▶│─────────────────────▶│
+       │                     │                      │
+       │ 7. User data        │ 8. User data         │
+       │◀────────────────────│◀─────────────────────│
 ```
+
+**Critical Design:**
+- Browser never stores tokens in JS (XSS protection)
+- Proxy routes at `/api/auth/*` forward to backend
+- Cookies handled transparently by browser + Set-Cookie headers
+- Backend always validates JWT on every authenticated request
 
 ### OAuth Flow (Google/Apple)
 
@@ -346,10 +438,10 @@ Recovery Code Flow:
 ## Security Architecture
 
 ### Authentication Layers
-1. **Next.js Route Handlers**: Proxy auth requests, handle OAuth flow
-2. **.NET API**: JWT validation, refresh token rotation, token blacklisting
-3. **Authorization**: Role-based + event-level permissions
-4. **Middleware**: Token blacklist verification, rate limit enforcement
+1. **Next.js Middleware** (`middleware.ts`): Fast JWT decode (no sig verify), role-based redirect to `/login` or `/unauthorized`
+2. **Next.js Route Handlers** (`/api/auth/*`): Proxy auth requests to backend, manage httpOnly cookies
+3. **.NET API**: JWT validation + signature verification, refresh token rotation, token blacklisting
+4. **Middleware (.NET)**: Token blacklist verification (Redis), rate limit enforcement
 
 ### Data Protection
 
@@ -387,5 +479,5 @@ Recovery Code Flow:
 
 ---
 
-**Last Updated:** 2026-03-01
-**Phase:** 2 Complete - Authentication & Security Hardening
+**Last Updated:** 2026-03-06
+**Phase:** 4 Complete - Frontend Auth & Layout

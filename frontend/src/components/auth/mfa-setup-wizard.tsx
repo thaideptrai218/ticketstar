@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AlertCircle, ArrowLeft, CheckCircle, Loader2, Smartphone } from "lucide-react";
+import { AlertCircle, ArrowLeft, CheckCircle, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import QRCode from "react-qr-code";
@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { authApi, AuthApiError } from "@/lib/auth/auth-api-client";
-import { getToken } from "@/lib/auth/auth-token-manager";
 import { RecoveryCodesDisplay } from "./recovery-codes-display";
 
 type Step = "setup" | "verify" | "done";
@@ -41,10 +40,8 @@ export function MfaSetupWizard({ onComplete, onCancel }: MfaSetupWizardProps) {
   } = useForm<VerifyFormData>({ resolver: zodResolver(verifySchema) });
 
   useEffect(() => {
-    const token = getToken();
-    if (!token) return;
     authApi
-      .setupMfa(token)
+      .setupMfa()
       .then((res) => {
         setQrUri(res.qrCodeUri);
         setSecret(res.secret);
@@ -58,10 +55,8 @@ export function MfaSetupWizard({ onComplete, onCancel }: MfaSetupWizardProps) {
   }, []);
 
   const onVerify = async (data: VerifyFormData) => {
-    const token = getToken();
-    if (!token) return;
     try {
-      const res = await authApi.verifyMfaSetup({ code: data.code }, token);
+      const res = await authApi.verifyMfaSetup({ code: data.code });
       // Clear sensitive data from state after successful verification
       setQrUri("");
       setSecret("");

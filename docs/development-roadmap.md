@@ -8,7 +8,7 @@
 | 2 | Database & Identity | 10h | ✅ Complete | 100% |
 | 2b | Auth Hardening (Security) | 22h | ✅ Complete | 100% |
 | 3 | Backend API | 16h | 🔄 Pending | 0% |
-| 4 | Frontend Auth & Layout | 8h | 🔄 In Progress | 60% |
+| 4 | Frontend Auth & Layout | 8h | ✅ Complete | 100% |
 | 5 | Frontend Marketplace | 10h | 🔄 Pending | 0% |
 | 6 | Frontend Attendee | 6h | 🔄 Pending | 0% |
 | 7 | Frontend Organizer | 10h | 🔄 Pending | 0% |
@@ -259,11 +259,11 @@
 
 ---
 
-## Phase 4: Frontend Auth & Layout 🔄 In Progress
+## Phase 4: Frontend Auth & Layout ✅ Complete
 
-**Status:** In Progress (60% complete)
-**Started:** 2026-03-02
-**Effort:** 8 hours (5h remaining)
+**Status:** Complete
+**Completed:** 2026-03-06
+**Effort:** 8 hours
 **Dependencies:** Phase 1
 
 ### Completed Deliverables
@@ -281,8 +281,8 @@
 - [x] Login page (email/password + Google OAuth)
 - [x] Register page
 - [x] Magic link verify page
-- [x] Protected route wrapper
 - [x] Settings/security page (MFA)
+- [x] Unauthorized error page
 
 #### Auth Components ✅
 - [x] MFA challenge form
@@ -294,32 +294,45 @@
 - [x] User menu
 - [x] Login/register forms
 
-#### UI Components ✅
+#### API Integration ✅
+- [x] Browser API client with auto-refresh on 401 (concurrent-safe queue)
+- [x] Server-side API client with cookie forwarding
+- [x] Auth API client with typed endpoints
+- [x] Error handling with field-level validation
+- [x] Type definitions (ApiResponse<T>, PagedResult<T>, auth DTOs)
+- [x] Auth context/provider with user hydration from /api/auth/me
+- [x] Token manager for lifecycle management
+
+#### Auth Proxy Layer ✅
+- [x] Next.js proxy routes at /api/auth/* (register, login, refresh, logout, MFA endpoints)
+- [x] Cookie management: ts_at (access, httpOnly, 5min) and refresh_token (httpOnly, SameSite=Strict)
+- [x] Browser never directly calls backend for auth
+- [x] Proxy transparently handles Set-Cookie headers
+
+#### Middleware & Routing ✅
+- [x] `middleware.ts` — JWT decode + role-based redirect
+- [x] Role-based route groups: (organizer), (admin), (attendee), (staff)
+- [x] Protected route protection with login redirect + returnUrl
+- [x] Unauthorized error page for insufficient permissions
+
+#### Layout & Components ✅
 - [x] shadcn/ui integration (15+ components)
+- [x] App sidebar component for dashboard
 - [x] Page transitions
 - [x] Loading states (skeleton)
-
-### Remaining Deliverables
-
-#### API Integration ⏳
-- [ ] API client with fetch wrapper
-- [ ] React Query setup (TanStack Query)
-- [ ] Error handling
-- [ ] Type definitions (DTOs)
-
-#### Layout ⏳
-- [ ] Dashboard layout (sidebar)
-- [ ] Role-based routing
-- [ ] Auth context/provider
+- [x] UI Components (buttons, forms, dialogs, toasts, etc.)
 
 ### Success Criteria
 - [x] Landing page renders
-- [x] Auth forms visible
-- [ ] Google OAuth redirects correctly
-- [ ] Magic link form submits
-- [x] Protected routes wrapper exists
-- [x] Layout renders on all pages
-- [ ] API client functional
+- [x] Auth forms functional
+- [x] Google OAuth flow works end-to-end
+- [x] Magic link form submits via proxy
+- [x] Protected routes redirect to /login
+- [x] MFA setup/challenge flows functional
+- [x] API client handles 401 refresh transparently
+- [x] AuthContext provides user state
+- [x] All middleware role checks enforce permissions
+- [x] httpOnly cookies secure against XSS
 
 ---
 
@@ -516,8 +529,7 @@ Phase 2   Phase 4
 | Infrastructure Ready | Phase 1 | ✅ Complete |
 | Data Layer Complete | Phase 2 | ✅ Complete |
 | Auth Security Hardened | Phase 2b | ✅ Complete |
-| Auth UI (Landing) | Phase 4 | ✅ Complete |
-| Auth API Integration | Phase 4 | 🔄 In Progress |
+| Frontend Auth Proxy & API Integration | Phase 4 | ✅ Complete |
 | Core API Ready | Phase 3 | 🔄 Pending |
 | Marketplace Live | Phase 5 | 🔄 Pending |
 | All Roles Implemented | Phase 6-8 | 🔄 Pending |
@@ -525,6 +537,6 @@ Phase 2   Phase 4
 
 ---
 
-**Last Updated:** 2026-03-03
-**Overall Progress:** 33% (3/9 phases: 3 complete, 1 in progress)
-**Next Milestone:** Complete Phase 4 API Integration OR Start Phase 3 Backend API
+**Last Updated:** 2026-03-06
+**Overall Progress:** 44% (4/9 phases complete: 1, 2, 2b, 4)
+**Next Milestone:** Complete Phase 3 (Backend API) - unblocks Phase 5 (Marketplace)

@@ -20,7 +20,7 @@ function MagicLinkVerifyInner() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
   const router = useRouter();
-  const { handleTokenReceived } = useAuth();
+  const { refreshUser } = useAuth();
   const [state, setState] = useState<State>({ status: "verifying" });
   const hasRun = useRef(false);
 
@@ -35,11 +35,11 @@ function MagicLinkVerifyInner() {
 
     authApi
       .verifyMagicLink({ token })
-      .then((res) => {
+      .then(async (res) => {
         if (isMfaChallenge(res)) {
           setState({ status: "mfa", mfaToken: res.mfaToken });
         } else {
-          handleTokenReceived(res.accessToken);
+          await refreshUser();
           toast.success("Đăng nhập thành công!");
           router.push("/");
         }
@@ -53,7 +53,7 @@ function MagicLinkVerifyInner() {
               : "Link đã hết hạn hoặc không hợp lệ.",
         });
       });
-  }, [token, handleTokenReceived, router]);
+  }, [token, refreshUser, router]);
 
   if (state.status === "verifying") {
     return (
@@ -68,8 +68,8 @@ function MagicLinkVerifyInner() {
     return (
       <MfaChallengeForm
         mfaToken={state.mfaToken}
-        onSuccess={(accessToken) => {
-          handleTokenReceived(accessToken);
+        onSuccess={async () => {
+          await refreshUser();
           toast.success("Đăng nhập thành công!");
           router.push("/");
         }}

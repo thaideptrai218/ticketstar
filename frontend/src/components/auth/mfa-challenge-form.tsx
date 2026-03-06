@@ -12,7 +12,7 @@ import { mfaChallengeSchema, type MfaChallengeFormData } from "@/lib/auth/auth-t
 
 interface MfaChallengeFormProps {
   mfaToken: string;
-  onSuccess: (accessToken: string) => void;
+  onSuccess: () => void | Promise<void>;
   onBack: () => void;
 }
 
@@ -36,12 +36,12 @@ export function MfaChallengeForm({
   const onSubmit = async (data: MfaChallengeFormData) => {
     setServerError(null);
     try {
-      const res = await authApi.mfaChallenge({
+      await authApi.mfaChallenge({
         mfaToken,
         code: data.code,
         isRecoveryCode: isRecoveryMode,
       });
-      onSuccess(res.accessToken);
+      await onSuccess();
     } catch (err) {
       setServerError(
         err instanceof AuthApiError ? err.message : "Xác thực thất bại",

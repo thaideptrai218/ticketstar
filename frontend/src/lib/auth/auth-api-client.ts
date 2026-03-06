@@ -1,3 +1,7 @@
+// Auth API client — all calls go through Next.js proxy routes (/api/auth/*)
+// Proxy routes handle httpOnly cookie management and Bearer token forwarding.
+// Client-side JS never touches tokens directly.
+
 import type {
     RegisterRequest,
     LoginRequest,
@@ -13,21 +17,6 @@ import type {
     MfaVerifySetupResponse,
 } from "./auth-types";
 
-const AUTH_BASE_URL =
-    process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5010";
-
-// ─── Backend envelope ─────────────────────────────────────────────────────────
-// All backend responses: { success, data?, error?, traceId? }
-
-interface ApiEnvelope<T> {
-    success: boolean;
-    data?: T;
-    error?: string;
-    message?: string;
-    errors?: Record<string, string[]>;
-    traceId?: string;
-}
-
 // ─── Error class ──────────────────────────────────────────────────────────────
 
 export class AuthApiError extends Error {
@@ -37,113 +26,109 @@ export class AuthApiError extends Error {
         public fieldErrors?: Record<string, string[]>,
     ) {
         super(message);
+        this.name = "AuthApiError";
     }
 }
 
-// ─── Base Fetch ───────────────────────────────────────────────────────────────
+// ─── Internal fetch ───────────────────────────────────────────────────────────
 
-async function authFetch<T>(
-    endpoint: string,
-    options: RequestInit = {},
-    accessToken?: string,
-): Promise<T> {
+interface ApiEnvelope<T> {
+    success: boolean;
+    data?: T;
+    error?: string;
+    message?: string;
+    errors?: Record<string, string[]>;
+}
+
+async function proxyFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
     const headers: HeadersInit = {
         "Content-Type": "application/json",
-        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         ...options.headers,
     };
 
-    const response = await fetch(`${AUTH_BASE_URL}/api/auth${endpoint}`, {
+    const res = await fetch(path, {
         credentials: "include",
         ...options,
         headers,
     });
 
-    const text = await response.text();
+    const text = await res.text();
     let body: ApiEnvelope<T> | null = null;
     try {
         body = text ? JSON.parse(text) : null;
     } catch {
-        // Non-JSON response (e.g. 502 proxy error)
-        throw new AuthApiError("Đã xảy ra lỗi máy chủ. Vui lòng thử lại.", response.status);
+        throw new AuthApiError("Đã xảy ra lỗi máy chủ. Vui lòng thử lại.", res.status);
     }
 
-    if (!response.ok || body?.success === false) {
-        const message =
-            body?.error ?? body?.message ?? "Đã xảy ra lỗi. Vui lòng thử lại.";
-        throw new AuthApiError(message, response.status, body?.errors);
+    if (!res.ok || body?.success === false) {
+        const message = body?.error ?? body?.message ?? "Đã xảy ra lỗi. Vui lòng thử lại.";
+        throw new AuthApiError(message, res.status, body?.errors);
     }
 
-    // Return unwrapped data (or empty object for void endpoints)
     return (body?.data ?? {}) as T;
 }
 
-// ─── Auth API ─────────────────────────────────────────────────────────────────
+// ─── Auth API — all via proxy routes ─────────────────────────────────────────
 
 export const authApi = {
     register: (data: RegisterRequest) =>
-        authFetch<AccessTokenResponse>("/register", {
+        proxyFetch<AccessTokenResponse>("/api/auth/register", {
             method: "POST",
             body: JSON.stringify(data),
         }),
 
     login: (data: LoginRequest) =>
-        authFetch<LoginResponse>("/login", {
+        proxyFetch<LoginResponse>("/api/auth/login", {
             method: "POST",
             body: JSON.stringify(data),
         }),
 
     googleLogin: (data: GoogleLoginRequest) =>
-        authFetch<LoginResponse>("/google-login", {
+        proxyFetch<LoginResponse>("/api/auth/google", {
             method: "POST",
             body: JSON.stringify(data),
         }),
 
     requestMagicLink: (data: MagicLinkRequest) =>
-        authFetch<{ message: string }>("/magic-link/request", {
+        proxyFetch<{ message: string }>("/api/auth/magic-link/request", {
             method: "POST",
             body: JSON.stringify(data),
         }),
 
     verifyMagicLink: (data: MagicLinkVerifyRequest) =>
-        authFetch<LoginResponse>("/magic-link/verify", {
+        proxyFetch<LoginResponse>("/api/auth/magic-link/verify", {
             method: "POST",
             body: JSON.stringify(data),
         }),
 
     refreshToken: () =>
-        authFetch<AccessTokenResponse>("/refresh", { method: "POST" }),
+        proxyFetch<AccessTokenResponse>("/api/auth/refresh", { method: "POST" }),
 
-    logout: (accessToken: string) =>
-        authFetch<void>("/logout", { method: "POST" }, accessToken),
+    logout: () =>
+        proxyFetch<void>("/api/auth/logout", { method: "POST" }),
 
-    revokeAll: (accessToken: string) =>
-        authFetch<void>("/revoke-all", { method: "POST" }, accessToken),
+    revokeAll: () =>
+        proxyFetch<void>("/api/auth/revoke-all", { method: "POST" }),
 
-    setupMfa: (accessToken: string) =>
-        authFetch<MfaSetupResponse>(
-            "/mfa/setup",
-            { method: "POST" },
-            accessToken,
-        ),
-
-    verifyMfaSetup: (data: MfaVerifySetupRequest, accessToken: string) =>
-        authFetch<MfaVerifySetupResponse>(
-            "/mfa/verify-setup",
-            { method: "POST", body: JSON.stringify(data) },
-            accessToken,
-        ),
-
+    // MFA — proxy reads ts_at cookie server-side and forwards as Bearer
     mfaChallenge: (data: MfaChallengeRequest) =>
-        authFetch<AccessTokenResponse>("/mfa/challenge", {
+        proxyFetch<AccessTokenResponse>("/api/auth/mfa/challenge", {
             method: "POST",
             body: JSON.stringify(data),
         }),
 
-    disableMfa: (data: MfaDisableRequest, accessToken: string) =>
-        authFetch<void>(
-            "/mfa/disable",
-            { method: "POST", body: JSON.stringify(data) },
-            accessToken,
-        ),
+    setupMfa: () =>
+        proxyFetch<MfaSetupResponse>("/api/auth/mfa/setup", { method: "POST" }),
+
+    verifyMfaSetup: (data: MfaVerifySetupRequest) =>
+        proxyFetch<MfaVerifySetupResponse>("/api/auth/mfa/verify-setup", {
+            method: "POST",
+            body: JSON.stringify(data),
+        }),
+
+    disableMfa: (data: MfaDisableRequest) =>
+        proxyFetch<void>("/api/auth/mfa/disable", {
+            method: "POST",
+            body: JSON.stringify(data),
+        }),
 };

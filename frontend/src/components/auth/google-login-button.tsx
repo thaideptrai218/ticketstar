@@ -6,9 +6,8 @@ import { isMfaChallenge } from "@/lib/auth/auth-types";
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
 
-
 interface GoogleLoginButtonProps {
-  onSuccess: (token: string) => void;
+  onSuccess: () => void | Promise<void>;
   onMfaRequired: (mfaToken: string) => void;
   onError: (message: string) => void;
 }
@@ -20,12 +19,11 @@ function GoogleLoginInner({
 }: GoogleLoginButtonProps) {
   const handleCredential = async (credential: string) => {
     try {
-      // credential is a JWT ID token — exactly what the backend expects
       const res = await authApi.googleLogin({ idToken: credential });
       if (isMfaChallenge(res)) {
         onMfaRequired(res.mfaToken);
       } else {
-        onSuccess(res.accessToken);
+        await onSuccess();
       }
     } catch (err) {
       onError(
