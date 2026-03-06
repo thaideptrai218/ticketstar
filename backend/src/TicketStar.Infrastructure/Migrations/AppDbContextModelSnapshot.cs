@@ -73,7 +73,7 @@ namespace TicketStar.Infrastructure.Migrations
                     b.HasIndex("Provider", "ProviderUserId")
                         .IsUnique();
 
-                    b.ToTable("AuthIdentities", (string)null);
+                    b.ToTable("AuthIdentities");
                 });
 
             modelBuilder.Entity("TicketStar.Domain.Entities.AuthSession", b =>
@@ -117,7 +117,7 @@ namespace TicketStar.Infrastructure.Migrations
 
                     b.HasIndex("UserId", "IsActive");
 
-                    b.ToTable("AuthSessions", (string)null);
+                    b.ToTable("AuthSessions");
                 });
 
             modelBuilder.Entity("TicketStar.Domain.Entities.CheckIn", b =>
@@ -149,7 +149,7 @@ namespace TicketStar.Infrastructure.Migrations
 
                     b.HasIndex("EventId", "ScannedAt");
 
-                    b.ToTable("CheckIns", (string)null);
+                    b.ToTable("CheckIns");
                 });
 
             modelBuilder.Entity("TicketStar.Domain.Entities.EmailChangeRequest", b =>
@@ -191,7 +191,7 @@ namespace TicketStar.Infrastructure.Migrations
 
                     b.HasIndex("UserId", "CreatedAt");
 
-                    b.ToTable("EmailChangeRequests", (string)null);
+                    b.ToTable("EmailChangeRequests");
                 });
 
             modelBuilder.Entity("TicketStar.Domain.Entities.Event", b =>
@@ -257,7 +257,7 @@ namespace TicketStar.Infrastructure.Migrations
 
                     b.HasIndex("Status", "StartAt");
 
-                    b.ToTable("Events", (string)null);
+                    b.ToTable("Events");
                 });
 
             modelBuilder.Entity("TicketStar.Domain.Entities.MagicLink", b =>
@@ -302,7 +302,7 @@ namespace TicketStar.Infrastructure.Migrations
 
                     b.HasIndex("UserId", "CreatedAt");
 
-                    b.ToTable("MagicLinks", (string)null);
+                    b.ToTable("MagicLinks");
                 });
 
             modelBuilder.Entity("TicketStar.Domain.Entities.Order", b =>
@@ -346,7 +346,7 @@ namespace TicketStar.Infrastructure.Migrations
 
                     b.HasIndex("Status", "CreatedAt");
 
-                    b.ToTable("Orders", (string)null);
+                    b.ToTable("Orders");
                 });
 
             modelBuilder.Entity("TicketStar.Domain.Entities.OrderItem", b =>
@@ -378,7 +378,7 @@ namespace TicketStar.Infrastructure.Migrations
 
                     b.HasIndex("TicketTypeId");
 
-                    b.ToTable("OrderItems", (string)null);
+                    b.ToTable("OrderItems");
                 });
 
             modelBuilder.Entity("TicketStar.Domain.Entities.Payment", b =>
@@ -427,7 +427,7 @@ namespace TicketStar.Infrastructure.Migrations
                     b.HasIndex("OrderId")
                         .IsUnique();
 
-                    b.ToTable("Payments", (string)null);
+                    b.ToTable("Payments");
                 });
 
             modelBuilder.Entity("TicketStar.Domain.Entities.RefreshToken", b =>
@@ -480,7 +480,7 @@ namespace TicketStar.Infrastructure.Migrations
 
                     b.HasIndex("UserId", "FamilyId");
 
-                    b.ToTable("RefreshTokens", (string)null);
+                    b.ToTable("RefreshTokens");
                 });
 
             modelBuilder.Entity("TicketStar.Domain.Entities.SecurityEvent", b =>
@@ -530,7 +530,7 @@ namespace TicketStar.Infrastructure.Migrations
 
                     b.HasIndex("UserId", "CreatedAt");
 
-                    b.ToTable("SecurityEvents", (string)null);
+                    b.ToTable("SecurityEvents");
                 });
 
             modelBuilder.Entity("TicketStar.Domain.Entities.StaffAssignment", b =>
@@ -564,7 +564,7 @@ namespace TicketStar.Infrastructure.Migrations
                     b.HasIndex("UserId", "EventId")
                         .IsUnique();
 
-                    b.ToTable("StaffAssignments", (string)null);
+                    b.ToTable("StaffAssignments");
                 });
 
             modelBuilder.Entity("TicketStar.Domain.Entities.Ticket", b =>
@@ -613,7 +613,7 @@ namespace TicketStar.Infrastructure.Migrations
 
                     b.HasIndex("EventId", "UserId");
 
-                    b.ToTable("Tickets", (string)null);
+                    b.ToTable("Tickets");
                 });
 
             modelBuilder.Entity("TicketStar.Domain.Entities.TicketType", b =>
@@ -659,7 +659,7 @@ namespace TicketStar.Infrastructure.Migrations
 
                     b.HasIndex("EventId");
 
-                    b.ToTable("TicketTypes", (string)null);
+                    b.ToTable("TicketTypes");
                 });
 
             modelBuilder.Entity("TicketStar.Domain.Entities.User", b =>
@@ -692,6 +692,9 @@ namespace TicketStar.Infrastructure.Migrations
                     b.Property<DateTime?>("LockedUntil")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<bool>("MfaEnabled")
+                        .HasColumnType("tinyint(1)");
+
                     b.Property<string>("PasswordHash")
                         .HasMaxLength(500)
                         .HasColumnType("varchar(500)");
@@ -718,7 +721,7 @@ namespace TicketStar.Infrastructure.Migrations
                     b.HasIndex("Email")
                         .IsUnique();
 
-                    b.ToTable("Users", (string)null);
+                    b.ToTable("Users");
                 });
 
             modelBuilder.Entity("TicketStar.Domain.Entities.UserProfile", b =>
@@ -754,7 +757,7 @@ namespace TicketStar.Infrastructure.Migrations
 
                     b.HasKey("UserId");
 
-                    b.ToTable("UserProfiles", (string)null);
+                    b.ToTable("UserProfiles");
                 });
 
             modelBuilder.Entity("TicketStar.Domain.Entities.WebAuthnCredential", b =>
@@ -800,7 +803,7 @@ namespace TicketStar.Infrastructure.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("WebAuthnCredentials", (string)null);
+                    b.ToTable("WebAuthnCredentials");
                 });
 
             modelBuilder.Entity("TicketStar.Domain.Entities.AuthIdentity", b =>

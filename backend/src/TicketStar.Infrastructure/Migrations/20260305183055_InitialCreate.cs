@@ -34,7 +34,8 @@ namespace TicketStar.Infrastructure.Migrations
                     LockedUntil = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP(6)"),
                     UpdatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP(6)"),
-                    DeletedAt = table.Column<DateTime>(type: "datetime(6)", nullable: true)
+                    DeletedAt = table.Column<DateTime>(type: "datetime(6)", nullable: true),
+                    MfaEnabled = table.Column<bool>(type: "tinyint(1)", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -327,7 +328,8 @@ namespace TicketStar.Infrastructure.Migrations
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     ExpiresAt = table.Column<DateTime>(type: "datetime(6)", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP(6)"),
-                    RevokedAt = table.Column<DateTime>(type: "datetime(6)", nullable: true)
+                    RevokedAt = table.Column<DateTime>(type: "datetime(6)", nullable: true),
+                    RowVersion = table.Column<DateTime>(type: "timestamp(6)", rowVersion: true, nullable: true, defaultValueSql: "CURRENT_TIMESTAMP(6)")
                 },
                 constraints: table =>
                 {
