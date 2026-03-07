@@ -4,7 +4,7 @@
 - [Plan Overview](plan.md) | [Phase 4](phase-04-frontend-auth-and-layout.md)
 
 ## Overview
-- **Priority:** P2 | **Status:** pending | **Effort:** 10h
+- **Priority:** P2 | **Status:** completed | **Effort:** 10h
 - **Depends on:** Phase 3, 4
 - Organizer dashboard, event CRUD, ticket type management, check-in view, payout
 
@@ -68,16 +68,16 @@
 2. Detail page: breakdown by ticket type, order list
 
 ## Todo List
-- [ ] Create organizer dashboard with stats cards
-- [ ] Create event list page with actions
-- [ ] Create event create/edit form with validation
-- [ ] Implement publish/unpublish toggle
-- [ ] Create ticket type management (CRUD)
-- [ ] Create event orders table
-- [ ] Create check-in stats view
-- [ ] Create staff management page
-- [ ] Create payout summary + detail pages
-- [ ] Sidebar navigation for organizer section
+- [x] Create organizer dashboard with stats cards
+- [x] Create event list page with actions
+- [x] Create event create/edit form with validation
+- [x] Implement publish/unpublish toggle
+- [x] Create ticket type management (CRUD)
+- [x] Create event orders table
+- [x] Create check-in stats view
+- [x] Create staff management page
+- [x] Create payout summary + detail pages
+- [x] Sidebar navigation for organizer section
 
 ## Success Criteria
 - Create event → add ticket types → publish → visible on marketplace

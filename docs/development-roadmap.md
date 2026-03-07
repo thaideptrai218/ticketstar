@@ -10,9 +10,9 @@
 | 3 | Backend API | 16h | ✅ Complete | 100% |
 | 4 | Frontend Auth & Layout | 8h | ✅ Complete | 100% |
 | 5 | Frontend Marketplace | 10h | ✅ Complete | 100% |
-| 6 | Frontend Attendee | 6h | 🔄 Pending | 0% |
-| 7 | Frontend Organizer | 10h | 🔄 Pending | 0% |
-| 8 | Frontend Staff & Admin | 6h | 🔄 Pending | 0% |
+| 6 | Frontend Attendee | 6h | ✅ Complete | 100% |
+| 7 | Frontend Organizer | 10h | ✅ Complete | 100% |
+| 8 | Frontend Staff & Admin | 6h | ✅ Complete | 100% |
 | 9 | Testing | 8h | 🔄 Pending | 0% |
 
 **Total Effort:** 80 hours
@@ -403,94 +403,124 @@
 
 ---
 
-## Phase 6: Frontend Attendee 🔄 Pending
+## Phase 6: Frontend Attendee ✅ Complete
 
-**Status:** Pending
-**Estimated Start:** 2026-03-05
+**Status:** Complete
+**Completed:** 2026-03-07
 **Effort:** 6 hours
 **Dependencies:** Phase 3, Phase 4
 
-### Planned Deliverables
+### Completed Deliverables
 
-#### Pages
-- [ ] My Tickets page
-- [ ] Ticket detail page
-- [ ] QR code display
+#### Pages ✅
+- [x] My Tickets page (grid layout with QR display)
+- [x] Order history page (list with status badges)
+- [x] Order detail page (items, payment info, cancel action)
+- [x] Attendee settings page (redirect to /settings/security)
 
-#### Features
-- [ ] List purchased tickets
-- [ ] Filter by event/date
-- [ ] Display QR for check-in
-- [ ] Ticket status (active/used)
+#### Components ✅
+- [x] TicketCard — ticket display with transfer button
+- [x] TicketQrDisplay — base64 PNG QR code renderer with click-to-enlarge dialog
+- [x] TicketTransferDialog — email-based transfer with zod validation
+- [x] OrderCard — order list item with color-coded status badge
+- [x] OrderDetail — full order breakdown with timestamps
+
+#### Features ✅
+- [x] List purchased tickets with QR codes
+- [x] Transfer tickets to another email (regenerates QR)
+- [x] View order history with pagination
+- [x] View order details (items, total, payment status)
+- [x] Cancel pending orders
+- [x] Responsive design (mobile-first)
+- [x] Vietnamese UI labels throughout
+
+#### Types ✅
+- [x] MyTicket, TicketDetail, TransferTicketRequest
+- [x] Order status config (color-coded badges)
 
 ### Success Criteria
-- [ ] View all owned tickets
-- [ ] QR code renders correctly
-- [ ] Ticket status updates
+- [x] View all owned tickets with scannable QR codes
+- [x] QR code renders correctly (base64 PNG from backend)
+- [x] Ticket status updates after transfer
+- [x] Order history shows all orders with correct statuses
+- [x] Cancel action removes pending orders
+- [x] All files <200 LOC
+- [x] Build passes (0 errors)
 
 ---
 
-## Phase 7: Frontend Organizer 🔄 Pending
+## Phase 7: Frontend Organizer ✅ Complete
 
-**Status:** Pending
-**Estimated Start:** 2026-03-06
+**Status:** Complete
+**Completed:** 2026-03-07
 **Effort:** 10 hours
 **Dependencies:** Phase 3, Phase 4
 
-### Planned Deliverables
+### Completed Deliverables
 
-#### Pages
-- [ ] Organizer dashboard
-- [ ] Create event page
-- [ ] Edit event page
-- [ ] Event statistics page
-- [ ] Check-in report page
+#### Pages ✅
+- [x] Organizer dashboard (`/organizer/dashboard`) — stats cards + recent events
+- [x] Events list (`/organizer/events`) — table with actions (edit, publish/unpublish)
+- [x] Create event (`/organizer/events/new`) — form with validation
+- [x] Edit event (`/organizer/events/[id]/edit`)
+- [x] Ticket types (`/organizer/events/[id]/ticket-types`) — CRUD via dialog
+- [x] Event orders (`/organizer/events/[id]/orders`) — paginated table
+- [x] Check-in stats (`/organizer/events/[id]/checkin`) — 10s auto-refresh
+- [x] Staff management (`/organizer/events/[id]/staff`) — assign/remove staff
+- [x] Payout summary (`/organizer/payout`)
+- [x] Payout detail (`/organizer/payout/[eventId]`)
 
-#### Components
-- [ ] EventForm component
-- [ ] TicketTierEditor component
-- [ ] StatsCard component
-- [ ] CheckInList component
-
-#### Features
-- [ ] Create/edit events
-- [ ] Manage ticket tiers
-- [ ] View sales statistics
-- [ ] View check-in counts
-- [ ] Payout summary
+#### Components ✅
+- [x] event-stats-card (dashboard cards)
+- [x] event-form (create/edit with RHF + Zod)
+- [x] ticket-type-form (dialog-based CRUD)
+- [x] ticket-type-list (table display)
+- [x] orders-table (paginated orders)
+- [x] staff-management (assign/remove)
+- [x] payout-summary-card (revenue breakdown)
 
 ### Success Criteria
-- [ ] Create event with tiers
-- [ ] Edit existing events
-- [ ] View real-time stats
-- [ ] Check-in report accurate
+- [x] Create event → add tiers → publish → visible on marketplace
+- [x] Edit event details, publish/unpublish
+- [x] View orders per event
+- [x] Check-in stats update in real-time (10s)
+- [x] Staff assignment works
+- [x] Payout shows correct breakdown
 
 ---
 
-## Phase 8: Frontend Staff & Admin 🔄 Pending
+## Phase 8: Frontend Staff & Admin ✅ Complete
 
-**Status:** Pending
-**Estimated Start:** 2026-03-08
+**Status:** Complete
+**Completed:** 2026-03-07
 **Effort:** 6 hours
 **Dependencies:** Phase 3, Phase 4
 
-### Staff Deliverables
-- [ ] Staff dashboard (assigned events)
-- [ ] Check-in scanner page
-- [ ] Attendee search
-- [ ] Manual check-in override
+### Staff Deliverables ✅
+- [x] Staff dashboard (`/checkin`) — event selection
+- [x] Check-in scanner (`/checkin/[eventId]`) — QR scanner + manual entry
+- [x] CheckinResult component — success/duplicate/error states
+- [x] Manual code entry fallback
 
-### Admin Deliverables
-- [ ] Admin dashboard
-- [ ] User management
-- [ ] Platform statistics
-- [ ] System configuration
+### Admin Deliverables ✅
+- [x] Admin dashboard (`/admin/dashboard`) — overview stats
+- [x] Users table (`/admin/users`) — lock/unlock functionality
+
+### Components ✅
+- [x] checkin-result (success/duplicate/error display)
+- [x] manual-code-entry (fallback text input)
+- [x] users-table (user management with actions)
+
+### Hook ✅
+- [x] use-qr-scanner (wraps @zxing/browser for continuous scanning)
 
 ### Success Criteria
-- [ ] Staff scans QR codes
-- [ ] Check-in updates in real-time
-- [ ] Admin manages users
-- [ ] Admin views platform stats
+- [x] Staff scans QR codes successfully
+- [x] Check-in shows success/duplicate/error states
+- [x] Manual entry works as fallback
+- [x] Admin views user list
+- [x] Lock/unlock functionality works
+- [x] Mobile browser compatibility (Chrome/Safari)
 
 ---
 
@@ -563,11 +593,31 @@ Phase 2   Phase 4
 | Frontend Auth Proxy & API Integration | Phase 4 | ✅ Complete |
 | Core API Ready | Phase 3 | ✅ Complete |
 | Marketplace Live | Phase 5 | ✅ Complete |
-| All Roles Implemented | Phase 6-8 | 🔄 In Progress |
-| Production Ready | Phase 9 | 🔄 Pending |
+| Attendee Dashboard Ready | Phase 6 | ✅ Complete |
+| All Roles Implemented | Phase 6-8 | ✅ Complete (4/4 roles done) |
+| Production Ready | Phase 9 | 🔄 In Progress (Testing) |
 
 ---
 
 **Last Updated:** 2026-03-07
-**Overall Progress:** 66% (6/9 phases complete: 1, 2, 2b, 3, 4, 5)
-**Next Milestone:** Complete Phase 6 (Frontend Attendee) - user ticket dashboard
+**Overall Progress:** 89% (8/9 phases complete: 1, 2, 2b, 3, 4, 5, 6, 7, 8)
+**Next Milestone:** Complete Phase 9 (Testing) - unit tests, integration tests, E2E tests
+
+## Critical Fixes Applied (Session 8)
+
+**Auth & Cookie Handling:**
+- `middleware.ts` → `proxy.ts` (Next.js 16 naming convention)
+- Backend JWT: Added `OnMessageReceived` to read `ts_at` cookie (was only reading Authorization header)
+- Auth refresh: `fetchCurrentUser()` now auto-retries after refresh on 401
+- Cookie paths: login/refresh proxy routes now set cookies with `path=/` (backend uses `/api/auth`)
+
+**Role & Authorization:**
+- Proxy role guard: Added `"User"` to attendee routes (backend uses `UserRole.User`, not `"Attendee"`)
+- User menu: Fixed role label for attendee users
+
+**UI & Localization:**
+- Navbar: Shrink-on-scroll, role-gated links (Vé/Đơn hàng for auth, Tạo sự kiện for organizer)
+- Navigation: Added notification bell placeholder
+- All text: Translated to Vietnamese across 10+ files
+- Footer: Sticky bottom with flex layout
+- Attendee layout: Removed redundant tab nav, uses global navbar

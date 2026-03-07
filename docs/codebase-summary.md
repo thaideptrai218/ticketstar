@@ -371,10 +371,14 @@ MfaSetupResponse {
 | Event detail (SSR + SEO) | ✅ Complete | 5 |
 | Checkout flow (protected) | ✅ Complete | 5 |
 | Order polling & QR display | ✅ Complete | 5 |
-| **Organizer dashboard** | 🔄 Pending | 7 |
-| **Admin dashboard** | 🔄 Pending | 8 |
-| **Staff check-in page** | 🔄 Pending | 8 |
-| **Attendee ticket page** | 🔄 Pending | 6 |
+| My Tickets page (QR codes, transfer) | ✅ Complete | 6 |
+| Order history & detail pages | ✅ Complete | 6 |
+| Ticket transfer dialog | ✅ Complete | 6 |
+| Vietnamese UI labels | ✅ Complete | 6 |
+| Organizer dashboard (stats, events, TT, orders, check-in, staff, payout) | ✅ Complete | 7 |
+| Organizer event CRUD pages | ✅ Complete | 7 |
+| Staff check-in portal (QR scanner + manual entry) | ✅ Complete | 8 |
+| Admin dashboard & user management | ✅ Complete | 8 |
 
 ---
 
@@ -387,8 +391,8 @@ MfaSetupResponse {
 | `api-client.ts` | 75 | Browser fetch + refresh |
 | `api-server.ts` | 50 | Server-side fetch |
 | `auth-types.ts` | 80+ | Request/response DTOs |
-| `middleware.ts` | 63 | Route protection |
-| `_proxy-helpers.ts` | 20-30 | Cookie helpers |
+| `proxy.ts` | 63 | Route guard logic (imported by `middleware.ts`) |
+| `_proxy-helpers.ts` | ~78 | Cookie helpers — `extractRefreshTokenFromResponse()` with `getSetCookie` fallback |
 
 ---
 
@@ -525,14 +529,233 @@ const pollOrder = async () => {
 - When ticket type is sold out: Handle gracefully with user-friendly message
 - Don't retry; show "Sold out" and suggest alternative tiers
 
-## Next Steps (Phase 6+)
+## Phase 6: Frontend Attendee
 
-1. **Phase 6** — Attendee dashboard (my tickets, QR display, filter by date)
-2. **Phase 7** — Organizer dashboard (event creation, edit, stats, payouts)
-3. **Phase 8** — Staff/Admin dashboards (check-in scanner, user management)
-4. **Phase 9** — E2E & unit tests
+### Attendee Route Group (`(attendee)`)
+
+```
+frontend/src/app/
+├── (attendee)/
+│   ├── layout.tsx                      # Horizontal tab nav (My Tickets, Orders, Settings)
+│   └── attendee/
+│       ├── my-tickets/
+│       │   └── page.tsx                # Ticket grid with QR display
+│       ├── orders/
+│       │   ├── page.tsx                # Order history list
+│       │   └── [id]/
+│       │       └── page.tsx            # Order detail page
+│       └── settings/
+│           └── page.tsx                # Redirect to /settings/security
+```
+
+### Attendee Components
+
+```
+components/
+├── tickets/
+│   ├── ticket-card.tsx                 # Ticket display (image, date, venue, QR, transfer button)
+│   ├── ticket-qr-display.tsx           # QR code modal (base64 PNG, click-to-enlarge)
+│   └── ticket-transfer-dialog.tsx      # Transfer form (email input, zod validation)
+│
+└── orders/
+    ├── order-card.tsx                  # Order list item (ID, date, status badge, total)
+    └── order-detail.tsx                # Full order details (items, payment, cancel action)
+```
+
+### Attendee Types
+
+```
+types/
+├── tickets.ts                          # MyTicket, TicketDetail, TransferTicketRequest
+└── api.ts                              # Order, OrderItem, OrderStatus
+
+lib/
+└── order-status-config.ts              # Status badge colors (Pending, Paid, Delivered, Cancelled)
+```
+
+### Key Features
+
+- **My Tickets:** Grid layout with QR code display (base64 PNG from backend)
+- **Ticket Transfer:** Modal dialog with email recipient + zod validation
+- **Order History:** Paginated list with color-coded status badges
+- **Order Detail:** Full breakdown (items, total, payment info, timestamps)
+- **Responsive:** Mobile-first layout with horizontal tab navigation
+- **Localization:** Vietnamese UI labels throughout (Vé của tôi, Đơn hàng, Cài đặt)
+
+### Security & Design Notes
+
+- All pages auth-gated via middleware (attendee role required)
+- Transfer requires ticket ownership validation (backend)
+- Cancel button for Pending orders only
+- Refund deferred to organizer-only endpoint (not in attendee UI)
+- QR codes: base64 PNG from backend (consistent with checkout flow)
+- All files <200 LOC, modular components
+
+---
+
+## Phase 6: Frontend Attendee Components
+
+### Attendee Components
+
+```
+components/
+├── tickets/
+│   ├── ticket-card.tsx                 # Ticket display (QR, transfer button)
+│   ├── ticket-qr-display.tsx           # Base64 PNG QR renderer + dialog
+│   └── ticket-transfer-dialog.tsx      # Email transfer form (zod validation)
+│
+└── orders/
+    ├── order-card.tsx                  # Order list item + status badge
+    └── order-detail.tsx                # Full order with items + cancel action
+```
+
+### Attendee Pages
+
+```
+app/(attendee)/
+├── layout.tsx                          # No redundant tabs (uses global navbar)
+└── attendee/
+    ├── my-tickets/page.tsx             # Ticket grid with QR codes
+    ├── orders/page.tsx                 # Order history (paginated)
+    ├── orders/[id]/page.tsx            # Order detail with cancel
+    └── settings/page.tsx               # Redirect to /settings/security
+```
+
+### Key Features
+
+- **My Tickets:** Card grid with base64 PNG QR codes (click-to-enlarge Dialog)
+- **Ticket Transfer:** Modal dialog, email input, zod validation
+- **Order History:** Paginated list with color-coded status badges
+- **Order Detail:** Full breakdown (items, payment, timestamps, cancel button)
+- **Responsive:** Mobile-first with global navbar
+- **Localization:** Vietnamese UI throughout (Vé của tôi, Đơn hàng, Cài đặt)
+
+### Auth Fixes (Session 8)
+
+**Proxy & Cookie Handling:**
+- Backend JWT: Added `OnMessageReceived` hook to read `ts_at` cookie (was only checking Authorization header)
+- Cookie paths: proxy routes set cookies with `path=/` (backend default `/api/auth` caused scope issues)
+- Auto-refresh: `fetchCurrentUser()` now retries on 401 after token refresh
+
+**Role Mapping:**
+- Proxy role guard: Added `"User"` to attendee routes (backend enum is `UserRole.User`, not `"Attendee"`)
+- User menu: Fixed attendee role label display
+
+**UI Polish:**
+- Navbar: Shrink-on-scroll effect, role-based link visibility
+- Footer: Sticky bottom with flex layout
+- All English text → Vietnamese across 10+ files
+- Notification bell placeholder in navbar
+
+## Phase 7: Frontend Organizer
+
+### Organizer Route Group (`(organizer)`)
+
+```
+frontend/src/app/
+├── (organizer)/
+│   ├── dashboard/
+│   │   └── page.tsx                    # Stats cards + recent events
+│   ├── events/
+│   │   ├── page.tsx                    # Event list (publish/unpublish)
+│   │   ├── new/
+│   │   │   └── page.tsx                # Create event form
+│   │   └── [id]/
+│   │       ├── edit/page.tsx           # Edit event
+│   │       ├── ticket-types/page.tsx   # Ticket type CRUD
+│   │       ├── orders/page.tsx         # Event orders table
+│   │       ├── checkin/page.tsx        # Check-in stats (10s auto-refresh)
+│   │       └── staff/page.tsx          # Staff management
+│   └── payout/
+│       ├── page.tsx                    # Payout summary (all events)
+│       └── [eventId]/page.tsx          # Payout detail (per event)
+```
+
+### Organizer Components
+
+```
+components/organizer/
+├── event-stats-card.tsx                # Dashboard card (title, value, trend)
+├── event-form.tsx                      # Create/edit form (RHF + Zod)
+├── ticket-type-form.tsx                # Dialog-based form
+├── ticket-type-list.tsx                # Table with edit/delete
+├── orders-table.tsx                    # Paginated orders per event
+├── staff-management.tsx                # Assign/remove staff
+└── payout-summary-card.tsx             # Revenue breakdown card
+```
+
+### Key Features
+
+- **Dashboard:** Stats cards (total events, orders, revenue), quick links
+- **Event CRUD:** Create, edit, publish/unpublish
+- **Ticket Types:** Add/edit/delete tiers via dialog
+- **Orders View:** Table showing per-event orders (status, buyer, amount)
+- **Check-in Stats:** Realtime ticket type breakdown (checked in / total) — 10s refresh
+- **Staff Management:** Assign/remove staff per event
+- **Payout:** Summary of all events + detail per event (breakdown by tier, platform fee)
+
+---
+
+## Phase 8: Frontend Staff & Admin
+
+### Staff Route Group (`(staff)`)
+
+```
+frontend/src/app/
+├── (staff)/
+│   └── checkin/
+│       ├── page.tsx                    # Event selection
+│       └── [eventId]/page.tsx          # Scanner UI (QR + manual)
+```
+
+### Admin Route Group (`(admin)`)
+
+```
+frontend/src/app/
+├── (admin)/
+│   ├── dashboard/
+│   │   └── page.tsx                    # Platform stats (users, events, orders)
+│   └── users/
+│       └── page.tsx                    # User list with lock/unlock
+```
+
+### Staff & Admin Components
+
+```
+components/checkin/
+├── checkin-result.tsx                  # Result display (success/duplicate/error)
+└── manual-code-entry.tsx               # Fallback text input
+
+components/admin/
+└── users-table.tsx                     # User list with actions
+
+hooks/
+└── use-qr-scanner.ts                   # @zxing/browser wrapper
+```
+
+### Key Features
+
+**Staff Check-in:**
+- Event selection dropdown (staffing-assigned events)
+- QR scanner with camera feed (continuous scanning via @zxing/browser)
+- Manual code entry fallback (text input)
+- CheckinResult shows: success (green), duplicate (orange), error (red)
+- Auto-reset after 3s for next scan
+- Running stats display (total/checked-in per ticket type)
+
+**Admin Dashboard:**
+- Overview cards (total users, events, orders)
+- User management table with lock/unlock per user
+
+---
+
+## Next Steps (Phase 9+)
+
+1. **Phase 9** — E2E & unit tests (Playwright, xUnit)
+2. **Deployment** — Docker/Kubernetes for production
 
 ---
 
 **Last Updated:** 2026-03-07
-**Phase:** 5 Complete - Frontend Marketplace
+**Phase:** 8 Complete - Frontend Staff & Admin
+**Coverage:** 4/4 roles fully implemented (Attendee, Organizer, Staff, Admin)

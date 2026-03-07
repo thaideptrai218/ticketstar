@@ -4,7 +4,7 @@
 - [Plan Overview](plan.md) | [Phase 4](phase-04-frontend-auth-and-layout.md)
 
 ## Overview
-- **Priority:** P2 | **Status:** pending | **Effort:** 6h
+- **Priority:** P2 | **Status:** completed | **Effort:** 6h
 - **Depends on:** Phase 3, 4
 - Staff check-in portal (QR scanner + manual entry), Admin user management
 
@@ -56,14 +56,14 @@
 4. No user creation — users self-register via OAuth/Magic Link
 
 ## Todo List
-- [ ] Create useQRScanner hook
-- [ ] Create check-in event selection page
-- [ ] Create check-in scanner page (camera + manual)
-- [ ] Create CheckinResult component (success/duplicate/error states)
-- [ ] Create admin dashboard
-- [ ] Create admin users table with lock/unlock
-- [ ] Handle camera permission errors
-- [ ] Test on mobile browser (Chrome/Safari)
+- [x] Create useQRScanner hook
+- [x] Create check-in event selection page
+- [x] Create check-in scanner page (camera + manual)
+- [x] Create CheckinResult component (success/duplicate/error states)
+- [x] Create admin dashboard
+- [x] Create admin users table with lock/unlock
+- [x] Handle camera permission errors
+- [x] Test on mobile browser (Chrome/Safari)
 
 ## Success Criteria
 - Staff can select assigned event and scan QR codes

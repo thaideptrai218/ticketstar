@@ -27,8 +27,8 @@ created: 2026-02-26
 | 4   | [Frontend Auth & Layout](phase-04-frontend-auth-and-layout.md) | 8h     | completed | 1          |
 | 5   | [Frontend Marketplace](phase-05-frontend-marketplace.md)       | 10h    | completed | 3, 4       |
 | 6   | [Frontend Attendee](phase-06-frontend-attendee.md)             | 6h     | completed | 3, 4       |
-| 7   | [Frontend Organizer](phase-07-frontend-organizer.md)           | 10h    | pending   | 3, 4       |
-| 8   | [Frontend Staff & Admin](phase-08-frontend-staff-admin.md)     | 6h     | pending   | 3, 4       |
+| 7   | [Frontend Organizer](phase-07-frontend-organizer.md)           | 10h    | completed | 3, 4       |
+| 8   | [Frontend Staff & Admin](phase-08-frontend-staff-admin.md)     | 6h     | completed | 3, 4       |
 | 9   | [Testing](phase-09-testing.md)                                 | 8h     | pending   | 5, 6, 7, 8 |
 
 ## Critical Path
@@ -47,6 +47,31 @@ created: 2026-02-26
 - QR payload: `ticketId|eventId|userId|timestamp` + HMAC-SHA256
 
 ## Validation Log
+
+### Session 10 — 2026-03-07 (Phase 7 & 8 Implementation + Docs Finalization)
+
+| Component | Status | Details |
+| --- | --- | --- |
+| **Phase 7** | completed | ✅ Organizer dashboard (stats, events CRUD, ticket types, orders, check-in, staff, payout) |
+| **Phase 8** | completed | ✅ Staff check-in portal (QR scanner + manual entry), Admin dashboard, user management |
+| **Backend** | completed | ✅ StaffController + StaffService + StaffDtos (StaffEventResponse), DbSeeder (5 users, 4 events, 6 TT, 7 orders) |
+| **Frontend Routes** | completed | ✅ 10 organizer pages + 4 staff/admin pages, 100% route coverage |
+| **Frontend Components** | completed | ✅ event-stats-card, event-form, ticket-type-form, ticket-type-list, orders-table, staff-management, payout-summary-card, checkin-result, manual-code-entry, users-table |
+| **Build Status** | passing | ✅ `pnpm build` — 0 errors, 34 pages |
+| **Documentation** | updated | ✅ plan.md, phase-07/08, roadmap, codebase-summary, system-architecture |
+
+### Session 9 — 2026-03-07 (Phase 6 Final + Critical Auth Fixes + Docs Update)
+
+| Component | Status | Details |
+| --- | --- | --- |
+| Phase 6 | completed | ✅ MyTickets, Orders, Ticket Transfer ALL COMPLETE |
+| **Auth Cookie Flow** | fixed | ✅ Backend JWT reads `ts_at` via OnMessageReceived hook (was only Authorization header) |
+| **Cookie Paths** | fixed | ✅ Proxy routes set `path=/` (backend default `/api/auth` caused scope issues) |
+| **Auto-Refresh** | fixed | ✅ `fetchCurrentUser()` now retries on 401 after token refresh |
+| **Role Mapping** | fixed | ✅ Proxy role guard includes `"User"` for attendee routes (backend uses `UserRole.User` enum) |
+| **UI & Localization** | complete | ✅ All text Vietnamese, navbar shrink-on-scroll, role-based links, sticky footer |
+| **Middleware** | updated | ✅ `middleware.ts` → `proxy.ts` (Next.js 16 convention) |
+| **Docs** | updated | ✅ Roadmap, codebase-summary, system-architecture, plan — all reflect Phase 6 + fixes |
 
 ### Session 8 — 2026-03-07 (Phase 6 Implementation Complete)
 

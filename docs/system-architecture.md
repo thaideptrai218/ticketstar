@@ -133,7 +133,11 @@ backend/
 
 ## Frontend Architecture (Next.js 15)
 
-### Auth Proxy Layer (Phase 4)
+### Auth Proxy Layer & Next.js Middleware (Phase 4 + Session 8 fixes)
+
+**Terminology (Next.js 16 update):**
+- `proxy.ts` — Route protection middleware (renamed from `middleware.ts` in Next.js 16)
+- Works with App Router to validate JWT before requests reach handlers
 
 Browser requests never call the .NET backend directly for auth. Instead:
 
@@ -186,9 +190,25 @@ frontend/
 │   │   └── checkout/             # Checkout (ProtectedRoute wrapper)
 │   │
 │   ├── (organizer)/              # Organizer dashboard (role-based)
+│   │   ├── dashboard/
+│   │   ├── events/
+│   │   ├── payout/
+│   │   └── ... (10 pages)
+│   │
 │   ├── (admin)/                  # Admin dashboard (role-based)
+│   │   ├── dashboard/
+│   │   └── users/
+│   │
 │   ├── (attendee)/               # Attendee dashboard (role-based)
+│   │   └── attendee/
+│   │       ├── my-tickets/
+│   │       ├── orders/
+│   │       └── settings/
+│   │
 │   ├── (staff)/                  # Staff dashboard (role-based)
+│   │   └── checkin/
+│   │       ├── page.tsx (event selection)
+│   │       └── [eventId]/page.tsx (QR scanner + manual entry)
 │   ├── api/auth/                 # Proxy route handlers
 │   │   ├── login/route.ts
 │   │   ├── register/route.ts
@@ -240,7 +260,7 @@ frontend/
         ↓
    Proxy: fetch POST /auth/login-email (backend)
         ↓
-   Backend generates JWT, sets Set-Cookie: ts_at
+   Backend generates JWT, sets Set-Cookie: ts_at (path=/)
         ↓
    Browser receives httpOnly cookie (ts_at)
         ↓
@@ -251,16 +271,26 @@ frontend/
         ↓
    Browser auto-sends ts_at cookie
         ↓
+   Backend reads ts_at via OnMessageReceived hook
+        ↓
    Backend validates JWT, returns data
         ↓
    If 401: apiFetch triggers concurrent-safe refresh
         ↓
    Proxy calls POST /api/auth/refresh (sends refresh_token cookie)
         ↓
-   Backend rotates tokens, sets new ts_at
+   fetchCurrentUser() auto-retries on 401 after refresh
+        ↓
+   Backend rotates tokens, sets new ts_at (path=/)
         ↓
    apiFetch retries original request with new ts_at
 ```
+
+**Critical Implementation Details:**
+- Backend JWT middleware reads `ts_at` cookie via `OnMessageReceived` hook (not just Authorization header)
+- Proxy sets cookies with `path=/` to ensure availability across all routes
+- Frontend `fetchCurrentUser()` automatically retries after token refresh on 401
+- Role enum mapping: backend uses `UserRole.User` for attendee users, not string `"Attendee"`
 
 ### Component Patterns
 
@@ -537,5 +567,38 @@ Recovery Code Flow:
 
 ---
 
+## Database Seeding (Development)
+
+### Seed Data (`DbSeeder.cs`)
+
+**Users (5 total):**
+- Admin (admin@test.com) — Admin role
+- Organizer (org@test.com) — Organizer role
+- Staff (staff@test.com) — Staff role
+- Attendee 1 (user1@test.com) — Attendee role
+- Attendee 2 (user2@test.com) — Attendee role
+
+**Events (4 total):**
+- "Lễ hội âm nhạc mùa hè" (Summer music festival)
+- "Hội chợ công nghệ" (Tech conference)
+- "Liveshow ca sĩ nổi tiếng" (Celebrity concert)
+- "Hội thảo web development" (Web dev workshop)
+
+**Ticket Types (6 total):**
+- 2 per event (VIP, Regular) with quotas 100 and 200
+
+**Orders (7 total):**
+- Mixed orders with Pending/Paid/Delivered statuses
+- 2-4 ticket items per order
+
+**Check-ins:**
+- Sample check-ins per ticket type
+
+**Staff Assignments:**
+- Staff user assigned to 2 events
+
+---
+
 **Last Updated:** 2026-03-07
-**Phase:** 5 Complete - Frontend Marketplace
+**Phase:** 8 Complete - Frontend Staff & Admin
+**All Roles:** Implemented (Attendee, Organizer, Staff, Admin)
