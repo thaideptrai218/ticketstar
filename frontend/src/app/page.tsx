@@ -1,5 +1,6 @@
 import { Source_Serif_4, Be_Vietnam_Pro } from "next/font/google";
 import { NavigationBar } from "@/components/landing/navigation-bar";
+import { AuthRedirect } from "@/components/landing/auth-redirect";
 import { HeroSection } from "@/components/landing/hero-section";
 import { FeaturedEventsSection } from "@/components/landing/featured-events-section";
 import { FeaturesSection } from "@/components/landing/features-section";
@@ -23,6 +24,7 @@ export default function Home() {
       className={`${serif.variable} ${body.variable} min-h-screen bg-[#faf8f5]`}
       style={{ fontFamily: "var(--font-body), sans-serif" }}
     >
+      <AuthRedirect />
       <NavigationBar />
       <HeroSection />
       <FeaturedEventsSection />

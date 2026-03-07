@@ -8,6 +8,7 @@ export interface EventListItem {
   startAt: string;
   endAt: string;
   venue: string | null;
+  category: string | null;
   imageUrl: string | null;
   status: string;
   totalTicketCount: number;
