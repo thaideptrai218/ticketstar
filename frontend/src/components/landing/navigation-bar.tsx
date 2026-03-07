@@ -2,19 +2,24 @@
 
 // Global navbar — fixed with shrink-on-scroll, balanced layout
 // Search + nav links + user actions (notifications, avatar dropdown)
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Bell, Plus, Search, ShoppingBag, Ticket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import { UserMenu } from "@/components/auth/user-menu";
+import { SearchSuggestionsDropdown } from "@/components/landing/search-suggestions-dropdown";
+import { useRecentSearches } from "@/hooks/use-recent-searches";
 
 export function NavigationBar() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [scrolled, setScrolled] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const { recentSearches, addSearch, removeSearch } = useRecentSearches();
 
   // Shrink navbar on scroll
   useEffect(() => {
@@ -23,16 +28,37 @@ export function NavigationBar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // Close dropdown on click outside
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    function handleMouseDown(e: MouseEvent) {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleMouseDown);
+    return () => document.removeEventListener("mousedown", handleMouseDown);
+  }, [dropdownOpen]);
+
   const handleSearch = (e: React.SyntheticEvent) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      router.push(`/events?q=${encodeURIComponent(searchQuery.trim())}`);
-    } else {
-      router.push("/events");
-    }
+    const q = searchQuery.trim();
+    if (q) addSearch(q);
+    setDropdownOpen(false);
+    router.push(q ? `/events?q=${encodeURIComponent(q)}` : "/events");
   };
 
-  const isOrganizer = user?.role === "Admin" || user?.role === "Organizer";
+  const handleSuggestionSelect = (query: string) => {
+    setSearchQuery(query);
+    addSearch(query);
+    setDropdownOpen(false);
+    router.push(`/events?q=${encodeURIComponent(query)}`);
+  };
+
+  const pathname = usePathname();
+  const isOrganizer = user?.isOrganizer ?? false;
+  // Hide navbar search on /events pages — the page has its own search bar
+  const hideSearch = pathname.startsWith("/events");
 
   return (
     <header
@@ -62,23 +88,42 @@ export function NavigationBar() {
           </span>
         </Link>
 
-        {/* Search bar — desktop */}
-        <form onSubmit={handleSearch} className="flex-1 max-w-md hidden md:flex">
-          <div
-            className={`flex w-full items-center gap-2.5 rounded-xl border border-stone-200 bg-stone-50/80 px-3.5 shadow-sm transition-all duration-200 focus-within:border-amber-300 focus-within:bg-white focus-within:ring-2 focus-within:ring-amber-100 ${
-              scrolled ? "py-1.5" : "py-2"
-            }`}
-          >
-            <Search className="size-4 text-stone-400 shrink-0" strokeWidth={2} />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Tìm sự kiện, nghệ sĩ, địa điểm..."
-              className="flex-1 border-none bg-transparent text-sm text-stone-900 placeholder:text-stone-400 focus:outline-none"
+        {/* Search bar — desktop, hidden on /events pages to avoid duplication */}
+        <div
+          ref={searchContainerRef}
+          className={`flex-1 max-w-md relative ${hideSearch ? "hidden" : "hidden md:block"}`}
+        >
+          <form onSubmit={handleSearch}>
+            <div
+              className={`flex w-full items-center gap-2.5 rounded-xl border bg-stone-50/80 px-3.5 shadow-sm transition-all duration-200 focus-within:bg-white focus-within:ring-2 focus-within:ring-amber-100 ${
+                scrolled ? "py-1.5" : "py-2"
+              } ${dropdownOpen ? "border-amber-300 bg-white ring-2 ring-amber-100 rounded-b-none rounded-t-xl" : "border-stone-200 focus-within:border-amber-300"}`}
+            >
+              <Search className="size-4 text-stone-400 shrink-0" strokeWidth={2} />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setDropdownOpen(e.target.value.length >= 1);
+                }}
+                onFocus={() => { if (searchQuery.length >= 1) setDropdownOpen(true); }}
+                placeholder="Tìm sự kiện, nghệ sĩ, địa điểm..."
+                className="flex-1 border-none bg-transparent text-sm text-stone-900 placeholder:text-stone-400 focus:outline-none"
+              />
+            </div>
+          </form>
+
+          {/* Suggestions dropdown */}
+          {dropdownOpen && (
+            <SearchSuggestionsDropdown
+              query={searchQuery}
+              recentSearches={recentSearches}
+              onSelect={handleSuggestionSelect}
+              onRemoveRecent={removeSearch}
             />
-          </div>
-        </form>
+          )}
+        </div>
 
         {/* Spacer — fills remaining space to push right section to the edge */}
         <div className="flex-1" />
@@ -88,11 +133,19 @@ export function NavigationBar() {
           {/* Nav links — desktop only, auth-gated */}
           {isAuthenticated && (
             <div className="hidden items-center gap-1 lg:flex">
-              {isOrganizer && (
+              {/* Organizers and admins get direct create link; others get become-organizer prompt */}
+              {isOrganizer ? (
                 <Button variant="outline" size="sm" className="h-8 px-3 text-xs font-medium border-amber-200 text-amber-700 hover:bg-amber-50 hover:border-amber-300 gap-1.5" asChild>
-                  <Link href="/events/create">
+                  <Link href="/organizer/events/new">
                     <Plus className="size-3.5" strokeWidth={2.5} />
                     Tạo sự kiện
+                  </Link>
+                </Button>
+              ) : (
+                <Button variant="outline" size="sm" className="h-8 px-3 text-xs font-medium border-stone-200 text-stone-600 hover:bg-stone-50 gap-1.5" asChild>
+                  <Link href="/become-organizer">
+                    <Plus className="size-3.5" strokeWidth={2.5} />
+                    Tổ chức sự kiện
                   </Link>
                 </Button>
               )}
