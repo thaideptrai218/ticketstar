@@ -11,6 +11,7 @@ interface JwtPayload {
   email: string;
   "http://schemas.microsoft.com/ws/2008/06/identity/claims/role": string;
   email_verified: string; // "true" | "false"
+  is_organizer: string;   // "true" | "false"
   sid: string;            // sessionId
   exp: number;
 }
@@ -24,6 +25,7 @@ export function decodeUser(token: string): AuthUser | null {
       id: p.sub,
       email: p.email,
       role: p["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"],
+      isOrganizer: p.is_organizer === "true",
       emailVerified: p.email_verified === "true",
       sessionId: p.sid,
     };

@@ -78,7 +78,14 @@ export default function AuthLayout({
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      router.replace("/");
+      // Respect returnUrl (read from window to avoid useSearchParams Suspense requirement)
+      const params = new URLSearchParams(window.location.search);
+      const rawReturnUrl = params.get("returnUrl");
+      const destination =
+        rawReturnUrl?.startsWith("/") && !rawReturnUrl.startsWith("//")
+          ? rawReturnUrl
+          : "/home";
+      router.replace(destination);
     }
   }, [isAuthenticated, isLoading, router]);
 

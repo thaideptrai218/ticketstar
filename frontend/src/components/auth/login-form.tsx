@@ -35,7 +35,7 @@ export function LoginForm() {
   const rawReturnUrl = searchParams.get("returnUrl");
   const returnUrl = rawReturnUrl?.startsWith("/") && !rawReturnUrl.startsWith("//")
     ? rawReturnUrl
-    : "/";
+    : "/home";
 
   const {
     register,

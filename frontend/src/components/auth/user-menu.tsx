@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut, Settings, Shield, ShoppingBag, Ticket, User } from "lucide-react";
+import { LayoutDashboard, LogOut, Settings, Shield, ShoppingBag, Ticket, User } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -52,15 +52,34 @@ export function UserMenu() {
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel className="pb-1">
           <p className="truncate text-sm font-medium text-stone-900">{user.email}</p>
-          <Badge
-            variant="outline"
-            className="mt-1 border-amber-200 bg-amber-50 text-amber-700 text-xs"
-          >
-            {roleLabel}
-          </Badge>
+          <div className="mt-1 flex flex-wrap gap-1">
+            <Badge
+              variant="outline"
+              className="border-amber-200 bg-amber-50 text-amber-700 text-xs"
+            >
+              {roleLabel}
+            </Badge>
+            {user.isOrganizer && (
+              <Badge
+                variant="outline"
+                className="border-emerald-200 bg-emerald-50 text-emerald-700 text-xs"
+              >
+                Ban tổ chức
+              </Badge>
+            )}
+          </div>
         </DropdownMenuLabel>
 
         <DropdownMenuSeparator />
+
+        {user.isOrganizer && (
+          <DropdownMenuItem asChild>
+            <Link href="/organizer/dashboard" className="cursor-pointer">
+              <LayoutDashboard className="size-4" aria-hidden="true" />
+              Quản lý sự kiện
+            </Link>
+          </DropdownMenuItem>
+        )}
 
         <DropdownMenuItem asChild>
           <Link href="/attendee/my-tickets" className="cursor-pointer">

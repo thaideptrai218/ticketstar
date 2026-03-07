@@ -81,6 +81,8 @@ export interface AuthUser {
   id: string;
   email: string;
   role: string;
+  /** True if user has organizer capability (independent of base role). Admins always qualify. */
+  isOrganizer: boolean;
   emailVerified: boolean;
   sessionId: string;
 }
