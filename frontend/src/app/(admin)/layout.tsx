@@ -1,12 +1,11 @@
-import { CreditCard, LayoutDashboard, List, Settings, Users } from "lucide-react";
+"use client";
+
+import { LayoutDashboard, Users } from "lucide-react";
 import { AppSidebar, type NavItem } from "@/components/layout/app-sidebar";
 
 const NAV_ITEMS: NavItem[] = [
-  { label: "Tổng quan", href: "/admin", icon: LayoutDashboard },
+  { label: "Tổng quan", href: "/admin/dashboard", icon: LayoutDashboard },
   { label: "Người dùng", href: "/admin/users", icon: Users },
-  { label: "Sự kiện", href: "/admin/events", icon: List },
-  { label: "Thanh toán", href: "/admin/payments", icon: CreditCard },
-  { label: "Cài đặt", href: "/admin/settings", icon: Settings },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

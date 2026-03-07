@@ -17,6 +17,13 @@ public class StaffController : ApiControllerBase
         _staffService = staffService;
     }
 
+    [HttpGet("/api/staff/my-events")]
+    public async Task<IActionResult> GetMyStaffEvents(CancellationToken ct)
+    {
+        var userId = GetUserId() ?? "";
+        return FromResult(await _staffService.GetMyStaffEventsAsync(userId, ct));
+    }
+
     [HttpGet]
     public async Task<IActionResult> GetEventStaff(Guid eventId, CancellationToken ct)
     {

@@ -9,3 +9,12 @@ public record StaffAssignmentResponse(
     string? FullName,
     DateTime AssignedAt
 );
+
+public record StaffEventResponse(
+    Guid EventId,
+    string Title,
+    string? Venue,
+    DateTime StartAt,
+    DateTime EndAt,
+    string Status
+);

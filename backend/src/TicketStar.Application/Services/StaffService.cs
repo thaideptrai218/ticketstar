@@ -104,6 +104,25 @@ public class StaffService : IStaffService
         }
     }
 
+    public async Task<Result<List<StaffEventResponse>>> GetMyStaffEventsAsync(string staffId, CancellationToken ct)
+    {
+        var assignments = await _staffRepo.Query()
+            .Include(a => a.Event)
+            .Where(a => a.UserId == staffId)
+            .ToListAsync(ct);
+
+        var responses = assignments.Select(a => new StaffEventResponse(
+            a.EventId,
+            a.Event.Title,
+            a.Event.Venue,
+            a.Event.StartAt,
+            a.Event.EndAt,
+            a.Event.Status.ToString()
+        )).ToList();
+
+        return Result<List<StaffEventResponse>>.Success(responses);
+    }
+
     public async Task<Result<List<StaffAssignmentResponse>>> GetEventStaffAsync(string userId, Guid eventId, CancellationToken ct)
     {
         // Only organizer or assigned staff can view

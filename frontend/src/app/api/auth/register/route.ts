@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   proxyToBackend,
-  copySetCookieHeaders,
   parseJson,
   errorResponse,
+  extractRefreshTokenFromResponse,
   ACCESS_TOKEN_COOKIE,
+  REFRESH_TOKEN_COOKIE,
   COOKIE_BASE,
   ACCESS_MAX_AGE,
+  REFRESH_MAX_AGE,
 } from "../_proxy-helpers";
 
 interface RegisterBody {
@@ -29,13 +31,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     if (!json) return errorResponse("Lỗi máy chủ", 502);
 
     const nextRes = NextResponse.json(json, { status: backendRes.status });
-    copySetCookieHeaders(backendRes, nextRes);
 
     if (json.success && json.data?.accessToken) {
       nextRes.cookies.set(ACCESS_TOKEN_COOKIE, json.data.accessToken, {
         ...COOKIE_BASE,
         maxAge: ACCESS_MAX_AGE,
       });
+
+      const refreshValue = extractRefreshTokenFromResponse(backendRes);
+      if (refreshValue) {
+        nextRes.cookies.set(REFRESH_TOKEN_COOKIE, refreshValue, {
+          ...COOKIE_BASE,
+          maxAge: REFRESH_MAX_AGE,
+        });
+      }
     }
 
     return nextRes;

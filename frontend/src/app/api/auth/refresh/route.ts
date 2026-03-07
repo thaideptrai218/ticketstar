@@ -3,6 +3,7 @@ import {
   proxyToBackend,
   parseJson,
   errorResponse,
+  extractRefreshTokenFromResponse,
   ACCESS_TOKEN_COOKIE,
   REFRESH_TOKEN_COOKIE,
   COOKIE_BASE,
@@ -36,15 +37,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       });
 
       // Re-set rotated refresh token with path=/
-      const setCookies = backendRes.headers.getSetCookie?.() ?? [];
-      for (const cookie of setCookies) {
-        const match = cookie.match(/refresh_token=([^;]+)/);
-        if (match) {
-          nextRes.cookies.set(REFRESH_TOKEN_COOKIE, match[1], {
-            ...COOKIE_BASE,
-            maxAge: REFRESH_MAX_AGE,
-          });
-        }
+      const refreshValue = extractRefreshTokenFromResponse(backendRes);
+      if (refreshValue) {
+        nextRes.cookies.set(REFRESH_TOKEN_COOKIE, refreshValue, {
+          ...COOKIE_BASE,
+          maxAge: REFRESH_MAX_AGE,
+        });
       }
     }
 

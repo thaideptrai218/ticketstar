@@ -121,6 +121,13 @@ public static class ServiceCollectionExtensions
             // C2: Reject MFA challenge tokens — they must not be used as access tokens.
             opt.Events = new JwtBearerEvents
             {
+                // Read JWT from ts_at httpOnly cookie if Authorization header is absent
+                OnMessageReceived = ctx =>
+                {
+                    if (string.IsNullOrEmpty(ctx.Token) && ctx.Request.Cookies.TryGetValue("ts_at", out var cookieToken))
+                        ctx.Token = cookieToken;
+                    return Task.CompletedTask;
+                },
                 OnTokenValidated = ctx =>
                 {
                     var purpose = ctx.Principal?.Claims

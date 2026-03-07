@@ -17,12 +17,12 @@ export const COOKIE_BASE = {
   path: "/",
 };
 
-// Refresh token cookie must be cleared with matching path/sameSite from backend
+// Clear must match the same path/sameSite used when setting the cookie
 export const REFRESH_COOKIE_CLEAR = {
   httpOnly: true,
   secure: IS_PROD,
-  sameSite: "strict" as const,
-  path: "/api/auth",
+  sameSite: "lax" as const,
+  path: "/",
 };
 
 export const ACCESS_MAX_AGE = 5 * 60;          // 5 min
@@ -42,17 +42,6 @@ export async function proxyToBackend(
   return fetch(`${BACKEND_URL}${backendPath}`, { ...init, headers });
 }
 
-/** Copy Set-Cookie headers from backend response to Next.js response */
-export function copySetCookieHeaders(
-  backendRes: Response,
-  nextRes: NextResponse,
-): void {
-  const setCookieHeaders = backendRes.headers.getSetCookie?.() ?? [];
-  for (const cookie of setCookieHeaders) {
-    nextRes.headers.append("Set-Cookie", cookie);
-  }
-}
-
 /** Parse JSON body safely, returning null on failure */
 export async function parseJson<T>(res: Response): Promise<T | null> {
   const text = await res.text();
@@ -62,6 +51,24 @@ export async function parseJson<T>(res: Response): Promise<T | null> {
   } catch {
     return null;
   }
+}
+
+/** Extract refresh token value from backend Set-Cookie headers.
+ *  Uses getSetCookie() if available, falls back to headers.get('set-cookie'). */
+export function extractRefreshTokenFromResponse(res: Response): string | null {
+  // Prefer getSetCookie() — returns array of individual Set-Cookie strings
+  const setCookies = (res.headers as Record<string, unknown> & Headers).getSetCookie?.();
+  const sources: string[] =
+    Array.isArray(setCookies) && setCookies.length > 0
+      ? setCookies
+      : // Fallback: raw get (safe for single Set-Cookie header)
+        [res.headers.get("set-cookie") ?? ""];
+
+  for (const cookie of sources) {
+    const match = cookie.match(/refresh_token=([^;]+)/);
+    if (match) return match[1];
+  }
+  return null;
 }
 
 /** Build a JSON error response */
