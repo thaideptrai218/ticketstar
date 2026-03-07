@@ -20,6 +20,8 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .HasConversion<string>()
             .HasMaxLength(20);
 
+        builder.Property(u => u.IsOrganizer).HasDefaultValue(false);
+
         builder.Property(u => u.CreatedAt)
             .HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
         builder.Property(u => u.UpdatedAt)

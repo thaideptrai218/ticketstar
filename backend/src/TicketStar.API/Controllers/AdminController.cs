@@ -33,4 +33,16 @@ public class AdminController : ApiControllerBase
     {
         return FromResult(await _adminService.UnlockUserAsync(id, ct));
     }
+
+    [HttpPost("users/{id}/grant-organizer")]
+    public async Task<IActionResult> GrantOrganizer(string id, CancellationToken ct)
+    {
+        return FromResult(await _adminService.GrantOrganizerAsync(id, ct));
+    }
+
+    [HttpPost("users/{id}/revoke-organizer")]
+    public async Task<IActionResult> RevokeOrganizer(string id, CancellationToken ct)
+    {
+        return FromResult(await _adminService.RevokeOrganizerAsync(id, ct));
+    }
 }

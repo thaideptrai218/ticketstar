@@ -89,7 +89,7 @@ public class DbSeeder
         var now = DateTime.UtcNow;
 
         // --- Users ---
-        var organizerId = CreateUser("organizer@ticketstar.dev", "Org@123!", "Nguyễn Văn Tổ Chức", UserRole.Organizer, hashPassword);
+        var organizerId = CreateUser("organizer@ticketstar.dev", "Org@123!", "Nguyễn Văn Tổ Chức", UserRole.User, hashPassword, isOrganizer: true);
         var staffId = CreateUser("staff@ticketstar.dev", "Staff@123!", "Trần Thị Nhân Viên", UserRole.Staff, hashPassword);
         var attendee1Id = CreateUser("attendee1@ticketstar.dev", "User@123!", "Lê Văn Khán Giả", UserRole.User, hashPassword);
         var attendee2Id = CreateUser("attendee2@ticketstar.dev", "User@123!", "Phạm Thị Hoa", UserRole.User, hashPassword);
@@ -223,13 +223,13 @@ public class DbSeeder
         _logger.LogInformation("Demo data seeded: 4 events, 6 ticket types, 7 orders, 5 users");
     }
 
-    private string CreateUser(string email, string password, string fullName, UserRole role, Func<string, string> hashPassword)
+    private string CreateUser(string email, string password, string fullName, UserRole role, Func<string, string> hashPassword, bool isOrganizer = false)
     {
         var userId = Guid.NewGuid().ToString();
         _db.Users.Add(new User
         {
             Id = userId, Email = email, PasswordHash = hashPassword(password),
-            Role = role, EmailVerified = true,
+            Role = role, IsOrganizer = isOrganizer, EmailVerified = true,
             SecurityStamp = Guid.NewGuid().ToString("N"),
             CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
         });

@@ -6,6 +6,7 @@ public record CreateEventRequest(
     DateTime StartAt,
     DateTime EndAt,
     string? Venue,
+    string? Category,
     string? ImageUrl,
     string Slug,
     List<CreateTicketTypeRequest> TicketTypes
@@ -17,6 +18,7 @@ public record UpdateEventRequest(
     DateTime? StartAt,
     DateTime? EndAt,
     string? Venue,
+    string? Category,
     string? ImageUrl
 );
 
@@ -32,6 +34,7 @@ public record EventDetailResponse(
     DateTime StartAt,
     DateTime EndAt,
     string? Venue,
+    string? Category,
     string Status,
     string? ImageUrl,
     string OrganizerId,
@@ -48,6 +51,7 @@ public record EventListItemResponse(
     DateTime StartAt,
     DateTime EndAt,
     string? Venue,
+    string? Category,
     string? ImageUrl,
     string Status,
     int TotalTicketCount,

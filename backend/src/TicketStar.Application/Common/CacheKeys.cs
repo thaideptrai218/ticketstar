@@ -5,7 +5,9 @@ public static class CacheKeys
     private const string Prefix = "ticketstar";
 
     // Event caching
-    public static string EventList(int page, int pageSize) => $"{Prefix}:event:list:{page}:{pageSize}";
+    public static string EventList(int page, int pageSize, string? filter = null, string? search = null, string? location = null, string? category = null, DateTime? dateFrom = null, DateTime? dateTo = null)
+        => $"{Prefix}:event:list:{page}:{pageSize}:{filter ?? "all"}:{search ?? ""}:{location ?? ""}:{category ?? ""}:{dateFrom:yyyyMMdd}:{dateTo:yyyyMMdd}";
+
     public static string EventDetail(Guid slug) => $"{Prefix}:event:detail:{slug}";
     public static string EventStats(Guid eventId) => $"{Prefix}:event:stats:{eventId}";
     public static string EventBySlug(string slug) => $"{Prefix}:event:slug:{slug}";

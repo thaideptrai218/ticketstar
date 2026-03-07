@@ -9,6 +9,7 @@ using TicketStar.Application.DTOs.Auth;
 using TicketStar.Application.Interfaces;
 using TicketStar.Application.Options;
 using TicketStar.Domain.Entities;
+using TicketStar.Domain.Enums;
 using TicketStar.Domain.Interfaces;
 
 namespace TicketStar.Application.Services;
@@ -159,6 +160,9 @@ public class TokenService : ITokenService
 
     private string GenerateAccessToken(User user, string sessionId)
     {
+        // Organizer capability: explicit flag OR legacy Organizer role, Admins always qualify
+        var isOrganizer = user.IsOrganizer || user.Role == UserRole.Organizer || user.Role == UserRole.Admin;
+
         var claims = new List<Claim>
         {
             new(JwtRegisteredClaimNames.Sub, user.Id),
@@ -166,6 +170,7 @@ public class TokenService : ITokenService
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new("email_verified", user.EmailVerified.ToString().ToLower()),
             new(ClaimTypes.Role, user.Role.ToString()),
+            new("is_organizer", isOrganizer.ToString().ToLower()),
             new("sid", sessionId),
             new("sstamp", user.SecurityStamp[..8]),
         };

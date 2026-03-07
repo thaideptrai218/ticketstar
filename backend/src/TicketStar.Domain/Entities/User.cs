@@ -13,6 +13,12 @@ public class User
 
     public UserRole Role { get; set; } = UserRole.User;
 
+    /// <summary>
+    /// Whether the user has organizer capability. Independent of Role — any user (including Staff/Admin)
+    /// can be an organizer. Admins always have implicit organizer access regardless of this flag.
+    /// </summary>
+    public bool IsOrganizer { get; set; }
+
     /// <summary>Random GUID rotated on password/email/role change. Embedded in JWT for revocation.</summary>
     public string SecurityStamp { get; set; } = Guid.NewGuid().ToString("N");
 

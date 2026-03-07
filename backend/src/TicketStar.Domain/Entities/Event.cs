@@ -11,6 +11,8 @@ public class Event
     public DateTime StartAt { get; set; }
     public DateTime EndAt { get; set; }
     public string? Venue { get; set; }
+    /// <summary>Event category: Music | Sports | Arts | Technology | Food | Education</summary>
+    public string? Category { get; set; }
     public EventStatus Status { get; set; }
     public string? ImageUrl { get; set; }
     public string Slug { get; set; } = null!;

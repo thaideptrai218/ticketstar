@@ -55,6 +55,7 @@ public class EventService : IEventService
             StartAt = request.StartAt,
             EndAt = request.EndAt,
             Venue = request.Venue,
+            Category = request.Category,
             ImageUrl = request.ImageUrl,
             Slug = request.Slug,
             Status = EventStatus.Draft,
@@ -107,6 +108,7 @@ public class EventService : IEventService
         if (request.StartAt.HasValue) eventEntity.StartAt = request.StartAt.Value;
         if (request.EndAt.HasValue) eventEntity.EndAt = request.EndAt.Value;
         if (request.Venue != null) eventEntity.Venue = request.Venue;
+        if (request.Category != null) eventEntity.Category = request.Category;
         if (request.ImageUrl != null) eventEntity.ImageUrl = request.ImageUrl;
         eventEntity.UpdatedAt = DateTime.UtcNow;
 
@@ -173,10 +175,16 @@ public class EventService : IEventService
         var domainRequest = new DomainCommon.PaginatedRequest
         {
             Page = request.Page,
-            PageSize = request.PageSize
+            PageSize = request.PageSize,
+            Search = request.Search,
+            Filter = request.Filter,
+            Location = request.Location,
+            Category = request.Category,
+            DateFrom = request.DateFrom,
+            DateTo = request.DateTo
         };
 
-        var cacheKey = CacheKeys.EventList(request.Page, request.PageSize);
+        var cacheKey = CacheKeys.EventList(request.Page, request.PageSize, request.Filter, request.Search, request.Location, request.Category, request.DateFrom, request.DateTo);
         var cached = await GetFromCacheAsync<AppCommon.PaginatedResponse<EventListItemResponse>>(cacheKey);
         if (cached != null)
             return Result<AppCommon.PaginatedResponse<EventListItemResponse>>.Success(cached);
@@ -289,6 +297,7 @@ public class EventService : IEventService
             eventEntity.StartAt,
             eventEntity.EndAt,
             eventEntity.Venue,
+            eventEntity.Category,
             eventEntity.Status.ToString(),
             eventEntity.ImageUrl,
             eventEntity.OrganizerId,
@@ -321,6 +330,7 @@ public class EventService : IEventService
             e.StartAt,
             e.EndAt,
             e.Venue,
+            e.Category,
             e.ImageUrl,
             e.Status.ToString(),
             totalTickets,

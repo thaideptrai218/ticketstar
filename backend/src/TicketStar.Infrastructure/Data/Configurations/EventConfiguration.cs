@@ -14,6 +14,7 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
         builder.Property(e => e.Title).IsRequired().HasMaxLength(200);
         builder.Property(e => e.Description).HasMaxLength(4000);
         builder.Property(e => e.Venue).HasMaxLength(500);
+        builder.Property(e => e.Category).HasMaxLength(100);
         builder.Property(e => e.ImageUrl).HasMaxLength(500);
         builder.Property(e => e.Slug).IsRequired().HasMaxLength(250);
 
@@ -29,6 +30,7 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
         builder.HasIndex(e => e.Slug).IsUnique();
         builder.HasIndex(e => new { e.Status, e.StartAt });
         builder.HasIndex(e => e.OrganizerId);
+        builder.HasIndex(e => e.Category);
 
         builder.HasOne(e => e.Organizer)
             .WithMany(u => u.OrganizedEvents)

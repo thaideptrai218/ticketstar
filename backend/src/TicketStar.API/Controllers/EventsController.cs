@@ -20,9 +20,28 @@ public class EventsController : ApiControllerBase
 
     [HttpGet]
     [AllowAnonymous]
-    public async Task<IActionResult> ListEvents([FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
+    public async Task<IActionResult> ListEvents(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? filter = null,
+        [FromQuery] string? search = null,
+        [FromQuery] string? location = null,
+        [FromQuery] string? category = null,
+        [FromQuery] DateTime? dateFrom = null,
+        [FromQuery] DateTime? dateTo = null,
+        CancellationToken ct = default)
     {
-        var request = new PaginatedRequest { Page = Math.Max(1, page), PageSize = Math.Clamp(pageSize, 1, 100) };
+        var request = new PaginatedRequest
+        {
+            Page = Math.Max(1, page),
+            PageSize = Math.Clamp(pageSize, 1, 100),
+            Filter = filter,
+            Search = search,
+            Location = location,
+            Category = category,
+            DateFrom = dateFrom,
+            DateTo = dateTo
+        };
         return FromResult(await _eventService.ListEventsAsync(request, ct));
     }
 
