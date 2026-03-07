@@ -331,12 +331,15 @@ MfaSetupResponse {
 3. Backend responds 401 (token expired)
 4. apiFetch detects 401
 5. Calls attemptRefresh() (concurrent-safe queue)
-6. POST /api/auth/refresh (sends refresh_token cookie)
-7. Backend validates refresh token, rotates pair
-8. Sets new ts_at cookie
-9. apiFetch retries original request
+6. POST /api/auth/refresh → proxy forwards refresh_token cookie to backend
+7. Backend validates refresh token, rotates pair (returns new ts_at + refresh_token)
+8. Proxy re-sets both cookies (path=/, sameSite=lax) via extractRefreshTokenFromResponse()
+9. apiFetch retries original request with new ts_at
 10. Success!
 ```
+
+**Cookie extraction**: All auth proxy routes use `extractRefreshTokenFromResponse()` which tries `Headers.getSetCookie()` first, falls back to `headers.get('set-cookie')` — handles Next.js fetch patching compatibility.
+**Consistency**: All login paths (login, register, google, magic-link, mfa/challenge) set `refresh_token` with `path=/; sameSite=lax` instead of forwarding backend's `path=/api/auth; sameSite=strict`.
 
 ---
 
