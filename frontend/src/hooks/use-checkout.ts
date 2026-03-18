@@ -107,7 +107,16 @@ export function useCheckout(): UseCheckoutReturn {
           method: "POST",
           body: JSON.stringify(request),
         });
-        startPolling(created.id);
+        // Simulate payment completion (skip real payment for now)
+        setStep("processing");
+        setPaymentState("processing");
+        const detail = await apiFetch<OrderDetail>(
+          `/api/orders/${created.id}/simulate-payment`,
+          { method: "POST" },
+        );
+        setOrder(detail);
+        setPaymentState("success");
+        setStep("done");
       } catch (err) {
         if (err instanceof ApiError && err.status === 409) {
           setError("Ve da het. Vui long chon loai ve khac.");
@@ -116,7 +125,7 @@ export function useCheckout(): UseCheckoutReturn {
         }
       }
     },
-    [startPolling],
+    [],
   );
 
   const reset = useCallback(() => {

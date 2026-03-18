@@ -1,17 +1,18 @@
 "use client";
 
-// Become Organizer page — lets any authenticated user enable organizer mode.
+// Become Organizer page — lets any authenticated user create an organizer profile.
 // Calls POST /api/account/become-organizer, then redirects to organizer dashboard.
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarPlus, CheckCircle, DollarSign, TicketIcon, Users } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { apiFetch, ApiError } from "@/lib/api-client";
+import { CalendarPlus, DollarSign, TicketIcon, Users } from "lucide-react";
+import { ApiError } from "@/lib/api-client";
+import { createOrganizerProfile, type CreateOrganizerProfileRequest } from "@/lib/api/organizer-profile-api";
+import { OrganizerProfileForm } from "@/components/organizer/organizer-profile-form";
 
 const FEATURES = [
   { icon: CalendarPlus, title: "Tạo sự kiện dễ dàng", desc: "Thiết lập sự kiện, loại vé và giá trong vài phút." },
   { icon: TicketIcon, title: "Quản lý vé", desc: "Theo dõi doanh số, check-in bằng QR code." },
-  { icon: Users, title: "Quản lý nhân viên", desc: "Phân quyền nhân viên quét vé cho từng sự kiện." },
+  { icon: Users, title: "Quản lý cộng tác viên", desc: "Phân quyền cộng tác viên cho từng sự kiện." },
   { icon: DollarSign, title: "Theo dõi doanh thu", desc: "Xem báo cáo doanh thu và thanh toán chi tiết." },
 ];
 
@@ -20,13 +21,11 @@ export default function BecomeOrganizerPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleBecomeOrganizer() {
+  async function handleSubmit(data: CreateOrganizerProfileRequest) {
     setIsLoading(true);
     setError(null);
     try {
-      await apiFetch("/api/account/become-organizer", { method: "POST" });
-      // Redirect to organizer dashboard — OrganizerRoute will auto-refresh the token
-      // so the new is_organizer claim is picked up before granting access
+      await createOrganizerProfile(data);
       router.push("/organizer/dashboard");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Đã xảy ra lỗi. Vui lòng thử lại.");
@@ -66,20 +65,17 @@ export default function BecomeOrganizerPage() {
         </div>
       )}
 
-      <div className="flex flex-col items-center gap-3">
-        <Button
-          size="lg"
-          className="w-full max-w-sm bg-amber-700 hover:bg-amber-800 text-white"
-          onClick={handleBecomeOrganizer}
-          disabled={isLoading}
-        >
-          <CheckCircle className="size-4 mr-2" />
-          {isLoading ? "Đang xử lý..." : "Bắt đầu tổ chức sự kiện"}
-        </Button>
-        <p className="text-xs text-stone-400">
-          Bạn vẫn có thể mua vé như một khán giả bình thường.
-        </p>
+      <div className="rounded-xl border border-stone-200 bg-white p-6">
+        <h2 className="text-lg font-semibold text-stone-900 mb-4">Thông tin tổ chức</h2>
+        <OrganizerProfileForm
+          onSubmit={handleSubmit}
+          submitLabel="Bắt đầu tổ chức sự kiện"
+          isLoading={isLoading}
+        />
       </div>
+      <p className="text-xs text-stone-400 text-center mt-4">
+        Bạn vẫn có thể mua vé như một khán giả bình thường.
+      </p>
     </div>
   );
 }

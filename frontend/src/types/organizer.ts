@@ -43,21 +43,28 @@ export interface OrganizerPayoutOverview {
   events: PayoutSummary[];
 }
 
-export interface StaffMember {
+export type CollaboratorPermissionLevel = "Viewer" | "Operator" | "Manager";
+export type CollaboratorStatus = "Pending" | "Accepted" | "Declined" | "Revoked";
+
+export interface Collaborator {
   id: string;
-  userId: string;
+  userId?: string;
   email: string;
-  fullName: string | null;
-  assignedAt: string;
+  fullName?: string;
+  permissionLevel: CollaboratorPermissionLevel;
+  status: CollaboratorStatus;
+  invitedAt: string;
+  acceptedAt?: string;
 }
 
-export interface StaffEvent {
+export interface CollaborationEvent {
   eventId: string;
   title: string;
-  venue: string | null;
+  venue?: string;
   startAt: string;
   endAt: string;
   status: string;
+  permissionLevel: CollaboratorPermissionLevel;
 }
 
 export interface CheckInStats {

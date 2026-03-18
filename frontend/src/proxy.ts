@@ -14,18 +14,17 @@ interface JwtPayload {
 /** Check whether a decoded JWT payload grants access to a route prefix. */
 function canAccess(payload: JwtPayload, prefix: string): boolean {
   const role = payload["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"];
-  const isOrganizer = payload.is_organizer === "true" || role === "Organizer"; // legacy compat
+  const isOrganizer = payload.is_organizer === "true";
 
   switch (prefix) {
     case "/organizer": return isOrganizer || role === "Admin";
     case "/admin":     return role === "Admin";
-    case "/staff":     return role === "Staff" || role === "Admin" || isOrganizer;
-    case "/attendee":  return ["User", "Attendee", "Admin", "Staff", "Organizer"].includes(role) || isOrganizer;
+    case "/attendee":  return ["User", "Admin"].includes(role) || isOrganizer;
     default:           return false;
   }
 }
 
-const GUARDED_PREFIXES = ["/organizer", "/admin", "/attendee", "/staff"];
+const GUARDED_PREFIXES = ["/organizer", "/admin", "/attendee"];
 
 export function proxy(request: NextRequest): NextResponse {
   const { pathname } = request.nextUrl;
@@ -63,5 +62,5 @@ export function proxy(request: NextRequest): NextResponse {
 }
 
 export const config = {
-  matcher: ["/organizer/:path*", "/admin/:path*", "/attendee/:path*", "/staff/:path*"],
+  matcher: ["/organizer/:path*", "/admin/:path*", "/attendee/:path*"],
 };

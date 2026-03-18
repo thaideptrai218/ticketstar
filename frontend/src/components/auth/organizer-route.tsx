@@ -1,15 +1,14 @@
 "use client";
 
 // Guard component for organizer sections.
-// All authenticated users can access organizer pages (event creation is open to everyone).
-// Redirects unauthenticated users to /login only.
+// Requires isOrganizer flag OR Admin role. Redirects unauthenticated to /login.
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/auth-context";
 
 export function OrganizerRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -17,8 +16,12 @@ export function OrganizerRoute({ children }: { children: React.ReactNode }) {
     if (isLoading) return;
     if (!isAuthenticated) {
       router.replace(`/login?returnUrl=${encodeURIComponent(pathname)}`);
+      return;
     }
-  }, [isAuthenticated, isLoading, router, pathname]);
+    if (!user?.isOrganizer && user?.role !== "Admin") {
+      router.replace("/home");
+    }
+  }, [isAuthenticated, isLoading, user, router, pathname]);
 
   if (isLoading) {
     return (
@@ -30,7 +33,7 @@ export function OrganizerRoute({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!isAuthenticated) return null;
+  if (!isAuthenticated || (!user?.isOrganizer && user?.role !== "Admin")) return null;
 
   return <>{children}</>;
 }

@@ -18,10 +18,7 @@ import { useAuth } from "@/contexts/auth-context";
 
 const ROLE_LABELS: Record<string, string> = {
   Admin: "Quản trị",
-  Organizer: "Ban tổ chức",
-  Staff: "Nhân viên",
   User: "Khán giả",
-  Attendee: "Khán giả",
 };
 
 export function UserMenu() {

@@ -51,8 +51,6 @@ export function LoginForm() {
     const role = json?.data?.role;
     if (role === "Admin") {
       router.push("/admin/dashboard");
-    } else if (role === "Staff") {
-      router.push("/staff/dashboard");
     } else {
       router.push(returnUrl);
     }
