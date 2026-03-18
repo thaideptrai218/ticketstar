@@ -37,7 +37,8 @@ public class TestAppDbContext : AppDbContext
         OverrideTimestamps(builder, builder.Entity<OrderItem>());
         OverrideTimestamps(builder, builder.Entity<Payment>());
         OverrideTimestamps(builder, builder.Entity<CheckIn>());
-        OverrideTimestamps(builder, builder.Entity<StaffAssignment>());
+        OverrideTimestamps(builder, builder.Entity<EventCollaborator>());
+        OverrideTimestamps(builder, builder.Entity<OrganizerProfile>());
         OverrideTimestamps(builder, builder.Entity<WebAuthnCredential>());
     }
 

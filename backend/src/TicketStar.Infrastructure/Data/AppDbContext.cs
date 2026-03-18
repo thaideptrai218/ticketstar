@@ -25,7 +25,8 @@ public class AppDbContext : DbContext
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<CheckIn> CheckIns => Set<CheckIn>();
-    public DbSet<StaffAssignment> StaffAssignments => Set<StaffAssignment>();
+    public DbSet<OrganizerProfile> OrganizerProfiles => Set<OrganizerProfile>();
+    public DbSet<EventCollaborator> EventCollaborators => Set<EventCollaborator>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

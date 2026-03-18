@@ -12,6 +12,21 @@ frontend_dir := "frontend"
 default:
     @just --list
 
+# Full startup: infra + migrate + backend + frontend
+start:
+    #!/bin/sh
+    echo "==> Starting Docker infrastructure..."
+    docker compose up -d
+    echo "==> Waiting for services to be ready..."
+    sleep 5
+    echo "==> Running database migrations..."
+    dotnet ef database update --project {{infra_dir}} --startup-project {{api_dir}}
+    echo "==> Starting backend and frontend..."
+    trap 'just stop' EXIT INT TERM
+    just backend &
+    just frontend &
+    wait
+
 # Start everything (infra + backend + frontend)
 dev: stop-infra
     #!/bin/sh

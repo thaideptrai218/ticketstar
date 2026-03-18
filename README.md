@@ -23,28 +23,31 @@ Full-stack ticketing marketplace platform — event creation, ticket sales via S
 
 ## Quick Start
 
+**Prerequisites:** [just](https://github.com/casey/just), Docker, .NET 8 SDK, Node.js 20+ with pnpm, dotnet-ef (`dotnet tool install --global dotnet-ef`)
+
 ```bash
-# 1. Clone & setup env
+# 1. Setup env
 cp .env.example .env
 # Edit .env with your values (JWT secret, MFA key, Google OAuth ID)
 
-# 2. Start infrastructure
-docker compose up -d
+# 2. Install frontend dependencies
+just install
 
-# 3. Run backend
-cd backend/src/TicketStar.API
-dotnet run
-
-# 4. Run frontend (separate terminal)
-cd frontend
-pnpm install
-pnpm dev
+# 3. Start everything (Docker infra + DB migrations + backend + frontend)
+just start
 ```
 
-Or with `just`:
+`just start` will:
+1. Start MySQL 8 (:3307), Redis 7 (:6380), RabbitMQ 3 (:5672) via Docker
+2. Wait for services to be ready
+3. Apply EF Core database migrations
+4. Start the .NET API on http://localhost:5010
+5. Start the Next.js frontend on http://localhost:3001
 
+**Stop everything:**
 ```bash
-just dev    # Starts infra + backend + frontend
+just stop    # stop backend + frontend processes only
+just down    # stop processes + Docker infrastructure
 ```
 
 ## Services

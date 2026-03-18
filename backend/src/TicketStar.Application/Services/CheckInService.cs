@@ -5,7 +5,6 @@ using TicketStar.Application.DTOs.CheckIn;
 using TicketStar.Application.Interfaces;
 using TicketStar.Domain.Entities;
 using TicketStar.Domain.Interfaces;
-using TicketStar.Infrastructure.Data;
 
 namespace TicketStar.Application.Services;
 
@@ -13,20 +12,20 @@ public class CheckInService : ICheckInService
 {
     private readonly ITicketRepository _ticketRepo;
     private readonly ICheckInRepository _checkInRepo;
-    private readonly IStaffAssignmentRepository _staffAssignmentRepo;
+    private readonly IEventCollaboratorRepository _collaboratorRepo;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<CheckInService> _logger;
 
     public CheckInService(
         ITicketRepository ticketRepo,
         ICheckInRepository checkInRepo,
-        IStaffAssignmentRepository staffAssignmentRepo,
+        IEventCollaboratorRepository collaboratorRepo,
         IUnitOfWork unitOfWork,
         ILogger<CheckInService> logger)
     {
         _ticketRepo = ticketRepo;
         _checkInRepo = checkInRepo;
-        _staffAssignmentRepo = staffAssignmentRepo;
+        _collaboratorRepo = collaboratorRepo;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }

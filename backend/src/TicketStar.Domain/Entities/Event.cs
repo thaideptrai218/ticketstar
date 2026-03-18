@@ -30,5 +30,5 @@ public class Event
     public ICollection<TicketType> TicketTypes { get; set; } = [];
     public ICollection<Ticket> Tickets { get; set; } = [];
     public ICollection<CheckIn> CheckIns { get; set; } = [];
-    public ICollection<StaffAssignment> StaffAssignments { get; set; } = [];
+    public ICollection<EventCollaborator> Collaborators { get; set; } = [];
 }

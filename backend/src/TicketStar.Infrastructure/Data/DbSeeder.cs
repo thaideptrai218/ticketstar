@@ -90,7 +90,7 @@ public class DbSeeder
 
         // --- Users ---
         var organizerId = CreateUser("organizer@ticketstar.dev", "Org@123!", "Nguyễn Văn Tổ Chức", UserRole.User, hashPassword, isOrganizer: true);
-        var staffId = CreateUser("staff@ticketstar.dev", "Staff@123!", "Trần Thị Nhân Viên", UserRole.Staff, hashPassword);
+        var staffId = CreateUser("staff@ticketstar.dev", "Staff@123!", "Trần Thị Nhân Viên", UserRole.User, hashPassword);
         var attendee1Id = CreateUser("attendee1@ticketstar.dev", "User@123!", "Lê Văn Khán Giả", UserRole.User, hashPassword);
         var attendee2Id = CreateUser("attendee2@ticketstar.dev", "User@123!", "Phạm Thị Hoa", UserRole.User, hashPassword);
         var attendee3Id = CreateUser("attendee3@ticketstar.dev", "User@123!", "Hoàng Minh Tuấn", UserRole.User, hashPassword);
@@ -160,11 +160,29 @@ public class DbSeeder
         };
         _db.TicketTypes.AddRange(ticketTypes);
 
-        // --- Staff Assignment ---
-        _db.StaffAssignments.AddRange(
-            new StaffAssignment { Id = Guid.NewGuid(), UserId = staffId, EventId = event1Id, AssignedBy = organizerId, AssignedAt = now },
-            new StaffAssignment { Id = Guid.NewGuid(), UserId = staffId, EventId = event2Id, AssignedBy = organizerId, AssignedAt = now }
+        // --- Event Collaborators (replaces StaffAssignment) ---
+        _db.EventCollaborators.AddRange(
+            new EventCollaborator
+            {
+                Id = Guid.NewGuid().ToString(), UserId = staffId, EventId = event1Id,
+                Email = "staff@ticketstar.dev", PermissionLevel = CollaboratorPermissionLevel.Operator,
+                InvitedBy = organizerId, InvitedAt = now, AcceptedAt = now, Status = CollaboratorStatus.Accepted
+            },
+            new EventCollaborator
+            {
+                Id = Guid.NewGuid().ToString(), UserId = staffId, EventId = event2Id,
+                Email = "staff@ticketstar.dev", PermissionLevel = CollaboratorPermissionLevel.Operator,
+                InvitedBy = organizerId, InvitedAt = now, AcceptedAt = now, Status = CollaboratorStatus.Accepted
+            }
         );
+
+        // --- Organizer Profile ---
+        _db.OrganizerProfiles.Add(new OrganizerProfile
+        {
+            Id = Guid.NewGuid().ToString(), UserId = organizerId,
+            OrganizationName = "TicketStar Events", IsComplete = true,
+            CreatedAt = now
+        });
 
         // --- Orders + OrderItems + Tickets + Payments ---
         // Attendee 1: 2 VIP tickets for event 1 (Paid)

@@ -14,7 +14,7 @@ public class User
     public UserRole Role { get; set; } = UserRole.User;
 
     /// <summary>
-    /// Whether the user has organizer capability. Independent of Role — any user (including Staff/Admin)
+    /// Whether the user has organizer capability. Any user (including Admin)
     /// can be an organizer. Admins always have implicit organizer access regardless of this flag.
     /// </summary>
     public bool IsOrganizer { get; set; }
@@ -46,5 +46,6 @@ public class User
     public ICollection<Event> OrganizedEvents { get; set; } = [];
     public ICollection<Order> Orders { get; set; } = [];
     public ICollection<Ticket> Tickets { get; set; } = [];
-    public ICollection<StaffAssignment> StaffAssignments { get; set; } = [];
+    public OrganizerProfile? OrganizerProfile { get; set; }
+    public ICollection<EventCollaborator> Collaborations { get; set; } = [];
 }

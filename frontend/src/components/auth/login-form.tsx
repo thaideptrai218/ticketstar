@@ -45,7 +45,17 @@ export function LoginForm() {
 
   const handleSuccess = async () => {
     await refreshUser();
-    router.push(returnUrl);
+    // Fetch current user role for redirect decision
+    const res = await fetch("/api/auth/me", { credentials: "include" });
+    const json = res.ok ? (await res.json() as { success: boolean; data?: { role: string } }) : null;
+    const role = json?.data?.role;
+    if (role === "Admin") {
+      router.push("/admin/dashboard");
+    } else if (role === "Staff") {
+      router.push("/staff/dashboard");
+    } else {
+      router.push(returnUrl);
+    }
   };
 
   const handleMfaRequired = (token: string) => {

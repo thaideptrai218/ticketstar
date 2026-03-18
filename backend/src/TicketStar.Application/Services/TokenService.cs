@@ -160,8 +160,8 @@ public class TokenService : ITokenService
 
     private string GenerateAccessToken(User user, string sessionId)
     {
-        // Organizer capability: explicit flag OR legacy Organizer role, Admins always qualify
-        var isOrganizer = user.IsOrganizer || user.Role == UserRole.Organizer || user.Role == UserRole.Admin;
+        // Organizer capability: explicit flag, Admins always qualify
+        var isOrganizer = user.IsOrganizer || user.Role == UserRole.Admin;
 
         var claims = new List<Claim>
         {

@@ -52,4 +52,11 @@ public class OrdersController : ApiControllerBase
         var userId = GetUserId() ?? "";
         return FromResult(await _orderService.RefundOrderAsync(id, userId, ct));
     }
+
+    [HttpPost("{id:guid}/simulate-payment")]
+    public async Task<IActionResult> SimulatePayment(Guid id, CancellationToken ct)
+    {
+        var userId = GetUserId() ?? "";
+        return FromResult(await _orderService.SimulatePaymentAsync(id, userId, ct));
+    }
 }

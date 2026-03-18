@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using TicketStar.Application.Common;
+using TicketStar.Application.DTOs;
 using TicketStar.Application.Interfaces;
 
 namespace TicketStar.API.Controllers;
@@ -10,24 +10,44 @@ namespace TicketStar.API.Controllers;
 [Route("api/account")]
 public class AccountController : ApiControllerBase
 {
-    private readonly IAdminService _adminService;
+    private readonly IOrganizerProfileService _organizerProfileService;
 
-    public AccountController(IAdminService adminService)
+    public AccountController(IOrganizerProfileService organizerProfileService)
     {
-        _adminService = adminService;
+        _organizerProfileService = organizerProfileService;
     }
 
     /// <summary>
-    /// Self-service: any authenticated user can enable organizer mode on their own account.
-    /// This allows a user to be both an attendee and an organizer simultaneously.
+    /// Self-service: create organizer profile to enable event creation.
     /// </summary>
     [HttpPost("become-organizer")]
-    public async Task<IActionResult> BecomeOrganizer(CancellationToken ct)
+    public async Task<IActionResult> BecomeOrganizer([FromBody] CreateOrganizerProfileRequest request, CancellationToken ct)
     {
         var userId = GetUserId();
         if (userId is null)
             return Unauthorized();
 
-        return FromResult(await _adminService.GrantOrganizerAsync(userId, ct));
+        return FromResult(await _organizerProfileService.CreateAsync(userId, request, ct));
+    }
+
+    [HttpGet("organizer-profile")]
+    public async Task<IActionResult> GetOrganizerProfile(CancellationToken ct)
+    {
+        var userId = GetUserId();
+        if (userId is null)
+            return Unauthorized();
+
+        var profile = await _organizerProfileService.GetByUserIdAsync(userId, ct);
+        return profile == null ? NotFound() : Ok(profile);
+    }
+
+    [HttpPut("organizer-profile")]
+    public async Task<IActionResult> UpdateOrganizerProfile([FromBody] UpdateOrganizerProfileRequest request, CancellationToken ct)
+    {
+        var userId = GetUserId();
+        if (userId is null)
+            return Unauthorized();
+
+        return FromResult(await _organizerProfileService.UpdateAsync(userId, request, ct));
     }
 }

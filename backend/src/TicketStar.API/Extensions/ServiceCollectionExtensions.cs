@@ -46,7 +46,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ICheckInService, CheckInService>();
         services.AddScoped<ITicketService, TicketService>();
         services.AddScoped<ITicketTypeService, TicketTypeService>();
-        services.AddScoped<IStaffService, StaffService>();
+        services.AddScoped<IOrganizerProfileService, OrganizerProfileService>();
+        services.AddScoped<ICollaboratorService, CollaboratorService>();
         services.AddScoped<IPayoutService, PayoutService>();
         services.AddScoped<IAdminService, AdminService>();
 
@@ -73,7 +74,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ITicketRepository, TicketRepository>();
         services.AddScoped<IPaymentRepository, PaymentRepository>();
         services.AddScoped<ICheckInRepository, CheckInRepository>();
-        services.AddScoped<IStaffAssignmentRepository, StaffAssignmentRepository>();
+        services.AddScoped<IOrganizerProfileRepository, OrganizerProfileRepository>();
+        services.AddScoped<IEventCollaboratorRepository, EventCollaboratorRepository>();
 
         return services;
     }

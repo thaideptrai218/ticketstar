@@ -65,19 +65,6 @@ public class AdminService : IAdminService
         return Result<bool>.Success(true);
     }
 
-    public async Task<Result<bool>> GrantOrganizerAsync(string userId, CancellationToken ct)
-    {
-        var user = await _userRepo.GetByIdAsync(userId, ct);
-        if (user == null)
-            return Result<bool>.Failure("User not found", ResultError.NotFound);
-
-        user.IsOrganizer = true;
-        user.UpdatedAt = DateTime.UtcNow;
-        _userRepo.Update(user);
-        await _unitOfWork.SaveChangesAsync(ct);
-        return Result<bool>.Success(true);
-    }
-
     public async Task<Result<bool>> RevokeOrganizerAsync(string userId, CancellationToken ct)
     {
         var user = await _userRepo.GetByIdAsync(userId, ct);

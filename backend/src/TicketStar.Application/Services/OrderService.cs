@@ -320,6 +320,90 @@ public class OrderService : IOrderService
         ));
     }
 
+    public async Task<Result<OrderDetailResponse>> SimulatePaymentAsync(Guid orderId, string userId, CancellationToken ct)
+    {
+        var order = await _orderRepo.GetByIdWithItemsAsync(orderId, ct);
+        if (order == null)
+            return Result<OrderDetailResponse>.Failure("Order not found", ResultError.NotFound);
+
+        if (order.UserId != userId)
+            return Result<OrderDetailResponse>.Failure("Not authorized", ResultError.Forbidden);
+
+        if (order.Status != OrderStatus.Pending)
+            return Result<OrderDetailResponse>.Failure("Order is not pending");
+
+        var tickets = new List<Ticket>();
+        foreach (var item in order.Items)
+        {
+            var ticketType = await _ticketTypeRepo.GetByIdAsync(item.TicketTypeId, ct);
+
+            for (int i = 0; i < item.Quantity; i++)
+            {
+                var ticketId = Guid.NewGuid();
+                var userIdGuid = Guid.Parse(order.UserId);
+                var qrPayload = _qrCodeService.GenerateTicketPayload(ticketId, item.TicketTypeId, userIdGuid);
+                var qrSignature = _qrCodeService.GenerateHmac(qrPayload);
+                var qrData = $"{qrPayload}|{qrSignature}";
+
+                tickets.Add(new Ticket
+                {
+                    Id = ticketId,
+                    OrderItemId = item.Id,
+                    UserId = order.UserId,
+                    TicketTypeId = item.TicketTypeId,
+                    EventId = ticketType?.EventId ?? Guid.Empty,
+                    QrCode = qrData,
+                    IsCheckedIn = false
+                });
+            }
+        }
+
+        order.Status = OrderStatus.Paid;
+        order.PaidAt = DateTime.UtcNow;
+        order.UpdatedAt = DateTime.UtcNow;
+
+        if (order.Payment != null)
+        {
+            order.Payment.Status = PaymentStatus.Success;
+            order.Payment.ProcessedAt = DateTime.UtcNow;
+        }
+
+        foreach (var ticket in tickets)
+            _ticketRepo.Add(ticket);
+
+        await _unitOfWork.SaveChangesAsync(ct);
+
+        return Result<OrderDetailResponse>.Success(new OrderDetailResponse(
+            order.Id,
+            order.Status.ToString(),
+            order.TotalAmount,
+            order.CreatedAt,
+            order.ExpiresAt,
+            order.PaidAt,
+            order.Items.Select(oi => new OrderItemResponse(
+                oi.Id,
+                oi.TicketTypeId,
+                "",
+                oi.Quantity,
+                oi.UnitPrice,
+                oi.UnitPrice * oi.Quantity
+            )).ToList(),
+            tickets.Select(t => new TicketResponse(
+                t.Id,
+                "",
+                _qrCodeService.GenerateQrCodeBase64(t.QrCode),
+                t.IsCheckedIn
+            )).ToList(),
+            order.Payment != null ? new PaymentResponse(
+                order.Payment.Id,
+                order.Payment.Provider,
+                order.Payment.ExternalRef,
+                order.Payment.Amount,
+                order.Payment.ProcessedAt
+            ) : null
+        ));
+    }
+
     public async Task<Result<bool>> CancelOrderAsync(Guid orderId, string userId, CancellationToken ct)
     {
         var order = await _orderRepo.GetByIdWithItemsAsync(orderId, ct);
