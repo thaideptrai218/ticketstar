@@ -50,8 +50,8 @@ export function Step1EventInfo({ data, onChange, onNext, isCreateMode }: Step1Pr
 
   return (
     <div className="space-y-6">
-      {/* Images */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* Images — side by side with more breathing room */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         <ImageUploadZone
           label="Ảnh bìa"
           dimensions="720x958"
@@ -66,16 +66,30 @@ export function Step1EventInfo({ data, onChange, onNext, isCreateMode }: Step1Pr
         />
       </div>
 
-      {/* Title */}
-      <div>
-        <Label htmlFor="ev-title">Tên sự kiện *</Label>
-        <Input
-          id="ev-title"
-          value={data.title}
-          onChange={(e) => handleTitleChange(e.target.value)}
-          className="mt-1"
-          placeholder="VD: Đêm nhạc Hà Nội 2026"
-        />
+      {/* Title + Category in a row */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="sm:col-span-2">
+          <Label htmlFor="ev-title">Tên sự kiện *</Label>
+          <Input
+            id="ev-title"
+            value={data.title}
+            onChange={(e) => handleTitleChange(e.target.value)}
+            className="mt-1"
+            placeholder="VD: Đêm nhạc Hà Nội 2026"
+          />
+        </div>
+        <div>
+          <Label htmlFor="ev-category">Danh mục</Label>
+          <select
+            id="ev-category"
+            value={data.category}
+            onChange={(e) => onChange({ category: e.target.value })}
+            className="mt-1 w-full border rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+          >
+            <option value="">-- Chọn danh mục --</option>
+            {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
       </div>
 
       {/* Slug (create mode only) */}
@@ -83,7 +97,7 @@ export function Step1EventInfo({ data, onChange, onNext, isCreateMode }: Step1Pr
         <div>
           <Label htmlFor="ev-slug">Đường dẫn (slug)</Label>
           <div className="flex items-center mt-1 gap-1">
-            <span className="text-stone-400 text-sm">/events/</span>
+            <span className="text-stone-400 text-sm shrink-0">/events/</span>
             <Input
               id="ev-slug"
               value={data.slug}
@@ -95,79 +109,66 @@ export function Step1EventInfo({ data, onChange, onNext, isCreateMode }: Step1Pr
         </div>
       )}
 
-      {/* Category */}
-      <div>
-        <Label htmlFor="ev-category">Danh mục</Label>
-        <select
-          id="ev-category"
-          value={data.category}
-          onChange={(e) => onChange({ category: e.target.value })}
-          className="mt-1 w-full border rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-        >
-          <option value="">-- Chọn danh mục --</option>
-          {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-        </select>
-      </div>
-
-      {/* Location type */}
-      <div>
-        <Label>Hình thức tổ chức</Label>
-        <div className="flex gap-3 mt-1">
-          <button
-            type="button"
-            onClick={() => onChange({ isOnline: false })}
-            className={`flex-1 py-2 rounded-md border text-sm font-medium transition-colors ${!data.isOnline ? "border-amber-500 bg-amber-50 text-amber-700" : "border-stone-300 text-stone-600 hover:border-stone-400"}`}
-          >
-            Trực tiếp
-          </button>
-          <button
-            type="button"
-            onClick={() => onChange({ isOnline: true })}
-            className={`flex-1 py-2 rounded-md border text-sm font-medium transition-colors ${data.isOnline ? "border-amber-500 bg-amber-50 text-amber-700" : "border-stone-300 text-stone-600 hover:border-stone-400"}`}
-          >
-            Trực tuyến
-          </button>
-        </div>
-      </div>
-
-      {/* Location details */}
-      {data.isOnline ? (
+      {/* Location type + details */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-start">
         <div>
-          <Label htmlFor="ev-online-url">Link tham gia</Label>
-          <Input
-            id="ev-online-url"
-            value={data.onlineUrl}
-            onChange={(e) => onChange({ onlineUrl: e.target.value })}
-            className="mt-1"
-            placeholder="https://meet.google.com/..."
-          />
+          <Label>Hình thức tổ chức</Label>
+          <div className="flex gap-2 mt-1">
+            <button
+              type="button"
+              onClick={() => onChange({ isOnline: false })}
+              className={`flex-1 py-2 rounded-md border text-sm font-medium transition-colors ${!data.isOnline ? "border-amber-500 bg-amber-50 text-amber-700" : "border-stone-300 text-stone-600 hover:border-stone-400"}`}
+            >
+              Trực tiếp
+            </button>
+            <button
+              type="button"
+              onClick={() => onChange({ isOnline: true })}
+              className={`flex-1 py-2 rounded-md border text-sm font-medium transition-colors ${data.isOnline ? "border-amber-500 bg-amber-50 text-amber-700" : "border-stone-300 text-stone-600 hover:border-stone-400"}`}
+            >
+              Trực tuyến
+            </button>
+          </div>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="ev-venue">Địa điểm</Label>
+
+        {data.isOnline ? (
+          <div className="sm:col-span-2">
+            <Label htmlFor="ev-online-url">Link tham gia</Label>
             <Input
-              id="ev-venue"
-              value={data.venue}
-              onChange={(e) => onChange({ venue: e.target.value })}
+              id="ev-online-url"
+              value={data.onlineUrl}
+              onChange={(e) => onChange({ onlineUrl: e.target.value })}
               className="mt-1"
-              placeholder="Tên sân khấu, địa chỉ..."
+              placeholder="https://meet.google.com/..."
             />
           </div>
-          <div>
-            <Label htmlFor="ev-city">Tỉnh / Thành phố</Label>
-            <select
-              id="ev-city"
-              value={data.city}
-              onChange={(e) => onChange({ city: e.target.value })}
-              className="mt-1 w-full border rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-            >
-              <option value="">-- Chọn tỉnh thành --</option>
-              {provinces.map((p) => <option key={p} value={p}>{p}</option>)}
-            </select>
-          </div>
-        </div>
-      )}
+        ) : (
+          <>
+            <div>
+              <Label htmlFor="ev-venue">Địa điểm</Label>
+              <Input
+                id="ev-venue"
+                value={data.venue}
+                onChange={(e) => onChange({ venue: e.target.value })}
+                className="mt-1"
+                placeholder="Tên sân khấu, địa chỉ..."
+              />
+            </div>
+            <div>
+              <Label htmlFor="ev-city">Tỉnh / Thành phố</Label>
+              <select
+                id="ev-city"
+                value={data.city}
+                onChange={(e) => onChange({ city: e.target.value })}
+                className="mt-1 w-full border rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+              >
+                <option value="">-- Chọn tỉnh thành --</option>
+                {provinces.map((p) => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+          </>
+        )}
+      </div>
 
       {/* Description */}
       <div>

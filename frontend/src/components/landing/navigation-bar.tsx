@@ -134,21 +134,12 @@ export function NavigationBar() {
           {isAuthenticated && (
             <div className="hidden items-center gap-1 lg:flex">
               {/* Organizers and admins get direct create link; others get become-organizer prompt */}
-              {isOrganizer ? (
-                <Button variant="outline" size="sm" className="h-8 px-3 text-xs font-medium border-amber-200 text-amber-700 hover:bg-amber-50 hover:border-amber-300 gap-1.5" asChild>
-                  <Link href="/organizer/events/new">
-                    <Plus className="size-3.5" strokeWidth={2.5} />
-                    Tạo sự kiện
-                  </Link>
-                </Button>
-              ) : (
-                <Button variant="outline" size="sm" className="h-8 px-3 text-xs font-medium border-stone-200 text-stone-600 hover:bg-stone-50 gap-1.5" asChild>
-                  <Link href="/become-organizer">
-                    <Plus className="size-3.5" strokeWidth={2.5} />
-                    Tổ chức sự kiện
-                  </Link>
-                </Button>
-              )}
+              <Button variant="outline" size="sm" className="h-8 px-3 text-xs font-medium border-amber-200 text-amber-700 hover:bg-amber-50 hover:border-amber-300 gap-1.5" asChild>
+                <Link href="/organizer/events/new" target="_blank" rel="noopener noreferrer">
+                  <Plus className="size-3.5" strokeWidth={2.5} />
+                  {isOrganizer ? "Tạo sự kiện" : "Tổ chức sự kiện"}
+                </Link>
+              </Button>
               <Button variant="ghost" size="sm" className="h-8 px-2.5 text-xs font-medium text-stone-500 hover:text-stone-900 hover:bg-stone-100 gap-1.5" asChild>
                 <Link href="/attendee/my-tickets">
                   <Ticket className="size-3.5" />

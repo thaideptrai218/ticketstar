@@ -42,20 +42,43 @@ interface TicketTypeModalProps {
   onSave: (item: TicketTypeFormItem) => void;
 }
 
+// Format number to VND display string with thousand commas
+function formatVnd(val: number): string {
+  if (!val) return "";
+  return val.toLocaleString("vi-VN");
+}
+
+// Parse a formatted VND string back to a plain number
+function parseVnd(str: string): number {
+  const digits = str.replace(/[^\d]/g, "");
+  return digits ? Number(digits) : 0;
+}
+
+// Compute min end datetime: 1 minute after start
+function minAfter(start: string): string | undefined {
+  if (!start) return undefined;
+  return new Date(new Date(start).getTime() + 60000).toISOString().slice(0, 16);
+}
+
 export function TicketTypeModal({ open, onClose, initialData, onSave }: TicketTypeModalProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
+  // Separate display state for price so we can show thousand-comma formatting
+  const [priceDisplay, setPriceDisplay] = useState("");
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm({
+  const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm({
     resolver: zodResolver(schema) as never,
     defaultValues: {
       name: "", description: "", price: 0, quota: 100, maxPerUser: 10, saleStartAt: "", saleEndAt: "",
     },
   });
 
+  const saleStartAt = watch("saleStartAt") as string;
+  const saleEndAt = watch("saleEndAt") as string;
+
   // Populate form when editing
   useEffect(() => {
     if (open) {
-      reset(initialData ? {
+      const defaults = initialData ? {
         name: initialData.name,
         description: initialData.description,
         price: initialData.price,
@@ -63,11 +86,21 @@ export function TicketTypeModal({ open, onClose, initialData, onSave }: TicketTy
         maxPerUser: initialData.maxPerUser,
         saleStartAt: initialData.saleStartAt,
         saleEndAt: initialData.saleEndAt,
-      } : { name: "", description: "", price: 0, quota: 100, maxPerUser: 10, saleStartAt: "", saleEndAt: "" });
+      } : { name: "", description: "", price: 0, quota: 100, maxPerUser: 10, saleStartAt: "", saleEndAt: "" };
+      reset(defaults);
+      setPriceDisplay(formatVnd(defaults.price));
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setShowAdvanced(!!(initialData?.saleStartAt || initialData?.saleEndAt));
     }
   }, [open, initialData, reset]);
+
+  // When saleStartAt changes, clear saleEndAt if it's now invalid
+  function handleSaleStartChange(value: string) {
+    setValue("saleStartAt", value);
+    if (saleEndAt && value && saleEndAt <= value) {
+      setValue("saleEndAt", "");
+    }
+  }
 
   function onSubmit(data: FormData) {
     onSave({
@@ -103,7 +136,20 @@ export function TicketTypeModal({ open, onClose, initialData, onSave }: TicketTy
           <div className="grid grid-cols-3 gap-3">
             <div>
               <Label htmlFor="tt-price">Giá (VND)</Label>
-              <Input id="tt-price" type="number" min={0} {...register("price", { valueAsNumber: true })} className="mt-1" />
+              {/* Controlled text input with comma formatting — syncs numeric value to RHF */}
+              <Input
+                id="tt-price"
+                type="text"
+                inputMode="numeric"
+                value={priceDisplay}
+                onChange={(e) => {
+                  const numeric = parseVnd(e.target.value);
+                  setPriceDisplay(formatVnd(numeric));
+                  setValue("price", numeric, { shouldValidate: true });
+                }}
+                className="mt-1"
+                placeholder="0"
+              />
               {errors.price && <p className="text-xs text-red-500 mt-1">{errors.price.message}</p>}
             </div>
             <div>
@@ -118,7 +164,7 @@ export function TicketTypeModal({ open, onClose, initialData, onSave }: TicketTy
             </div>
           </div>
 
-          {/* Collapsible advanced: sale dates */}
+          {/* Collapsible advanced: sale dates with time logic */}
           <button
             type="button"
             onClick={() => setShowAdvanced((v) => !v)}
@@ -130,11 +176,30 @@ export function TicketTypeModal({ open, onClose, initialData, onSave }: TicketTy
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="tt-sale-start">Mở bán từ</Label>
-                <Input id="tt-sale-start" type="datetime-local" {...register("saleStartAt")} className="mt-1" />
+                <Input
+                  id="tt-sale-start"
+                  type="datetime-local"
+                  value={saleStartAt}
+                  onChange={(e) => handleSaleStartChange(e.target.value)}
+                  className="mt-1"
+                />
               </div>
               <div>
-                <Label htmlFor="tt-sale-end">Đóng bán lúc</Label>
-                <Input id="tt-sale-end" type="datetime-local" {...register("saleEndAt")} className="mt-1" />
+                <Label htmlFor="tt-sale-end">
+                  Đóng bán lúc
+                  {!saleStartAt && (
+                    <span className="ml-1 text-xs font-normal text-stone-400">(chọn giờ mở bán trước)</span>
+                  )}
+                </Label>
+                <Input
+                  id="tt-sale-end"
+                  type="datetime-local"
+                  value={saleEndAt}
+                  min={minAfter(saleStartAt)}
+                  disabled={!saleStartAt}
+                  onChange={(e) => setValue("saleEndAt", e.target.value)}
+                  className="mt-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                />
               </div>
             </div>
           )}

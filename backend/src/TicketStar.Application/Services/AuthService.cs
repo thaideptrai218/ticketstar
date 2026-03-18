@@ -164,7 +164,7 @@ public class AuthService : IAuthService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Google token validation failed");
+            _logger.LogError(ex, "Google token validation failed — ClientId: {ClientId}, Error: {Message}", _googleOptions.ClientId, ex.Message);
             return Result<AuthResponse>.Failure("Invalid Google token.", ResultError.Unauthorized);
         }
 
@@ -254,8 +254,8 @@ public class AuthService : IAuthService
         var hash = _tokenHasher.Hash(token);
         _logger.LogDebug("Magic link issued for {Email}, hash prefix: {Prefix}", email, hash[..8]);
 
-        // Console stub for dev — Debug level is filtered out in production (set MinLevel=Information in prod)
-        _logger.LogDebug("=== DEV ONLY - MAGIC LINK TOKEN for {Email}: {Token} ===", email, token);
+        // Console stub for dev — use Warning so it shows regardless of log level config
+        _logger.LogWarning("=== DEV ONLY - MAGIC LINK TOKEN for {Email}: {Token} ===", email, token);
 
         return Result.Success();
     }

@@ -154,13 +154,13 @@ export function EventWizard({ mode, initialData }: EventWizardProps) {
   const stepProps = { data: state, onChange: update };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-8">
+    <div className="max-w-4xl mx-auto space-y-8">
       <WizardStepper
         currentStep={step}
         onStepClick={(s) => setStep(s as 1 | 2 | 3 | 4)}
       />
 
-      <div className="bg-white rounded-xl border border-stone-200 p-6 shadow-sm">
+      <div className="bg-white rounded-xl border border-stone-200 p-8 shadow-sm">
         {step === 1 && (
           <Step1EventInfo
             {...stepProps}

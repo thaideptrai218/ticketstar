@@ -4,7 +4,6 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { CalendarDays, DollarSign, ShoppingCart, TicketIcon } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EventStatsCard } from "@/components/organizer/event-stats-card";
@@ -50,11 +49,8 @@ export default function OrganizerDashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
+      <div>
         <h1 className="text-2xl font-bold text-stone-900">Tổng quan</h1>
-        <Button asChild className="bg-amber-600 hover:bg-amber-700">
-          <Link href="/organizer/events/new">Tạo sự kiện</Link>
-        </Button>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

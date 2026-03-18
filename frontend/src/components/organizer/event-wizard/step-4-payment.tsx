@@ -33,7 +33,7 @@ export function Step4Payment({ data, onChange, onBack, onSubmit, isSubmitting, i
       </div>
 
       {/* Summary */}
-      <div className="rounded-lg border border-stone-200 p-4 bg-stone-50 space-y-2">
+      <div className="rounded-lg border border-stone-200 p-5 bg-stone-50 space-y-2">
         <p className="font-semibold text-stone-700 text-sm mb-2">Tóm tắt sự kiện</p>
         <SummaryRow label="Tên" value={data.title || "—"} />
         <SummaryRow label="Hình thức" value={data.isOnline ? "Trực tuyến" : "Trực tiếp"} />
