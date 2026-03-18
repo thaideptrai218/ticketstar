@@ -24,6 +24,13 @@ public class TicketsController : ApiControllerBase
         return FromResult(await _ticketService.GetMyTicketsAsync(userId, ct));
     }
 
+    [HttpGet("{id:guid}/qr")]
+    public async Task<IActionResult> GetTicketQr(Guid id, CancellationToken ct)
+    {
+        var userId = GetUserId() ?? "";
+        return FromResult(await _ticketService.GetTicketQrAsync(id, userId, ct));
+    }
+
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetTicket(Guid id, CancellationToken ct)
     {

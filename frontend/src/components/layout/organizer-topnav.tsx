@@ -1,11 +1,12 @@
 "use client";
 
 // Top navigation bar for the organizer dashboard layout.
-// Contains only: "Tạo sự kiện" button (opens new tab) + user avatar dropdown.
+// Contains: "Tạo sự kiện" button + notification bell + user avatar dropdown.
 import Link from "next/link";
 import { CalendarPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { UserMenu } from "@/components/auth/user-menu";
+import { NotificationBell } from "@/components/layout/notification-bell";
 
 export function OrganizerTopNav() {
   return (
@@ -21,6 +22,7 @@ export function OrganizerTopNav() {
         </Link>
       </Button>
 
+      <NotificationBell />
       <UserMenu />
     </header>
   );

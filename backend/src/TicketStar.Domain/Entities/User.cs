@@ -46,6 +46,6 @@ public class User
     public ICollection<Event> OrganizedEvents { get; set; } = [];
     public ICollection<Order> Orders { get; set; } = [];
     public ICollection<Ticket> Tickets { get; set; } = [];
-    public OrganizerProfile? OrganizerProfile { get; set; }
+    public ICollection<OrganizerProfile> OrganizerProfiles { get; set; } = [];
     public ICollection<EventCollaborator> Collaborations { get; set; } = [];
 }

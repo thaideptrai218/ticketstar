@@ -19,8 +19,6 @@ import type { AdminUser } from "@/types/organizer";
 
 const ROLE_MAP: Record<string, { label: string; className: string }> = {
   Admin: { label: "Quản trị", className: "bg-red-100 text-red-700" },
-  Organizer: { label: "Ban tổ chức", className: "bg-purple-100 text-purple-700" },
-  Staff: { label: "Nhân viên", className: "bg-blue-100 text-blue-700" },
   User: { label: "Người dùng", className: "bg-stone-100 text-stone-600" },
 };
 
@@ -128,6 +126,7 @@ export function UsersTable({ users, searchQuery, onSearchChange, onRefresh, page
             <TableRow className="bg-stone-50">
               <TableHead>Email</TableHead>
               <TableHead>Vai trò</TableHead>
+              <TableHead>Tổ chức</TableHead>
               <TableHead>Trạng thái</TableHead>
               <TableHead>Ngày tạo</TableHead>
               <TableHead className="text-right">Hành động</TableHead>
@@ -143,6 +142,14 @@ export function UsersTable({ users, searchQuery, onSearchChange, onRefresh, page
                     <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${roleInfo?.className ?? "bg-stone-100 text-stone-600"}`}>
                       {roleInfo?.label ?? u.role}
                     </span>
+                  </TableCell>
+                  <TableCell>
+                    {u.isOrganizer && u.organizationName
+                      ? <span className="text-sm text-purple-700 font-medium">{u.organizationName}</span>
+                      : u.isOrganizer
+                        ? <span className="text-xs text-stone-400 italic">Chưa thiết lập</span>
+                        : <span className="text-stone-300">—</span>
+                    }
                   </TableCell>
                   <TableCell>
                     <Badge className={u.isLocked ? "bg-red-100 text-red-600 hover:bg-red-100" : "bg-green-100 text-green-700 hover:bg-green-100"}>
@@ -168,7 +175,7 @@ export function UsersTable({ users, searchQuery, onSearchChange, onRefresh, page
             })}
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-stone-400 py-10">
+                <TableCell colSpan={6} className="text-center text-stone-400 py-10">
                   Không tìm thấy người dùng.
                 </TableCell>
               </TableRow>

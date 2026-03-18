@@ -65,6 +65,8 @@ export interface CollaborationEvent {
   endAt: string;
   status: string;
   permissionLevel: CollaboratorPermissionLevel;
+  collaboratorStatus: CollaboratorStatus;
+  inviteToken?: string;  // present for Pending invites — used for inline accept/decline in NotificationBell
 }
 
 export interface CheckInStats {
@@ -86,6 +88,8 @@ export interface AdminUser {
   id: string;
   email: string;
   role: string;
+  isOrganizer: boolean;
+  organizationName: string | null;
   emailVerified: boolean;
   isLocked: boolean;
   createdAt: string;

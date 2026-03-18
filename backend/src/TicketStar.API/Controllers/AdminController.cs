@@ -16,6 +16,12 @@ public class AdminController : ApiControllerBase
         _adminService = adminService;
     }
 
+    [HttpGet("organizers")]
+    public async Task<IActionResult> ListOrganizers(CancellationToken ct)
+    {
+        return FromResult(await _adminService.ListOrganizersAsync(ct));
+    }
+
     [HttpGet("users")]
     public async Task<IActionResult> ListUsers([FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
     {

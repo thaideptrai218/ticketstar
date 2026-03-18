@@ -50,6 +50,10 @@ export function proxy(request: NextRequest): NextResponse {
     }
 
     if (!canAccess(payload, prefix)) {
+      // Authenticated users without organizer access → prompt to create profile
+      if (prefix === "/organizer") {
+        return NextResponse.redirect(new URL("/become-organizer", request.url));
+      }
       return NextResponse.redirect(new URL("/unauthorized", request.url));
     }
   } catch {

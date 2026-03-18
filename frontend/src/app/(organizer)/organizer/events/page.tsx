@@ -1,15 +1,15 @@
 "use client";
 
-// Organizer events list — horizontal filter tabs, publish toggle, first-visit notice popup
+// Organizer events list — card grid with filter tabs, publish toggle, first-visit notice popup
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { X, AlertCircle } from "lucide-react";
+import { X, AlertCircle, CalendarDays, MapPin, Ticket, ChevronRight, Plus, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { formatDate } from "@/lib/format-utils";
+import { useMyCollaborations } from "@/hooks/use-collaborators";
 import type { OrganizerEvent } from "@/types/organizer";
 
 const STATUS_MAP: Record<string, { label: string; class: string }> = {
@@ -86,9 +86,18 @@ function FirstVisitNotice({ onClose }: { onClose: () => void }) {
   );
 }
 
+const PERMISSION_LABELS: Record<string, string> = {
+  Viewer: "Xem",
+  Operator: "Vận hành",
+  Manager: "Quản lý",
+};
+
 export default function OrganizerEventsPage() {
   const [events, setEvents] = useState<OrganizerEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { data: allCollaborations } = useMyCollaborations();
+  // Only show events where user is an accepted collaborator
+  const collaboratedEvents = (allCollaborations ?? []).filter((c) => c.collaboratorStatus === "Accepted");
   const [toggling, setToggling] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<FilterTab>("all");
   const [showNotice, setShowNotice] = useState(false);
@@ -130,17 +139,20 @@ export default function OrganizerEventsPage() {
 
   const filtered = filterEvents(events, activeTab);
 
-  if (isLoading) {
-    return <div className="space-y-3">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-14 rounded-lg" />)}</div>;
-  }
-
   return (
     <>
       {showNotice && <FirstVisitNotice onClose={handleCloseNotice} />}
 
       <div className="space-y-6">
-        <div>
+        {/* Header */}
+        <div className="flex items-center justify-between gap-4">
           <h1 className="text-2xl font-bold text-stone-900">Sự kiện của tôi</h1>
+          <Button size="sm" asChild className="gap-2 bg-amber-500 hover:bg-amber-600 text-white shrink-0">
+            <Link href="/organizer/events/new">
+              <Plus className="size-4" />
+              Tạo sự kiện
+            </Link>
+          </Button>
         </div>
 
         {/* Filter tabs */}
@@ -152,7 +164,7 @@ export default function OrganizerEventsPage() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`relative px-5 py-2.5 text-sm font-medium transition-colors focus:outline-none
+                className={`relative px-5 py-2.5 text-sm font-medium transition-colors focus:outline-none cursor-pointer
                   ${isActive
                     ? "text-amber-600 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-amber-500"
                     : "text-stone-500 hover:text-stone-800"
@@ -169,47 +181,167 @@ export default function OrganizerEventsPage() {
           })}
         </div>
 
-        {filtered.length === 0 ? (
-          <p className="text-sm text-stone-400 py-12 text-center">Chưa có sự kiện nào.</p>
+        {/* Card grid */}
+        {isLoading ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="animate-pulse rounded-2xl border border-stone-200 bg-white p-5 space-y-3">
+                <div className="flex justify-between">
+                  <div className="h-5 w-24 rounded-full bg-stone-100" />
+                  <div className="h-5 w-16 rounded-full bg-stone-100" />
+                </div>
+                <div className="h-5 w-3/4 rounded bg-stone-100" />
+                <div className="space-y-2">
+                  <div className="h-3.5 w-full rounded bg-stone-100" />
+                  <div className="h-3.5 w-2/3 rounded bg-stone-100" />
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <div className="h-7 flex-1 rounded-lg bg-stone-100" />
+                  <div className="h-7 flex-1 rounded-lg bg-stone-100" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-stone-300 bg-stone-50 py-16 text-center">
+            <div className="flex size-12 items-center justify-center rounded-2xl bg-stone-100 mb-3">
+              <CalendarDays className="size-6 text-stone-400" />
+            </div>
+            <p className="font-medium text-stone-600 text-sm">Chưa có sự kiện nào</p>
+            <p className="text-xs text-stone-400 mt-1 mb-4">Nhấn "Tạo sự kiện" để bắt đầu</p>
+            <Button size="sm" asChild className="gap-2 bg-amber-500 hover:bg-amber-600 text-white">
+              <Link href="/organizer/events/new"><Plus className="size-3.5" />Tạo sự kiện</Link>
+            </Button>
+          </div>
         ) : (
-          <div className="rounded-xl border border-stone-200 bg-white overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Tên</TableHead>
-                  <TableHead>Ngày</TableHead>
-                  <TableHead>Trạng thái</TableHead>
-                  <TableHead>Vé</TableHead>
-                  <TableHead className="text-right">Hành động</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((e) => {
-                  const st = STATUS_MAP[e.status] ?? STATUS_MAP.Draft;
-                  const sold = e.totalTicketCount - e.availableTicketCount;
-                  return (
-                    <TableRow key={e.id}>
-                      <TableCell className="font-medium max-w-[200px] truncate">{e.title}</TableCell>
-                      <TableCell className="text-sm text-stone-500">{formatDate(e.startAt)}</TableCell>
-                      <TableCell><Badge className={st.class}>{st.label}</Badge></TableCell>
-                      <TableCell className="text-sm">{sold}/{e.totalTicketCount}</TableCell>
-                      <TableCell className="text-right space-x-2">
-                        <Button variant="outline" size="sm" asChild><Link href={`/organizer/events/${e.id}/edit`}>Sửa</Link></Button>
-                        <Button variant="outline" size="sm" asChild><Link href={`/organizer/events/${e.id}/ticket-types`}>Loại vé</Link></Button>
-                        <Button variant="outline" size="sm" asChild><Link href={`/organizer/events/${e.id}/orders`}>Đơn</Link></Button>
-                        <Button
-                          variant="ghost" size="sm"
-                          disabled={toggling === e.id}
-                          onClick={() => togglePublish(e.id, e.status === "Published")}
-                        >
-                          {e.status === "Published" ? "Ẩn" : "Đăng"}
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {filtered.map((e) => {
+              const st = STATUS_MAP[e.status] ?? STATUS_MAP.Draft;
+              const sold = e.totalTicketCount - e.availableTicketCount;
+              return (
+                <div key={e.id} className="group relative flex flex-col rounded-2xl border border-stone-200 bg-white shadow-sm transition-all hover:shadow-md hover:border-stone-300">
+                  {/* Banner / color strip */}
+                  {e.imageUrl ? (
+                    <img src={e.imageUrl} alt="" className="h-32 w-full rounded-t-2xl object-cover" />
+                  ) : (
+                    <div className="h-2 w-full rounded-t-2xl bg-gradient-to-r from-amber-400 to-amber-200" />
+                  )}
+
+                  {/* Card body — clickable to detail */}
+                  <Link href={`/organizer/events/${e.id}`} className="flex-1 flex flex-col p-5 gap-3 cursor-pointer">
+                    {/* Status + online badge */}
+                    <div className="flex items-center justify-between gap-2">
+                      <Badge className={`${st.class} border text-xs`}>{st.label}</Badge>
+                      {e.isOnline && <span className="text-xs text-blue-600 font-medium">Online</span>}
+                    </div>
+
+                    {/* Title */}
+                    <h3 className="font-semibold text-stone-900 leading-snug line-clamp-2 group-hover:text-amber-700 transition-colors">
+                      {e.title}
+                    </h3>
+
+                    {/* Meta */}
+                    <div className="space-y-1.5 text-xs text-stone-400">
+                      <div className="flex items-center gap-1.5">
+                        <CalendarDays className="size-3.5 shrink-0" />
+                        {formatDate(e.startAt)}
+                      </div>
+                      {e.venue && (
+                        <div className="flex items-center gap-1.5">
+                          <MapPin className="size-3.5 shrink-0" />
+                          <span className="truncate">{e.venue}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-1.5">
+                        <Ticket className="size-3.5 shrink-0" />
+                        {sold}/{e.totalTicketCount} vé đã bán
+                      </div>
+                    </div>
+
+                    {/* Progress bar */}
+                    <div className="mt-auto">
+                      <div className="h-1.5 w-full rounded-full bg-stone-100 overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-amber-400 transition-all"
+                          style={{ width: `${e.totalTicketCount > 0 ? (sold / e.totalTicketCount) * 100 : 0}%` }}
+                        />
+                      </div>
+                    </div>
+                  </Link>
+
+                  {/* Action footer */}
+                  <div className="flex items-center gap-1 border-t border-stone-100 px-4 py-2.5">
+                    <Button
+                      variant="ghost" size="sm"
+                      className="text-xs text-stone-500 hover:text-stone-800 cursor-pointer"
+                      disabled={toggling === e.id}
+                      onClick={() => togglePublish(e.id, e.status === "Published")}
+                    >
+                      {e.status === "Published" ? "Ẩn" : "Đăng"}
+                    </Button>
+                    <div className="ml-auto flex items-center gap-1">
+                      <Button variant="ghost" size="sm" asChild className="text-xs text-stone-500 hover:text-stone-800">
+                        <Link href={`/organizer/events/${e.id}/edit`}>Sửa</Link>
+                      </Button>
+                      <Button variant="ghost" size="sm" asChild className="text-xs text-stone-500 hover:text-stone-800">
+                        <Link href={`/organizer/events/${e.id}/orders`}>Đơn</Link>
+                      </Button>
+                      <Link href={`/organizer/events/${e.id}`} className="flex size-7 items-center justify-center rounded-lg text-stone-300 hover:bg-amber-50 hover:text-amber-600 transition-colors cursor-pointer">
+                        <ChevronRight className="size-4" />
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Collaborated events — events the user has been accepted as a collaborator on */}
+        {collaboratedEvents.length > 0 && (
+          <div className="space-y-4 pt-2">
+            <div className="flex items-center gap-2">
+              <Users className="size-4 text-stone-400" />
+              <h2 className="text-base font-semibold text-stone-700">Sự kiện cộng tác</h2>
+              <span className="rounded-full bg-stone-100 px-1.5 py-0.5 text-xs text-stone-500">{collaboratedEvents.length}</span>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {collaboratedEvents.map((c) => (
+                <Link
+                  key={c.eventId}
+                  href={`/organizer/events/${c.eventId}`}
+                  className="group relative flex flex-col rounded-2xl border border-stone-200 bg-white shadow-sm transition-all hover:shadow-md hover:border-stone-300"
+                >
+                  <div className="h-2 w-full rounded-t-2xl bg-gradient-to-r from-blue-400 to-blue-200" />
+                  <div className="flex-1 flex flex-col p-5 gap-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <Badge variant="outline" className="text-xs border-blue-200 text-blue-600 bg-blue-50">
+                        {PERMISSION_LABELS[c.permissionLevel] ?? c.permissionLevel}
+                      </Badge>
+                      <span className="text-xs text-stone-400">Cộng tác</span>
+                    </div>
+                    <h3 className="font-semibold text-stone-900 leading-snug line-clamp-2 group-hover:text-blue-700 transition-colors">
+                      {c.title}
+                    </h3>
+                    <div className="space-y-1.5 text-xs text-stone-400">
+                      <div className="flex items-center gap-1.5">
+                        <CalendarDays className="size-3.5 shrink-0" />
+                        {formatDate(c.startAt)}
+                      </div>
+                      {c.venue && (
+                        <div className="flex items-center gap-1.5">
+                          <MapPin className="size-3.5 shrink-0" />
+                          <span className="truncate">{c.venue}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-end border-t border-stone-100 px-4 py-2.5">
+                    <ChevronRight className="size-4 text-stone-300 group-hover:text-blue-500 transition-colors" />
+                  </div>
+                </Link>
+              ))}
+            </div>
           </div>
         )}
       </div>

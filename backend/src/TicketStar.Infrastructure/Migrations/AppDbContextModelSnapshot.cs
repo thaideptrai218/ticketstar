@@ -531,8 +531,7 @@ namespace TicketStar.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId")
-                        .IsUnique();
+                    b.HasIndex("UserId");
 
                     b.ToTable("OrganizerProfiles", (string)null);
                 });
@@ -1082,8 +1081,8 @@ namespace TicketStar.Infrastructure.Migrations
             modelBuilder.Entity("TicketStar.Domain.Entities.OrganizerProfile", b =>
                 {
                     b.HasOne("TicketStar.Domain.Entities.User", "User")
-                        .WithOne("OrganizerProfile")
-                        .HasForeignKey("TicketStar.Domain.Entities.OrganizerProfile", "UserId")
+                        .WithMany("OrganizerProfiles")
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -1254,7 +1253,7 @@ namespace TicketStar.Infrastructure.Migrations
 
                     b.Navigation("OrganizedEvents");
 
-                    b.Navigation("OrganizerProfile");
+                    b.Navigation("OrganizerProfiles");
 
                     b.Navigation("Profile");
 

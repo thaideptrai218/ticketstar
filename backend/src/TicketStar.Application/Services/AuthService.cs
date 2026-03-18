@@ -26,6 +26,7 @@ public class AuthService : IAuthService
     private readonly ISessionService _sessionService;
     private readonly ITokenBlacklist _tokenBlacklist;
     private readonly IMfaService _mfaService;
+    private readonly ICollaboratorService _collaboratorService;
     private readonly GoogleAuthOptions _googleOptions;
     private readonly JwtOptions _jwtOptions;
     private readonly ILogger<AuthService> _logger;
@@ -44,6 +45,7 @@ public class AuthService : IAuthService
         ISessionService sessionService,
         ITokenBlacklist tokenBlacklist,
         IMfaService mfaService,
+        ICollaboratorService collaboratorService,
         IOptions<GoogleAuthOptions> googleOptions,
         IOptions<JwtOptions> jwtOptions,
         ILogger<AuthService> logger)
@@ -61,6 +63,7 @@ public class AuthService : IAuthService
         _sessionService = sessionService;
         _tokenBlacklist = tokenBlacklist;
         _mfaService = mfaService;
+        _collaboratorService = collaboratorService;
         _googleOptions = googleOptions.Value;
         _jwtOptions = jwtOptions.Value;
         _logger = logger;
@@ -92,6 +95,9 @@ public class AuthService : IAuthService
         _userRepo.Add(user);
         _identityRepo.Add(identity);
         await _unitOfWork.SaveChangesAsync();
+
+        // Backfill UserId on any pending collaborator invites sent to this email before the user had an account
+        await _collaboratorService.BackfillUserIdAsync(user.Id, user.Email, CancellationToken.None);
 
         var session = await _sessionService.CreateSessionAsync(user.Id, ip, ua);
         var tokens = await _tokenService.GenerateTokenPairAsync(user, session);

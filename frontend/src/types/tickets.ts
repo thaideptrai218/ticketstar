@@ -7,7 +7,6 @@ export interface MyTicket {
   eventVenue: string | null;
   eventStartAt: string;
   ticketTypeName: string;
-  qrCodeBase64: string;
   isCheckedIn: boolean;
   createdAt: string;
 }

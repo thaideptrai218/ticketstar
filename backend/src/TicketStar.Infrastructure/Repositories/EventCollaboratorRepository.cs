@@ -21,6 +21,8 @@ public class EventCollaboratorRepository : EfRepository<EventCollaborator>, IEve
         => await DbSet
             .Where(x => x.UserId == userId && x.Status == CollaboratorStatus.Accepted)
             .Include(x => x.Event)
+                .ThenInclude(e => e.Organizer)
+                    .ThenInclude(u => u.OrganizerProfiles)
             .ToListAsync(ct);
 
     public async Task<EventCollaborator?> GetByTokenAsync(string inviteToken, CancellationToken ct = default)
@@ -42,4 +44,20 @@ public class EventCollaboratorRepository : EfRepository<EventCollaborator>, IEve
             .FirstOrDefaultAsync(x => x.UserId == userId && x.EventId == eventId && x.Status == CollaboratorStatus.Accepted, ct);
         return collaborator?.PermissionLevel;
     }
+
+    // Returns pending invites with no UserId set for a given email — used to backfill UserId after registration
+    public async Task<List<EventCollaborator>> GetPendingByEmailAsync(string email, CancellationToken ct = default)
+        => await DbSet
+            .Where(x => x.Email == email && x.UserId == null && x.Status == CollaboratorStatus.Pending)
+            .ToListAsync(ct);
+
+    // Returns both Pending and Accepted collaborations for a user (NotificationBell needs Pending too)
+    public async Task<List<EventCollaborator>> GetActiveByUserAsync(string userId, CancellationToken ct = default)
+        => await DbSet
+            .Where(x => x.UserId == userId &&
+                        (x.Status == CollaboratorStatus.Pending || x.Status == CollaboratorStatus.Accepted))
+            .Include(x => x.Event)
+                .ThenInclude(e => e.Organizer)
+                    .ThenInclude(u => u.OrganizerProfiles)
+            .ToListAsync(ct);
 }

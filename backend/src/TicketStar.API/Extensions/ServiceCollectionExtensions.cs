@@ -50,6 +50,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ICollaboratorService, CollaboratorService>();
         services.AddScoped<IPayoutService, PayoutService>();
         services.AddScoped<IAdminService, AdminService>();
+        services.AddScoped<IEmailService, SmtpEmailService>();
 
         // Background services
         services.AddHostedService<OrderExpiryService>();
@@ -91,6 +92,9 @@ public static class ServiceCollectionExtensions
 
         services.AddOptions<GoogleAuthOptions>()
             .BindConfiguration(GoogleAuthOptions.SectionName);
+
+        services.AddOptions<SmtpOptions>()
+            .BindConfiguration("Smtp");
 
         services.AddOptions<MfaOptions>()
             .BindConfiguration(MfaOptions.SectionName);

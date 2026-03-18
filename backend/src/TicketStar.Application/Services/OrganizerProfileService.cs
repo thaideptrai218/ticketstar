@@ -28,12 +28,14 @@ public class OrganizerProfileService : IOrganizerProfileService
         return profile == null ? null : MapToResponse(profile);
     }
 
+    public async Task<List<OrganizerProfileResponse>> GetAllByUserIdAsync(string userId, CancellationToken ct)
+    {
+        var profiles = await _profileRepo.GetAllByUserIdAsync(userId, ct);
+        return profiles.Select(MapToResponse).ToList();
+    }
+
     public async Task<Result<OrganizerProfileResponse>> CreateAsync(string userId, CreateOrganizerProfileRequest request, CancellationToken ct)
     {
-        var existing = await _profileRepo.GetByUserIdAsync(userId, ct);
-        if (existing != null)
-            return Result<OrganizerProfileResponse>.Failure("Organizer profile already exists", ResultError.Conflict);
-
         var profile = new OrganizerProfile
         {
             UserId = userId,
@@ -50,9 +52,9 @@ public class OrganizerProfileService : IOrganizerProfileService
 
         _profileRepo.Add(profile);
 
-        // Set user as organizer
+        // Ensure user has organizer flag set
         var user = await _userRepo.GetByIdAsync(userId, ct);
-        if (user != null)
+        if (user != null && !user.IsOrganizer)
         {
             user.IsOrganizer = true;
             _userRepo.Update(user);
@@ -64,10 +66,27 @@ public class OrganizerProfileService : IOrganizerProfileService
 
     public async Task<Result<OrganizerProfileResponse>> UpdateAsync(string userId, UpdateOrganizerProfileRequest request, CancellationToken ct)
     {
+        // Updates the first (oldest) profile for the user — kept for backwards compatibility
         var profile = await _profileRepo.GetByUserIdAsync(userId, ct);
         if (profile == null)
             return Result<OrganizerProfileResponse>.Failure("Organizer profile not found", ResultError.NotFound);
 
+        return await ApplyUpdate(profile, request, ct);
+    }
+
+    public async Task<Result<OrganizerProfileResponse>> UpdateByIdAsync(string userId, string profileId, UpdateOrganizerProfileRequest request, CancellationToken ct)
+    {
+        var profile = await _profileRepo.GetByIdAsync(profileId, ct);
+        if (profile == null)
+            return Result<OrganizerProfileResponse>.Failure("Organizer profile not found", ResultError.NotFound);
+        if (profile.UserId != userId)
+            return Result<OrganizerProfileResponse>.Failure("Access denied", ResultError.Forbidden);
+
+        return await ApplyUpdate(profile, request, ct);
+    }
+
+    private async Task<Result<OrganizerProfileResponse>> ApplyUpdate(OrganizerProfile profile, UpdateOrganizerProfileRequest request, CancellationToken ct)
+    {
         profile.OrganizationName = request.OrganizationName;
         profile.Description = request.Description;
         profile.Phone = request.Phone;
@@ -84,7 +103,7 @@ public class OrganizerProfileService : IOrganizerProfileService
     }
 
     private static OrganizerProfileResponse MapToResponse(OrganizerProfile p) => new(
-        p.Id, p.OrganizationName, p.Description, p.LogoUrl,
+        p.Id, p.UserId, p.OrganizationName, p.Description, p.LogoUrl,
         p.Phone, p.Address, p.Website, p.FacebookUrl, p.InstagramUrl,
         p.IsComplete, p.CreatedAt);
 }

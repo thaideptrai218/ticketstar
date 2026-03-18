@@ -1,3 +1,4 @@
+using DotNetEnv;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -6,6 +7,10 @@ using TicketStar.API.Middleware;
 using TicketStar.Application.Interfaces;
 using TicketStar.Application.Options;
 using TicketStar.Infrastructure.Data;
+
+// Load .env from repo root (two levels up from API project)
+var envFile = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", ".env");
+if (File.Exists(envFile)) Env.Load(envFile);
 
 var builder = WebApplication.CreateBuilder(args);
 

@@ -23,17 +23,13 @@ export function TicketCard({ ticket, onTransferSuccess }: TicketCardProps) {
     <>
       <div className="rounded-2xl border border-stone-200 bg-white shadow-sm overflow-hidden">
         <div className="flex gap-4 p-5">
-          {/* QR thumbnail — click to enlarge */}
+          {/* QR placeholder — click to open full QR dialog (avoids base64 decode on list render) */}
           <button
             onClick={() => setQrOpen(true)}
-            className="shrink-0 rounded-lg border border-stone-100 bg-stone-50 p-1.5 hover:border-amber-300 transition-colors"
+            className="shrink-0 flex size-[76px] items-center justify-center rounded-lg border border-stone-100 bg-stone-50 hover:border-amber-300 hover:bg-amber-50 transition-colors"
             title="Xem mã QR"
           >
-            <img
-              src={`data:image/png;base64,${ticket.qrCodeBase64}`}
-              alt="QR vé"
-              className="size-16 object-contain"
-            />
+            <QrCode className="size-8 text-stone-400" />
           </button>
 
           {/* Event info */}
@@ -98,7 +94,7 @@ export function TicketCard({ ticket, onTransferSuccess }: TicketCardProps) {
       <TicketQrDisplay
         open={qrOpen}
         onOpenChange={setQrOpen}
-        qrCodeBase64={ticket.qrCodeBase64}
+        ticketId={ticket.id}
         eventTitle={ticket.eventTitle}
         ticketTypeName={ticket.ticketTypeName}
         eventStartAt={ticket.eventStartAt}

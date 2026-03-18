@@ -45,12 +45,29 @@ public class TicketService : ITicketService
             t.Event.Venue,
             t.Event.StartAt,
             t.TicketType.Name,
-            _qrCodeService.GenerateQrCodeBase64(t.QrCode),
             t.IsCheckedIn,
             t.CreatedAt
         )).ToList();
 
         return Result<List<MyTicketResponse>>.Success(responses);
+    }
+
+    public async Task<Result<TicketQrResponse>> GetTicketQrAsync(Guid ticketId, string userId, CancellationToken ct)
+    {
+        var ticket = await _ticketRepo.Query()
+            .Where(t => t.Id == ticketId)
+            .Select(t => new { t.UserId, t.QrCode })
+            .FirstOrDefaultAsync(ct);
+
+        if (ticket == null)
+            return Result<TicketQrResponse>.Failure("Ticket not found", ResultError.NotFound);
+
+        if (ticket.UserId != userId)
+            return Result<TicketQrResponse>.Failure("Not authorized", ResultError.Forbidden);
+
+        return Result<TicketQrResponse>.Success(new TicketQrResponse(
+            _qrCodeService.GenerateQrCodeBase64(ticket.QrCode)
+        ));
     }
 
     public async Task<Result<TicketDetailResponse>> GetTicketByIdAsync(Guid ticketId, string userId, CancellationToken ct)

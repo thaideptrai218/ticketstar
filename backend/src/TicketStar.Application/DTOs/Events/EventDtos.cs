@@ -16,7 +16,9 @@ public record CreateEventRequest(
     string? RefundPolicy,
     string? ContentWarning,
     string? PaymentTerms,
-    List<CreateTicketTypeRequest> TicketTypes
+    List<CreateTicketTypeRequest> TicketTypes,
+    /// <summary>Admin-only: create event on behalf of a specific organizer (UserId).</summary>
+    string? OrganizerIdOverride = null
 );
 
 public record UpdateEventRequest(

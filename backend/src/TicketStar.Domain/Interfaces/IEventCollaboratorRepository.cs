@@ -11,4 +11,8 @@ public interface IEventCollaboratorRepository : IRepository<EventCollaborator>
     Task<EventCollaborator?> GetByEmailAndEventAsync(string email, Guid eventId, CancellationToken ct = default);
     Task<bool> IsCollaboratorAsync(string userId, Guid eventId, CancellationToken ct = default);
     Task<CollaboratorPermissionLevel?> GetPermissionLevelAsync(string userId, Guid eventId, CancellationToken ct = default);
+    /// <summary>Returns pending invites (UserId=null) matching the given email for backfilling after user registration.</summary>
+    Task<List<EventCollaborator>> GetPendingByEmailAsync(string email, CancellationToken ct = default);
+    /// <summary>Returns all pending + accepted collaborations for a user (for NotificationBell + my-collaborations).</summary>
+    Task<List<EventCollaborator>> GetActiveByUserAsync(string userId, CancellationToken ct = default);
 }

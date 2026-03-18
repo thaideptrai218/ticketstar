@@ -18,7 +18,7 @@ public record CollaboratorResponse(
     DateTime InvitedAt,
     DateTime? AcceptedAt);
 
-public record InviteLinkResponse(string Token, string InviteUrl, DateTime ExpiresAt);
+public record InviteLinkResponse(string Token, string InviteLink, DateTime ExpiresAt);
 
 public record CollaborationEventResponse(
     Guid EventId,
@@ -27,4 +27,6 @@ public record CollaborationEventResponse(
     DateTime StartAt,
     DateTime EndAt,
     string Status,
-    string PermissionLevel);
+    string PermissionLevel,
+    string CollaboratorStatus,
+    string? InviteToken);  // populated for Pending invites so frontend can accept/decline inline

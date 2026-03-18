@@ -150,14 +150,10 @@ export function OrderDetailView({ order, onCancelSuccess }: OrderDetailProps) {
                 <div key={ticket.id} className="px-5 py-3 flex items-center gap-4">
                   <button
                     onClick={() => setSelectedTicket(ticket)}
-                    className="shrink-0 rounded-lg border border-stone-100 bg-stone-50 p-1 hover:border-amber-300 transition-colors"
+                    className="shrink-0 flex size-14 items-center justify-center rounded-lg border border-stone-100 bg-stone-50 hover:border-amber-300 transition-colors"
                     title="Xem QR"
                   >
-                    <img
-                      src={`data:image/png;base64,${ticket.qrCodeBase64}`}
-                      alt="QR vé"
-                      className="size-12 object-contain"
-                    />
+                    <QrCode className="size-7 text-stone-400" />
                   </button>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-stone-800 truncate">
@@ -219,7 +215,7 @@ export function OrderDetailView({ order, onCancelSuccess }: OrderDetailProps) {
         <TicketQrDisplay
           open={!!selectedTicket}
           onOpenChange={(open) => { if (!open) setSelectedTicket(null); }}
-          qrCodeBase64={selectedTicket.qrCodeBase64}
+          ticketId={selectedTicket.id}
           ticketTypeName={selectedTicket.ticketTypeName || "Vé sự kiện"}
         />
       )}

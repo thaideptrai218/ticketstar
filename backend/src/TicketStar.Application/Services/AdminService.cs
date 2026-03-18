@@ -8,11 +8,13 @@ namespace TicketStar.Application.Services;
 public class AdminService : IAdminService
 {
     private readonly IUserRepository _userRepo;
+    private readonly IOrganizerProfileRepository _organizerProfileRepo;
     private readonly IUnitOfWork _unitOfWork;
 
-    public AdminService(IUserRepository userRepo, IUnitOfWork unitOfWork)
+    public AdminService(IUserRepository userRepo, IOrganizerProfileRepository organizerProfileRepo, IUnitOfWork unitOfWork)
     {
         _userRepo = userRepo;
+        _organizerProfileRepo = organizerProfileRepo;
         _unitOfWork = unitOfWork;
     }
 
@@ -29,6 +31,8 @@ public class AdminService : IAdminService
                 u.Id,
                 u.Email,
                 Role = u.Role.ToString(),
+                u.IsOrganizer,
+                OrganizationName = u.OrganizerProfiles.FirstOrDefault() != null ? u.OrganizerProfiles.First().OrganizationName : null,
                 u.EmailVerified,
                 IsLocked = u.LockedUntil.HasValue && u.LockedUntil > DateTime.UtcNow,
                 u.CreatedAt
@@ -36,6 +40,22 @@ public class AdminService : IAdminService
             .ToListAsync(ct);
 
         return Result<object>.Success(new { items = users, total, page, pageSize });
+    }
+
+    public async Task<Result<object>> ListOrganizersAsync(CancellationToken ct)
+    {
+        var organizers = await _organizerProfileRepo.Query()
+            .OrderBy(p => p.OrganizationName)
+            .Select(p => new
+            {
+                p.Id,
+                p.UserId,
+                p.OrganizationName,
+                p.IsComplete
+            })
+            .ToListAsync(ct);
+
+        return Result<object>.Success(organizers);
     }
 
     public async Task<Result<bool>> LockUserAsync(string userId, CancellationToken ct)

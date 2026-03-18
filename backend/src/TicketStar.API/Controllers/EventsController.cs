@@ -70,7 +70,11 @@ public class EventsController : ApiControllerBase
     public async Task<IActionResult> CreateEvent([FromBody] CreateEventRequest request, CancellationToken ct)
     {
         var userId = GetUserId() ?? "";
-        var result = await _eventService.CreateEventAsync(userId, request, ct);
+        // Admin can create events on behalf of any organizer via OrganizerIdOverride
+        var effectiveOrganizerId = User.IsInRole("Admin") && !string.IsNullOrWhiteSpace(request.OrganizerIdOverride)
+            ? request.OrganizerIdOverride
+            : userId;
+        var result = await _eventService.CreateEventAsync(effectiveOrganizerId, request, ct);
         return CreatedFromResult(result, nameof(GetEvent), result.IsSuccess ? new { id = result.Value!.Id } : null);
     }
 

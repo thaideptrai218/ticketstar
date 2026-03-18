@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarPlus, LayoutDashboard, List, Wallet, X, TriangleAlert } from "lucide-react";
+import { Building2, CalendarPlus, LayoutDashboard, List, Wallet, X, TriangleAlert } from "lucide-react";
 import { AppSidebar, type NavItem } from "@/components/layout/app-sidebar";
 import { OrganizerTopNav } from "@/components/layout/organizer-topnav";
 import { OrganizerRoute } from "@/components/auth/organizer-route";
@@ -10,6 +10,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Tổng quan", href: "/organizer/dashboard", icon: LayoutDashboard },
   { label: "Sự kiện của tôi", href: "/organizer/events", icon: List },
   { label: "Tạo sự kiện", href: "/organizer/events/new", icon: CalendarPlus },
+  { label: "Tổ chức", href: "/organizer/profile", icon: Building2 },
   { label: "Thanh toán", href: "/organizer/payout", icon: Wallet },
 ];
 

@@ -19,7 +19,7 @@ export function OrganizerRoute({ children }: { children: React.ReactNode }) {
       return;
     }
     if (!user?.isOrganizer && user?.role !== "Admin") {
-      router.replace("/home");
+      router.replace("/become-organizer");
     }
   }, [isAuthenticated, isLoading, user, router, pathname]);
 
@@ -33,7 +33,7 @@ export function OrganizerRoute({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!isAuthenticated || (!user?.isOrganizer && user?.role !== "Admin")) return null;
+  if (!isAuthenticated || (!user?.isOrganizer && user?.role !== "Admin")) return null; // redirect in progress
 
   return <>{children}</>;
 }

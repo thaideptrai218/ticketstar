@@ -25,6 +25,7 @@ public class AuthServiceTests
     private readonly Mock<ISessionService> _mockSessionService;
     private readonly Mock<ITokenBlacklist> _mockTokenBlacklist;
     private readonly Mock<IMfaService> _mockMfaService;
+    private readonly Mock<ICollaboratorService> _mockCollaboratorService;
     private readonly IOptions<GoogleAuthOptions> _googleOptions;
     private readonly IOptions<JwtOptions> _jwtOptions;
     private readonly Mock<ILogger<AuthService>> _mockLogger;
@@ -38,6 +39,7 @@ public class AuthServiceTests
         _mockSessionService = new Mock<ISessionService>();
         _mockTokenBlacklist = new Mock<ITokenBlacklist>();
         _mockMfaService = new Mock<IMfaService>();
+        _mockCollaboratorService = new Mock<ICollaboratorService>();
         _googleOptions = Options.Create(new GoogleAuthOptions { ClientId = "test-client-id" });
         _jwtOptions = Options.Create(new JwtOptions
         {
@@ -88,6 +90,7 @@ public class AuthServiceTests
             _mockSessionService.Object,
             _mockTokenBlacklist.Object,
             _mockMfaService.Object,
+            _mockCollaboratorService.Object,
             _googleOptions,
             _jwtOptions,
             _mockLogger.Object);

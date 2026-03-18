@@ -12,4 +12,10 @@ public class OrganizerProfileRepository : EfRepository<OrganizerProfile>, IOrgan
     public async Task<OrganizerProfile?> GetByUserIdAsync(string userId, CancellationToken ct = default)
         => await DbSet
             .FirstOrDefaultAsync(x => x.UserId == userId, ct);
+
+    public async Task<List<OrganizerProfile>> GetAllByUserIdAsync(string userId, CancellationToken ct = default)
+        => await DbSet
+            .Where(x => x.UserId == userId)
+            .OrderBy(x => x.CreatedAt)
+            .ToListAsync(ct);
 }

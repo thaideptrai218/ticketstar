@@ -1,8 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using TicketStar.Application.Common;
 using TicketStar.Application.DTOs;
 using TicketStar.Application.Interfaces;
+using TicketStar.Application.Options;
 using TicketStar.Domain.Entities;
 using TicketStar.Domain.Enums;
 using TicketStar.Domain.Interfaces;
@@ -15,6 +17,8 @@ public class CollaboratorService : ICollaboratorService
     private readonly IEventRepository _eventRepo;
     private readonly IUserRepository _userRepo;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IEmailService _emailService;
+    private readonly SmtpOptions _smtpOpts;
     private readonly ILogger<CollaboratorService> _logger;
 
     public CollaboratorService(
@@ -22,12 +26,16 @@ public class CollaboratorService : ICollaboratorService
         IEventRepository eventRepo,
         IUserRepository userRepo,
         IUnitOfWork unitOfWork,
+        IEmailService emailService,
+        IOptions<SmtpOptions> smtpOpts,
         ILogger<CollaboratorService> logger)
     {
         _collabRepo = collabRepo;
         _eventRepo = eventRepo;
         _userRepo = userRepo;
         _unitOfWork = unitOfWork;
+        _emailService = emailService;
+        _smtpOpts = smtpOpts.Value;
         _logger = logger;
     }
 
@@ -66,6 +74,16 @@ public class CollaboratorService : ICollaboratorService
         _collabRepo.Add(collaborator);
         await _unitOfWork.SaveChangesAsync(ct);
 
+        // Send invite email (fire-and-forget — don't fail the invite if email bounces)
+        var organizer = await _userRepo.GetByIdAsync(organizerId, ct);
+        _ = _emailService.SendCollaboratorInviteAsync(
+            request.Email,
+            eventEntity.Title,
+            organizer?.Email ?? "Organizer",
+            collaborator.InviteToken,
+            permLevel.ToString(),
+            ct);
+
         return Result<CollaboratorResponse>.Success(MapToResponse(collaborator, invitedUser));
     }
 
@@ -101,8 +119,8 @@ public class CollaboratorService : ICollaboratorService
         _collabRepo.Add(collaborator);
         await _unitOfWork.SaveChangesAsync(ct);
 
-        var inviteUrl = $"/invite/{token}";
-        return Result<InviteLinkResponse>.Success(new InviteLinkResponse(token, inviteUrl, expiresAt));
+        var inviteLink = $"{_smtpOpts.AppBaseUrl}/invite/{token}";
+        return Result<InviteLinkResponse>.Success(new InviteLinkResponse(token, inviteLink, expiresAt));
     }
 
     public async Task<Result<CollaboratorResponse>> AcceptInviteAsync(string userId, string token, CancellationToken ct)
@@ -208,13 +226,53 @@ public class CollaboratorService : ICollaboratorService
 
     public async Task<Result<List<CollaborationEventResponse>>> GetMyCollaborationsAsync(string userId, CancellationToken ct)
     {
-        var collaborations = await _collabRepo.GetByUserAsync(userId, ct);
+        // Use GetActiveByUserAsync to include both Pending and Accepted (Pending needed for NotificationBell)
+        var collaborations = await _collabRepo.GetActiveByUserAsync(userId, ct);
         var responses = collaborations.Select(c => new CollaborationEventResponse(
             c.Event.Id, c.Event.Title, c.Event.Venue,
             c.Event.StartAt, c.Event.EndAt, c.Event.Status.ToString(),
-            c.PermissionLevel.ToString()
+            c.PermissionLevel.ToString(), c.Status.ToString(),
+            c.Status == CollaboratorStatus.Pending ? c.InviteToken : null  // only expose token for pending
         )).ToList();
         return Result<List<CollaborationEventResponse>>.Success(responses);
+    }
+
+    public async Task BackfillUserIdAsync(string userId, string email, CancellationToken ct)
+    {
+        var pending = await _collabRepo.GetPendingByEmailAsync(email, ct);
+        if (pending.Count == 0) return;
+
+        foreach (var c in pending)
+        {
+            c.UserId = userId;
+            _collabRepo.Update(c);
+        }
+        await _unitOfWork.SaveChangesAsync(ct);
+        _logger.LogInformation("Backfilled {Count} pending collaborator invite(s) for new user {UserId}", pending.Count, userId);
+    }
+
+    public async Task<Result<List<OrganizerProfileResponse>>> GetMyCollaboratorOrgsAsync(string userId, CancellationToken ct)
+    {
+        // Only accepted collaborations show org profiles (Pending invites don't grant org access yet)
+        var collaborations = await _collabRepo.GetByUserAsync(userId, ct);
+
+        // Collect distinct organizer profiles (one per organizer user, taking their first/primary profile)
+        var seen = new HashSet<string>();
+        var orgs = new List<OrganizerProfileResponse>();
+        foreach (var c in collaborations)
+        {
+            var organizer = c.Event.Organizer;
+            if (organizer == null || seen.Contains(organizer.Id)) continue;
+            seen.Add(organizer.Id);
+            var profile = organizer.OrganizerProfiles.OrderBy(p => p.CreatedAt).FirstOrDefault();
+            if (profile == null) continue;
+            orgs.Add(new OrganizerProfileResponse(
+                profile.Id, profile.UserId, profile.OrganizationName,
+                profile.Description, profile.LogoUrl, profile.Phone,
+                profile.Address, profile.Website, profile.FacebookUrl,
+                profile.InstagramUrl, profile.IsComplete, profile.CreatedAt));
+        }
+        return Result<List<OrganizerProfileResponse>>.Success(orgs);
     }
 
     private static CollaboratorResponse MapToResponse(EventCollaborator c, User? user) => new(

@@ -14,7 +14,9 @@ const PERMISSION_LABELS: Record<string, string> = {
 };
 
 export default function MyCollaborationsPage() {
-  const { data: collaborations, isLoading } = useMyCollaborations();
+  const { data: allCollaborations, isLoading } = useMyCollaborations();
+  // Only show accepted collaborations here — pending invites are handled by NotificationBell
+  const collaborations = (allCollaborations ?? []).filter((c) => c.collaboratorStatus === "Accepted");
 
   if (isLoading) {
     return (

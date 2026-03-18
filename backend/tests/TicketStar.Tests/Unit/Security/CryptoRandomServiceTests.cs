@@ -142,7 +142,7 @@ public class CryptoRandomServiceTests
     }
 
     [Fact]
-    public void GenerateToken_IsThreadSafe()
+    public async Task GenerateToken_IsThreadSafe()
     {
         // Arrange
         var tokens = new List<string>();
@@ -160,7 +160,7 @@ public class CryptoRandomServiceTests
             })
         ).ToList();
 
-        Task.WaitAll(tasks.ToArray());
+        await Task.WhenAll(tasks);
 
         // Assert - All tokens should be unique
         Assert.Equal(tokens.Count, tokens.Distinct().Count());

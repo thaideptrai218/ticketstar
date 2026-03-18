@@ -5,4 +5,5 @@ namespace TicketStar.Domain.Interfaces;
 public interface IOrganizerProfileRepository : IRepository<OrganizerProfile>
 {
     Task<OrganizerProfile?> GetByUserIdAsync(string userId, CancellationToken ct = default);
+    Task<List<OrganizerProfile>> GetAllByUserIdAsync(string userId, CancellationToken ct = default);
 }

@@ -20,6 +20,7 @@ public record UpdateOrganizerProfileRequest(
 
 public record OrganizerProfileResponse(
     string Id,
+    string UserId,
     string OrganizationName,
     string? Description,
     string? LogoUrl,
@@ -28,5 +29,5 @@ public record OrganizerProfileResponse(
     string? Website,
     string? FacebookUrl,
     string? InstagramUrl,
-    bool IsComplete,
+    bool IsVerified,
     DateTime CreatedAt);

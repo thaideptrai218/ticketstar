@@ -7,5 +7,6 @@ public interface ITicketService
 {
     Task<Result<List<MyTicketResponse>>> GetMyTicketsAsync(string userId, CancellationToken ct);
     Task<Result<TicketDetailResponse>> GetTicketByIdAsync(Guid ticketId, string userId, CancellationToken ct);
+    Task<Result<TicketQrResponse>> GetTicketQrAsync(Guid ticketId, string userId, CancellationToken ct);
     Task<Result<TicketDetailResponse>> TransferTicketAsync(Guid ticketId, string userId, TransferTicketRequest request, CancellationToken ct);
 }

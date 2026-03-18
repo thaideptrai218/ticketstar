@@ -1,36 +1,25 @@
 "use client";
 
 // My Tickets page — lists all tickets owned by the current attendee
-import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { TicketIcon } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TicketCard } from "@/components/tickets/ticket-card";
-import { apiFetch, ApiError } from "@/lib/api-client";
+import { apiFetch } from "@/lib/api-client";
 import type { MyTicket } from "@/types/tickets";
 
+function useMyTickets() {
+  return useQuery<MyTicket[]>({
+    queryKey: ["my-tickets"],
+    queryFn: () => apiFetch<MyTicket[]>("/api/tickets"),
+    staleTime: 60_000, // consider fresh for 1 min — avoids re-fetch on tab focus
+  });
+}
+
 export default function MyTicketsPage() {
-  const [tickets, setTickets] = useState<MyTicket[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchTickets = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const data = await apiFetch<MyTicket[]>("/api/tickets");
-      setTickets(data);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Không thể tải danh sách vé.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchTickets();
-  }, [fetchTickets]);
+  const { data: tickets, isLoading, error, refetch } = useMyTickets();
 
   return (
     <div>
@@ -46,11 +35,11 @@ export default function MyTicketsPage() {
 
       {!isLoading && error && (
         <div className="rounded-xl border border-red-100 bg-red-50 px-5 py-4 text-sm text-red-600">
-          {error}
+          {error instanceof Error ? error.message : "Không thể tải danh sách vé."}
         </div>
       )}
 
-      {!isLoading && !error && tickets.length === 0 && (
+      {!isLoading && !error && tickets?.length === 0 && (
         <div className="flex flex-col items-center gap-4 py-20 text-center">
           <div className="size-16 rounded-full bg-stone-100 flex items-center justify-center">
             <TicketIcon className="size-7 text-stone-400" />
@@ -65,13 +54,13 @@ export default function MyTicketsPage() {
         </div>
       )}
 
-      {!isLoading && !error && tickets.length > 0 && (
+      {!isLoading && !error && tickets && tickets.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2">
           {tickets.map((ticket) => (
             <TicketCard
               key={ticket.id}
               ticket={ticket}
-              onTransferSuccess={fetchTickets}
+              onTransferSuccess={() => refetch()}
             />
           ))}
         </div>

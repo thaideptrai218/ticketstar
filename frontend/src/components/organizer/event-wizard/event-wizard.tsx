@@ -5,6 +5,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api-client";
+import { useAuth } from "@/contexts/auth-context";
 import { WizardStepper } from "./wizard-stepper";
 import { Step1EventInfo } from "./step-1-event-info";
 import { Step2TimeTickets } from "./step-2-time-tickets";
@@ -15,6 +16,8 @@ import type { EventDetail } from "@/types/events";
 
 export interface WizardState {
   // Step 1
+  organizerIdOverride: string | null; // admin only: create on behalf of organizer
+  organizerProfileId: string | null;  // selected organizer profile (for multi-org support)
   coverImageUrl: string | null;
   bannerImageUrl: string | null;
   title: string;
@@ -38,6 +41,8 @@ export interface WizardState {
 }
 
 const DEFAULT_STATE: WizardState = {
+  organizerIdOverride: null,
+  organizerProfileId: null,
   coverImageUrl: null,
   bannerImageUrl: null,
   title: "",
@@ -59,6 +64,8 @@ const DEFAULT_STATE: WizardState = {
 
 function eventDetailToWizardState(ev: EventDetail): WizardState {
   return {
+    organizerIdOverride: null,
+    organizerProfileId: null,
     coverImageUrl: ev.imageUrl ?? null,
     bannerImageUrl: ev.bannerImageUrl ?? null,
     title: ev.title,
@@ -96,6 +103,8 @@ interface EventWizardProps {
 
 export function EventWizard({ mode, initialData }: EventWizardProps) {
   const router = useRouter();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "Admin";
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [state, setState] = useState<WizardState>(
     initialData ? eventDetailToWizardState(initialData) : DEFAULT_STATE
@@ -113,6 +122,7 @@ export function EventWizard({ mode, initialData }: EventWizardProps) {
 
     try {
       const payload = {
+        ...(state.organizerIdOverride ? { organizerIdOverride: state.organizerIdOverride } : {}),
         title: state.title,
         description: state.description || null,
         startAt: new Date(state.startAt).toISOString(),
@@ -166,6 +176,7 @@ export function EventWizard({ mode, initialData }: EventWizardProps) {
             {...stepProps}
             onNext={() => setStep(2)}
             isCreateMode={mode === "create"}
+            isAdmin={isAdmin}
           />
         )}
         {step === 2 && (

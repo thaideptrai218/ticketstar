@@ -62,6 +62,7 @@ export function useMyCollaborations() {
   return useQuery({
     queryKey: myCollaborationsKey,
     queryFn: getMyCollaborations,
+    refetchInterval: 30_000,  // poll every 30s so NotificationBell stays up-to-date
   });
 }
 
@@ -74,7 +75,9 @@ export function useAcceptCollaboratorInvite() {
 }
 
 export function useDeclineCollaboratorInvite() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (token: string) => declineCollaboratorInvite(token),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: myCollaborationsKey }),
   });
 }

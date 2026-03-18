@@ -7,10 +7,11 @@ public record MyTicketResponse(
     string? EventVenue,
     DateTime EventStartAt,
     string TicketTypeName,
-    string QrCodeBase64,
     bool IsCheckedIn,
     DateTime CreatedAt
 );
+
+public record TicketQrResponse(string QrCodeBase64);
 
 public record TicketDetailResponse(
     Guid Id,

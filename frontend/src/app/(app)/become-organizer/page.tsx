@@ -8,6 +8,7 @@ import { CalendarPlus, DollarSign, TicketIcon, Users } from "lucide-react";
 import { ApiError } from "@/lib/api-client";
 import { createOrganizerProfile, type CreateOrganizerProfileRequest } from "@/lib/api/organizer-profile-api";
 import { OrganizerProfileForm } from "@/components/organizer/organizer-profile-form";
+import { useAuth } from "@/contexts/auth-context";
 
 const FEATURES = [
   { icon: CalendarPlus, title: "Tạo sự kiện dễ dàng", desc: "Thiết lập sự kiện, loại vé và giá trong vài phút." },
@@ -18,6 +19,7 @@ const FEATURES = [
 
 export default function BecomeOrganizerPage() {
   const router = useRouter();
+  const { refreshUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,6 +28,9 @@ export default function BecomeOrganizerPage() {
     setError(null);
     try {
       await createOrganizerProfile(data);
+      // Refresh JWT so is_organizer=true is reflected before redirecting to /organizer/*
+      await fetch("/api/auth/refresh", { method: "POST", credentials: "include" });
+      await refreshUser();
       router.push("/organizer/dashboard");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Đã xảy ra lỗi. Vui lòng thử lại.");

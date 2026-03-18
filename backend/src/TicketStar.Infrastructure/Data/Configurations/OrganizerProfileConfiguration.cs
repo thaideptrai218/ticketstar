@@ -22,10 +22,11 @@ public class OrganizerProfileConfiguration : IEntityTypeConfiguration<OrganizerP
 
         builder.Property(x => x.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
 
-        builder.HasIndex(x => x.UserId).IsUnique();
+        // Non-unique index for lookup performance (multiple orgs per user allowed)
+        builder.HasIndex(x => x.UserId);
 
         builder.HasOne(x => x.User)
-            .WithOne(u => u.OrganizerProfile)
-            .HasForeignKey<OrganizerProfile>(x => x.UserId);
+            .WithMany(u => u.OrganizerProfiles)
+            .HasForeignKey(x => x.UserId);
     }
 }
