@@ -57,6 +57,12 @@ public class EventService : IEventService
             Venue = request.Venue,
             Category = request.Category,
             ImageUrl = request.ImageUrl,
+            BannerImageUrl = request.BannerImageUrl,
+            IsOnline = request.IsOnline,
+            MaxTicketsPerOrder = request.MaxTicketsPerOrder,
+            RefundPolicy = request.RefundPolicy,
+            ContentWarning = request.ContentWarning,
+            PaymentTerms = request.PaymentTerms,
             Slug = request.Slug,
             Status = EventStatus.Draft,
             CreatedAt = DateTime.UtcNow,
@@ -68,8 +74,12 @@ public class EventService : IEventService
             Id = Guid.NewGuid(),
             EventId = eventEntity.Id,
             Name = tt.Name,
+            Description = tt.Description,
             Price = tt.Price,
             Quota = tt.Quota,
+            MaxPerUser = tt.MaxPerUser > 0 ? tt.MaxPerUser : 10,
+            SaleStartAt = tt.SaleStartAt,
+            SaleEndAt = tt.SaleEndAt,
             SoldCount = 0
         }).ToList();
 
@@ -110,6 +120,12 @@ public class EventService : IEventService
         if (request.Venue != null) eventEntity.Venue = request.Venue;
         if (request.Category != null) eventEntity.Category = request.Category;
         if (request.ImageUrl != null) eventEntity.ImageUrl = request.ImageUrl;
+        if (request.BannerImageUrl != null) eventEntity.BannerImageUrl = request.BannerImageUrl;
+        if (request.IsOnline.HasValue) eventEntity.IsOnline = request.IsOnline.Value;
+        if (request.MaxTicketsPerOrder.HasValue) eventEntity.MaxTicketsPerOrder = request.MaxTicketsPerOrder.Value;
+        if (request.RefundPolicy != null) eventEntity.RefundPolicy = request.RefundPolicy;
+        if (request.ContentWarning != null) eventEntity.ContentWarning = request.ContentWarning;
+        if (request.PaymentTerms != null) eventEntity.PaymentTerms = request.PaymentTerms;
         eventEntity.UpdatedAt = DateTime.UtcNow;
 
         try
@@ -300,17 +316,25 @@ public class EventService : IEventService
             eventEntity.Category,
             eventEntity.Status.ToString(),
             eventEntity.ImageUrl,
+            eventEntity.BannerImageUrl,
+            eventEntity.IsOnline,
+            eventEntity.MaxTicketsPerOrder,
+            eventEntity.RefundPolicy,
+            eventEntity.ContentWarning,
+            eventEntity.PaymentTerms,
             eventEntity.OrganizerId,
             organizerName,
             eventEntity.TicketTypes.Select(tt => new TicketTypeResponse(
                 tt.Id,
                 tt.Name,
-                "",
+                tt.Description,
                 tt.Price,
                 tt.Quota,
                 tt.SoldCount,
                 tt.Quota - tt.SoldCount,
-                10
+                tt.MaxPerUser,
+                tt.SaleStartAt,
+                tt.SaleEndAt
             )).ToList(),
             eventEntity.CreatedAt
         );
@@ -332,6 +356,8 @@ public class EventService : IEventService
             e.Venue,
             e.Category,
             e.ImageUrl,
+            e.BannerImageUrl,
+            e.IsOnline,
             e.Status.ToString(),
             totalTickets,
             availableTickets,

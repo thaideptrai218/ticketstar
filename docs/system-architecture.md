@@ -192,6 +192,9 @@ frontend/
 │   ├── (organizer)/              # Organizer dashboard (role-based)
 │   │   ├── dashboard/
 │   │   ├── events/
+│   │   │   ├── page.tsx          # Events list
+│   │   │   ├── new/page.tsx      # NEW: Event wizard (Step 1-4)
+│   │   │   └── [id]/...
 │   │   ├── payout/
 │   │   └── ... (10 pages)
 │   │
@@ -229,6 +232,18 @@ frontend/
 │   │   ├── event-grid.tsx        # Grid layout
 │   │   ├── event-filters.tsx     # Search + filters
 │   │   └── ticket-type-selector.tsx # Tier selection
+│   ├── organizer/
+│   │   └── event-wizard/         # NEW: 4-step event creation
+│   │       ├── event-wizard.tsx
+│   │       ├── wizard-stepper.tsx
+│   │       ├── step-1-event-info.tsx
+│   │       ├── step-2-time-tickets.tsx
+│   │       ├── step-3-settings.tsx
+│   │       ├── step-4-payment.tsx
+│   │       ├── ticket-type-modal.tsx
+│   │       ├── image-upload-zone.tsx
+│   │       ├── rich-text-editor.tsx
+│   │       └── rich-text-editor-inner.tsx
 │   └── checkout/
 │       ├── checkout-form.tsx     # Checkout form
 │       └── payment-status.tsx    # Order polling + QR display
@@ -299,6 +314,99 @@ frontend/
 - **Route Handlers** (`app/api/auth/*`): Proxy to backend, manage cookies transparently
 - **Middleware** (`middleware.ts`): JWT decode + role validation for protected routes
 - **Protected Route Wrapper**: Checks user auth before rendering; redirects to `/login` if missing
+
+### Event Wizard Architecture (Phase 7.5)
+
+**4-Step Event Creation Flow:**
+
+The organizer event creation process now uses a guided wizard (replacing single-form `event-form.tsx`):
+
+```
+Step Navigation:
+┌─────────────┐    ┌──────────────┐    ┌──────────────┐    ┌─────────────┐
+│ Step 1:     │───▶│ Step 2:      │───▶│ Step 3:      │───▶│ Step 4:     │
+│ Event Info  │    │ Time/Tickets │    │ Settings     │    │ Payment     │
+└─────────────┘    └──────────────┘    └──────────────┘    └─────────────┘
+      │                   │                    │                   │
+      ├─ Name            ├─ Date/Time         ├─ IsOnline         ├─ RefundPolicy
+      ├─ Description     ├─ TicketTypes       ├─ MaxTicketsPerOrder
+      └─ BannerImageUrl  │  (modal)           └─ ContentWarning   └─ PaymentTerms
+       (dropzone)        └─ TipTap editor
+```
+
+**Component Hierarchy:**
+
+```
+event-wizard.tsx (Orchestrator)
+├─ State: currentStep, formData, ticketTypes, isSubmitting
+├─ Functions: goNext(), goPrev(), handleSubmit()
+│
+├─ wizard-stepper.tsx (Step indicator)
+│
+├─ Conditional Step Render:
+│  ├─ step-1-event-info.tsx
+│  │   ├─ text input (name)
+│  │   ├─ rich-text-editor.tsx (TipTap)
+│  │   └─ image-upload-zone.tsx (react-dropzone)
+│  │
+│  ├─ step-2-time-tickets.tsx
+│  │   ├─ date/time pickers
+│  │   ├─ TicketType list (name, price, qty)
+│  │   └─ "Add Ticket Type" button → ticket-type-modal.tsx
+│  │
+│  ├─ step-3-settings.tsx
+│  │   ├─ Toggle (IsOnline)
+│  │   ├─ Number input (MaxTicketsPerOrder)
+│  │   └─ Text area (ContentWarning)
+│  │
+│  └─ step-4-payment.tsx
+│      ├─ Text area (RefundPolicy)
+│      └─ Text area (PaymentTerms)
+│
+└─ Action Buttons: Back, Next, Submit
+```
+
+**Key Components:**
+- **event-wizard.tsx** — Multi-step state orchestration, validation, submission
+- **wizard-stepper.tsx** — Visual progress indicator with step numbers
+- **step-{1-4}-*.tsx** — Individual step forms with validation
+- **ticket-type-modal.tsx** — Dialog for add/edit ticket tiers
+- **image-upload-zone.tsx** — Drag-drop upload (react-dropzone + FilesController.cs)
+- **rich-text-editor.tsx** — TipTap editor wrapper
+- **rich-text-editor-inner.tsx** — TipTap extensions (bold, italic, lists, etc.)
+
+**Data Flow:**
+```
+User fills Step 1 → formData.name, formData.description, formData.bannerImageUrl
+     ↓
+User fills Step 2 → formData.eventDate, formData.ticketTypes[]
+     ↓
+User fills Step 3 → formData.isOnline, formData.maxTicketsPerOrder, formData.contentWarning
+     ↓
+User fills Step 4 → formData.refundPolicy, formData.paymentTerms
+     ↓
+User clicks Submit → POST /api/events/create (with all fields)
+     ↓
+Backend validates → Returns eventId
+     ↓
+Redirect to /organizer/events/[id]/edit
+```
+
+**New Backend Endpoints:**
+- `POST /api/files/upload` — Upload banner image (FilesController.cs, returns URL)
+- `POST /api/events/create` — Create event with full details (EventsController.cs)
+
+**New Database Fields:**
+- Event: `BannerImageUrl`, `IsOnline`, `MaxTicketsPerOrder`, `RefundPolicy`, `ContentWarning`, `PaymentTerms`
+- TicketType: `Description` (new field for ticket tier description)
+
+**Frontend Packages Added:**
+- `@tiptap/react` v2+ — React integration for TipTap
+- `@tiptap/starter-kit` — Bundled extensions (bold, italic, heading, list, etc.)
+- `@tiptap/extension-placeholder` — Placeholder text support
+- `react-dropzone` — Drag-drop file upload handling
+
+---
 
 ### Marketplace Architecture (Phase 5)
 
@@ -599,6 +707,6 @@ Recovery Code Flow:
 
 ---
 
-**Last Updated:** 2026-03-07
-**Phase:** 8 Complete - Frontend Staff & Admin
-**All Roles:** Implemented (Attendee, Organizer, Staff, Admin)
+**Last Updated:** 2026-03-08
+**Phase:** 8 Complete + 7.5 Event Wizard
+**All Roles:** Implemented (Attendee, Organizer, Staff, Admin) + Enhanced event creation wizard

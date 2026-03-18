@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Clock, LayoutGrid, MapPin, ArrowRight, X } from "lucide-react";
 import { apiFetch } from "@/lib/api-client";
+import { resolveImageUrl } from "@/lib/format-utils";
 import type { PagedResult } from "@/types/api";
 import type { EventListItem } from "@/types/events";
 
@@ -87,7 +88,7 @@ export function SearchSuggestionsDropdown({ query, recentSearches, onSelect, onR
               {/* Thumbnail */}
               <div className="size-10 rounded-lg overflow-hidden bg-stone-100 shrink-0">
                 {ev.imageUrl ? (
-                  <img src={ev.imageUrl} alt={ev.title} className="size-full object-cover" />
+                  <img src={resolveImageUrl(ev.imageUrl) ?? ""} alt={ev.title} className="size-full object-cover" />
                 ) : (
                   <div className="size-full bg-amber-100 flex items-center justify-center text-amber-700 text-xs font-bold">
                     {ev.title[0]}

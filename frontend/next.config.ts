@@ -8,6 +8,12 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "images.unsplash.com",
       },
+      // Allow uploaded images served from the .NET backend
+      {
+        protocol: "http",
+        hostname: "localhost",
+        port: "5010",
+      },
     ],
   },
 };

@@ -46,6 +46,10 @@ builder.Services.AddHsts(options =>
 });
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+
+// Allow multipart uploads up to 5MB
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(o =>
+    o.MultipartBodyLengthLimit = 5 * 1024 * 1024);
 var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 builder.Services.AddCors(options =>
 {
@@ -70,6 +74,7 @@ using (var scope = app.Services.CreateScope())
 
 // Pipeline
 app.UseMiddleware<GlobalExceptionMiddleware>();
+app.UseStaticFiles(); // Serve wwwroot/uploads/ for uploaded images
 
 // H1: HTTPS enforcement + HSTS (production only — dev uses HTTP)
 if (!app.Environment.IsDevelopment())

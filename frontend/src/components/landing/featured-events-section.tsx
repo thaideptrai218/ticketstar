@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollReveal } from "./scroll-reveal";
 import Image from "next/image";
 import { apiFetch } from "@/lib/api-client";
-import { formatDate, formatPrice, formatTime } from "@/lib/format-utils";
+import { formatDate, formatPrice, formatTime, resolveImageUrl } from "@/lib/format-utils";
 import type { PagedResult } from "@/types/api";
 import type { EventListItem } from "@/types/events";
 
@@ -71,11 +71,12 @@ export function FeaturedEventsSection() {
                   {/* Event Image */}
                   <div className="relative aspect-[4/3] overflow-hidden bg-stone-100">
                     <Image
-                      src={event.imageUrl ?? PLACEHOLDER_IMAGE}
+                      src={resolveImageUrl(event.imageUrl) ?? PLACEHOLDER_IMAGE}
                       alt={event.title}
                       fill
                       className="object-cover transition-transform duration-300 group-hover:scale-105"
                       sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                      unoptimized={!!(resolveImageUrl(event.imageUrl) ?? "").includes("localhost")}
                     />
                     <div className="absolute top-3 right-3 flex items-center gap-1.5 rounded-full bg-white/90 backdrop-blur-sm px-3 py-1.5 text-sm font-medium text-stone-900 shadow-sm">
                       <TicketIcon className="size-3.5 text-amber-700" />

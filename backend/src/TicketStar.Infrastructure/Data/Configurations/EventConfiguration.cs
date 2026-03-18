@@ -16,6 +16,10 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
         builder.Property(e => e.Venue).HasMaxLength(500);
         builder.Property(e => e.Category).HasMaxLength(100);
         builder.Property(e => e.ImageUrl).HasMaxLength(500);
+        builder.Property(e => e.BannerImageUrl).HasMaxLength(500);
+        builder.Property(e => e.RefundPolicy).HasColumnType("text");
+        builder.Property(e => e.ContentWarning).HasColumnType("text");
+        builder.Property(e => e.PaymentTerms).HasColumnType("text");
         builder.Property(e => e.Slug).IsRequired().HasMaxLength(250);
 
         builder.Property(e => e.Status)

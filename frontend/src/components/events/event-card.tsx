@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Calendar, MapPin, TicketIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { formatPrice, formatDate, formatTime } from "@/lib/format-utils";
+import { formatPrice, formatDate, formatTime, resolveImageUrl } from "@/lib/format-utils";
 import type { EventListItem } from "@/types/events";
 
 interface EventCardProps {
@@ -19,13 +19,14 @@ export function EventCard({ event }: EventCardProps) {
     >
       {/* Image */}
       <div className="relative aspect-[4/3] overflow-hidden bg-stone-100">
-        {event.imageUrl ? (
+        {resolveImageUrl(event.imageUrl) ? (
           <Image
-            src={event.imageUrl}
+            src={resolveImageUrl(event.imageUrl)!}
             alt={event.title}
             fill
             className="object-cover transition-transform duration-300 group-hover:scale-105"
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            unoptimized={resolveImageUrl(event.imageUrl)!.includes("localhost")}
           />
         ) : (
           <div className="flex h-full items-center justify-center text-stone-300">

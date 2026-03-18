@@ -76,7 +76,7 @@ export default function TicketTypesPage() {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         onSubmit={editTarget ? handleEdit : handleCreate}
-        defaultValues={editTarget ? { name: editTarget.name, description: editTarget.description, price: editTarget.price, quota: editTarget.quota, maxPerUser: editTarget.maxPerUser } : undefined}
+        defaultValues={editTarget ? { name: editTarget.name, description: editTarget.description ?? undefined, price: editTarget.price, quota: editTarget.quota, maxPerUser: editTarget.maxPerUser } : undefined}
         isEdit={!!editTarget}
       />
     </div>

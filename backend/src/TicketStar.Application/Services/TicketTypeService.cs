@@ -95,6 +95,6 @@ public class TicketTypeService : ITicketTypeService
     }
 
     private static TicketTypeResponse MapToResponse(TicketType tt) => new(
-        tt.Id, tt.Name, "", tt.Price, tt.Quota, tt.SoldCount, tt.Quota - tt.SoldCount, 10
+        tt.Id, tt.Name, tt.Description, tt.Price, tt.Quota, tt.SoldCount, tt.Quota - tt.SoldCount, tt.MaxPerUser, tt.SaleStartAt, tt.SaleEndAt
     );
 }

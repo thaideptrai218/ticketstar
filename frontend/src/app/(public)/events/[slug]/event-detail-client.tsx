@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Calendar, Clock, MapPin, TicketIcon, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { formatDateFull, formatTime } from "@/lib/format-utils";
+import { formatDateFull, formatTime, resolveImageUrl } from "@/lib/format-utils";
 import { TicketTypeSelector, type TicketSelection } from "@/components/events/ticket-type-selector";
 import type { EventDetail } from "@/types/events";
 
@@ -32,14 +32,15 @@ export function EventDetailClient({ event }: EventDetailClientProps) {
     <div className="mx-auto max-w-5xl px-4 py-8 md:px-6">
       {/* Hero image */}
       <div className="relative aspect-[21/9] overflow-hidden rounded-2xl bg-stone-100">
-        {event.imageUrl ? (
+        {resolveImageUrl(event.imageUrl) ? (
           <Image
-            src={event.imageUrl}
+            src={resolveImageUrl(event.imageUrl)!}
             alt={event.title}
             fill
             className="object-cover"
             priority
             sizes="(max-width: 1024px) 100vw, 1024px"
+            unoptimized={resolveImageUrl(event.imageUrl)!.includes("localhost")}
           />
         ) : (
           <div className="flex h-full items-center justify-center text-stone-300">

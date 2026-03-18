@@ -11,7 +11,9 @@ public class TicketTypeConfiguration : IEntityTypeConfiguration<TicketType>
         builder.HasKey(t => t.Id);
 
         builder.Property(t => t.Name).IsRequired().HasMaxLength(200);
+        builder.Property(t => t.Description).HasColumnType("text");
         builder.Property(t => t.Price).HasColumnType("decimal(10,2)");
+        builder.Property(t => t.MaxPerUser).HasDefaultValue(10);
 
         builder.Property(t => t.CreatedAt)
             .HasDefaultValueSql("CURRENT_TIMESTAMP(6)");

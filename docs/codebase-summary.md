@@ -380,6 +380,7 @@ MfaSetupResponse {
 | Vietnamese UI labels | ✅ Complete | 6 |
 | Organizer dashboard (stats, events, TT, orders, check-in, staff, payout) | ✅ Complete | 7 |
 | Organizer event CRUD pages | ✅ Complete | 7 |
+| **Organizer event wizard (4-step multi-form)** | ✅ **Complete** | **7.5** |
 | Staff check-in portal (QR scanner + manual entry) | ✅ Complete | 8 |
 | Admin dashboard & user management | ✅ Complete | 8 |
 
@@ -679,13 +680,26 @@ frontend/src/app/
 ```
 components/organizer/
 ├── event-stats-card.tsx                # Dashboard card (title, value, trend)
-├── event-form.tsx                      # Create/edit form (RHF + Zod)
-├── ticket-type-form.tsx                # Dialog-based form
+├── event-wizard/                       # 4-Step event creation wizard (NEW)
+│   ├── event-wizard.tsx                # Wizard orchestrator (state management)
+│   ├── wizard-stepper.tsx              # Step indicator component
+│   ├── step-1-event-info.tsx           # Event name, description, image
+│   ├── step-2-time-tickets.tsx         # Date/time, ticket types
+│   ├── step-3-settings.tsx             # Online/venue, max per order, warnings
+│   ├── step-4-payment.tsx              # Refund policy, payment terms
+│   ├── ticket-type-modal.tsx           # Add/edit ticket tiers
+│   ├── image-upload-zone.tsx           # Banner image upload via dropzone
+│   ├── rich-text-editor.tsx            # TipTap rich editor wrapper
+│   └── rich-text-editor-inner.tsx      # TipTap inner component
+├── ticket-type-form.tsx                # Dialog-based form (legacy)
 ├── ticket-type-list.tsx                # Table with edit/delete
 ├── orders-table.tsx                    # Paginated orders per event
 ├── staff-management.tsx                # Assign/remove staff
 └── payout-summary-card.tsx             # Revenue breakdown card
 ```
+
+**Replaced Component:**
+- `event-form.tsx` → Superseded by 4-step `event-wizard/` (formerly single-form, now multi-step)
 
 ### Key Features
 
@@ -696,6 +710,22 @@ components/organizer/
 - **Check-in Stats:** Realtime ticket type breakdown (checked in / total) — 10s refresh
 - **Staff Management:** Assign/remove staff per event
 - **Payout:** Summary of all events + detail per event (breakdown by tier, platform fee)
+
+---
+
+## Phase 7.5: Event Wizard Enhancement
+
+Organizer event creation now uses a guided 4-step wizard (replacing single-form `event-form.tsx`):
+- **Step 1:** Event info (name, description, banner image via dropzone)
+- **Step 2:** Date/time + ticket types (modal for adding tiers)
+- **Step 3:** Settings (online toggle, max per order, content warning)
+- **Step 4:** Payment (refund policy, payment terms)
+
+See `docs/system-architecture.md` Event Wizard section for full architecture & data flow.
+
+**New Packages:** `@tiptap/react`, `@tiptap/starter-kit`, `react-dropzone`
+**New Backend:** `POST /api/files/upload` (FilesController.cs)
+**DB Updates:** Event & TicketType entities + new fields
 
 ---
 
@@ -759,6 +789,6 @@ hooks/
 
 ---
 
-**Last Updated:** 2026-03-07
-**Phase:** 8 Complete - Frontend Staff & Admin
-**Coverage:** 4/4 roles fully implemented (Attendee, Organizer, Staff, Admin)
+**Last Updated:** 2026-03-08
+**Phase:** 8 Complete + 7.5 Event Wizard
+**Coverage:** 4/4 roles fully implemented + Enhanced organizer event creation wizard

@@ -10,18 +10,21 @@
 ## Overview
 
 **Priority:** P1
-**Status:** Pending
+**Status:** Completed
 **Effort:** 3h
+**Completed:** 2026-03-08
 **Blocked by:** Phase 02 + Phase 03
 
 Wire wizard into existing pages, replace old form, verify end-to-end flow.
 
 ## Key Insights
 
-- Events list page (`events/page.tsx`) already has publish/unpublish toggle — verify it still works after backend changes
+- Events list page (`events/page.tsx`) already has publish/unpublish toggle — confirmed working, verify display after backend changes
 - Old `event-form.tsx` becomes unused after page replacements — delete it
+- Old `ticket-type-form.tsx` may still be used by `/organizer/events/[id]/ticket-types` page — check before deleting
+- Edit page currently uses `useState`/`useEffect` pattern (not TanStack Query) — keep consistent
 - Edit page needs to fetch event data first, then pass as `initialData` to wizard
-- In edit mode, slug field is hidden (same as old form with `hideSlug` prop)
+- In edit mode, slug field is hidden (wizard handles this via `mode="edit"`)
 - New event is created as Draft status — confirm success message reflects this
 
 ## Related Code Files
@@ -108,21 +111,31 @@ grep -r "event-form" frontend/src --include="*.tsx" --include="*.ts"
 ```
 If other imports exist, update them.
 
-### 5. Update frontend EventDetail type
+### 5. Update frontend types (TWO files)
 
-Ensure `frontend/src/types/events.ts` (or wherever `EventDetail` / `OrganizerEvent` are defined) includes all new fields:
+**`frontend/src/types/events.ts`** — Add to `EventDetail` and `EventListItem`:
 ```typescript
-// Add to EventDetail:
+// Add to EventListItem (used on public cards):
 bannerImageUrl?: string | null;
 isOnline: boolean;
+
+// Add to EventDetail (extends EventListItem):
 maxTicketsPerOrder?: number | null;
 refundPolicy?: string | null;
 contentWarning?: string | null;
 paymentTerms?: string | null;
 
-// Add to TicketTypeResponse:
+// Add to TicketType:
 saleStartAt?: string | null;
 saleEndAt?: string | null;
+```
+
+**`frontend/src/types/organizer.ts`** — Add to `OrganizerEvent`:
+```typescript
+// Add to OrganizerEvent (used in organizer events list):
+bannerImageUrl?: string | null;
+isOnline: boolean;
+category?: string | null;
 ```
 
 ### 6. End-to-end test (manual)
@@ -159,15 +172,16 @@ Fix any TypeScript errors.
 
 ## Todo List
 
-- [ ] Replace `events/new/page.tsx` with wizard
-- [ ] Replace `events/[id]/edit/page.tsx` with wizard + prefetch
-- [ ] Update `events/page.tsx` — verify publish toggle works with new backend
-- [ ] Delete `event-form.tsx` — verify no remaining imports
-- [ ] Update `EventDetail` and `OrganizerEvent` TypeScript types with new fields
-- [ ] Manual end-to-end test: create flow (all 4 steps)
-- [ ] Manual end-to-end test: edit flow
-- [ ] Manual test: publish from events list
-- [ ] Run `just lint` and `just build`
+- [x] Replace `events/new/page.tsx` with wizard
+- [x] Replace `events/[id]/edit/page.tsx` with wizard + prefetch
+- [x] Update `events/page.tsx` — verify publish toggle works with new backend
+- [x] Delete `event-form.tsx` — verify no remaining imports
+- [x] Update `types/events.ts` — add new fields to `EventListItem`, `EventDetail`, `TicketType`
+- [x] Update `types/organizer.ts` — add new fields to `OrganizerEvent`
+- [x] Manual end-to-end test: create flow (all 4 steps)
+- [x] Manual end-to-end test: edit flow
+- [x] Manual test: publish from events list
+- [x] Run `just lint` and `just build`
 
 ## Success Criteria
 

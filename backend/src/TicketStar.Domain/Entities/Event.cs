@@ -15,6 +15,12 @@ public class Event
     public string? Category { get; set; }
     public EventStatus Status { get; set; }
     public string? ImageUrl { get; set; }
+    public string? BannerImageUrl { get; set; }
+    public bool IsOnline { get; set; }
+    public int? MaxTicketsPerOrder { get; set; }
+    public string? RefundPolicy { get; set; }
+    public string? ContentWarning { get; set; }
+    public string? PaymentTerms { get; set; }
     public string Slug { get; set; } = null!;
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }

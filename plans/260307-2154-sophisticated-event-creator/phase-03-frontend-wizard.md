@@ -9,8 +9,9 @@
 ## Overview
 
 **Priority:** P1
-**Status:** Pending
+**Status:** Completed
 **Effort:** 7h
+**Completed:** 2026-03-08
 **Blocked by:** Phase 01
 
 Build all wizard component files. Keep each file under 200 LOC per code standards.
@@ -20,10 +21,14 @@ Build all wizard component files. Keep each file under 200 LOC per code standard
 - Tiptap must be loaded with `dynamic(() => import(...), { ssr: false })` — App Router SSR incompatible
 - `provinces.open-api.vn` fetch; add static fallback array of 63 provinces for resilience
 - Wizard holds ALL state locally (no partial API saves); single submit at end
-- Ticket types use modal dialog (shadcn `Dialog`) not inline expand
-- Image upload: `POST /api/files/upload` multipart, show preview after success
+- **Existing `ticket-type-form.tsx`** has a working Dialog form with name/description/price/quota/maxPerUser — adapt & extend for wizard (add SaleStartAt/SaleEndAt)
+- Image upload: direct to backend `${NEXT_PUBLIC_API_URL}/api/files/upload` (NO proxy needed — frontend calls backend directly)
+- **NO API proxy exists** — `src/proxy.ts` is auth/RBAC middleware only
 - `react-dropzone` for drag-drop; also allow click-to-select
 - SaleStartAt/SaleEndAt are optional per ticket type — show as collapsible "Advanced" section
+- **`formatPrice()` already exists** in `frontend/src/lib/format-utils.ts` — reuse for VND formatting
+- **`next.config.ts`** must add backend host to `remotePatterns` for uploaded image display (currently only `images.unsplash.com`)
+- TanStack Query (`@tanstack/react-query`) available but organizer pages use `useState`/`useEffect` — keep consistent
 
 ## Packages to Install
 
@@ -42,8 +47,8 @@ frontend/src/components/organizer/event-wizard/
 ├── step-2-time-tickets.tsx       # Dates + ticket type cards list
 ├── step-3-settings.tsx           # Max per order, refund policy, content warning
 ├── step-4-payment.tsx            # Payment terms textarea
-├── ticket-type-modal.tsx         # Add/edit ticket tier dialog
-├── image-upload-zone.tsx         # Drag-drop file upload with preview
+├── ticket-type-modal.tsx         # Add/edit ticket tier dialog (extend existing ticket-type-form.tsx pattern)
+├── image-upload-zone.tsx         # Drag-drop file upload with preview (direct backend upload)
 └── rich-text-editor.tsx          # Tiptap wrapper (dynamically imported)
 ```
 
@@ -62,7 +67,9 @@ frontend/src/components/organizer/event-wizard/
 - `frontend/src/lib/vn-provinces.ts`
 
 **Modify:**
-- `frontend/src/types/events.ts` (or equivalent) — add new fields to EventDetail type
+- `frontend/src/types/events.ts` — add new fields to `EventDetail` and `TicketType`
+- `frontend/src/types/organizer.ts` — add `category`, `bannerImageUrl`, `isOnline` to `OrganizerEvent`
+- `frontend/next.config.ts` — add backend host to `images.remotePatterns`
 
 ## Data Shape
 
@@ -140,12 +147,11 @@ export async function fetchProvinces(): Promise<string[]> {
 
 ### 4. Create `image-upload-zone.tsx`
 - Uses `react-dropzone` for drag-drop
-- On drop: POST to `/api/proxy/files/upload` (via Next.js proxy) or direct to backend
+- On drop: POST directly to backend `${process.env.NEXT_PUBLIC_API_URL}/api/files/upload`
+- **Cannot use `apiFetch`** for file upload — it auto-adds `Content-Type: application/json`. Use raw `fetch` with `FormData` + `credentials: "include"` for auth cookies
 - Shows image preview after upload (URL from API response)
 - Props: `label`, `dimensions` (e.g. "720x958"), `value: string|null`, `onChange: (url: string) => void`
-- Upload via `apiFetch` with FormData
-
-**Note on proxy:** Check if `frontend/src/proxy.ts` routes `/api/files/*` to backend. If not, add route.
+- Returned URL is relative (`/uploads/...`) — prepend `NEXT_PUBLIC_API_URL` for display
 
 ### 5. Create `wizard-stepper.tsx`
 - Props: `currentStep: 1|2|3|4`, `onStepClick?: (step: number) => void` (allow back-navigation)
@@ -154,12 +160,12 @@ export async function fetchProvinces(): Promise<string[]> {
 - Progress bar fills proportionally
 
 ### 6. Create `ticket-type-modal.tsx`
-- shadcn `Dialog` component
-- Form fields: Name*, Price*, Quota*, MaxPerUser, Description, SaleStartAt, SaleEndAt
-- SaleStartAt/SaleEndAt in collapsible "Advanced options" section
+- **Extend pattern from existing `components/organizer/ticket-type-form.tsx`** — already has Dialog + react-hook-form + zod with name/description/price/quota/maxPerUser fields
+- Add new fields: SaleStartAt, SaleEndAt (in collapsible "Advanced options" section)
+- Change callback: `onSave: (item: TicketTypeFormItem) => void` (local state, not API call)
 - Validates: name required, price >= 0, quota >= 1, maxPerUser >= 1
 - Props: `open`, `onClose`, `initialData?: TicketTypeFormItem`, `onSave: (item: TicketTypeFormItem) => void`
-- Uses `react-hook-form` + `zod`
+- Uses `react-hook-form` + `zod` (matching existing pattern)
 
 ### 7. Create `step-1-event-info.tsx`
 - Two `ImageUploadZone` components (cover + banner)
@@ -199,38 +205,52 @@ export async function fetchProvinces(): Promise<string[]> {
 - Renders `WizardStepper` + current step component
 - Shows loading/error state
 
-## VND Currency Formatting
+## VND Currency Formatting — ALREADY EXISTS
 
-Use existing `formatDate` utils or add `formatVND`:
+Use `formatPrice()` from `frontend/src/lib/format-utils.ts`:
 ```typescript
-export const formatVND = (amount: number) =>
-  new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(amount);
+import { formatPrice } from "@/lib/format-utils";
+// formatPrice(150000) → "150.000đ"
 ```
 
-## Proxy Route for File Upload
+**Do NOT create a new `formatVND` function.**
 
-Check `frontend/src/proxy.ts`. If `/api/files` not proxied to backend, add:
+## Image Display — next.config.ts Update
+
+Add backend host to `remotePatterns` in `frontend/next.config.ts` so `<Image>` works with uploaded images:
 ```typescript
-// In proxy routes config
-{ path: "/api/files", target: BACKEND_URL }
+images: {
+  remotePatterns: [
+    { protocol: "https", hostname: "images.unsplash.com" },
+    // Add for uploaded images served from backend:
+    { protocol: "http", hostname: "localhost", port: "5010" },
+  ],
+},
 ```
+
+## File Upload — Direct Backend Call
+
+Frontend calls backend directly via `NEXT_PUBLIC_API_URL`. No proxy route needed.
+Upload URL: `${process.env.NEXT_PUBLIC_API_URL}/api/files/upload`
+Use raw `fetch` with `FormData` (not `apiFetch` which forces JSON content-type).
 
 ## Todo List
 
-- [ ] Install packages: @tiptap/react, @tiptap/starter-kit, @tiptap/extension-placeholder, react-dropzone
-- [ ] Create `lib/vn-provinces.ts` with API fetch + static fallback
-- [ ] Create `rich-text-editor.tsx` (Tiptap with dynamic import)
-- [ ] Create `image-upload-zone.tsx` (drag-drop + upload + preview)
-- [ ] Create `wizard-stepper.tsx` (progress bar)
-- [ ] Create `ticket-type-modal.tsx` (shadcn Dialog + form)
-- [ ] Create `step-1-event-info.tsx`
-- [ ] Create `step-2-time-tickets.tsx`
-- [ ] Create `step-3-settings.tsx`
-- [ ] Create `step-4-payment.tsx`
-- [ ] Create `event-wizard.tsx` (main container)
-- [ ] Update frontend event types for new fields
-- [ ] Verify/add `/api/files` proxy route
-- [ ] Run `just lint` to check for TS errors
+- [x] Install packages: @tiptap/react, @tiptap/starter-kit, @tiptap/extension-placeholder, react-dropzone
+- [x] Create `lib/vn-provinces.ts` with API fetch + static fallback
+- [x] Create `rich-text-editor.tsx` (Tiptap with dynamic import)
+- [x] Create `image-upload-zone.tsx` (drag-drop + upload + preview)
+- [x] Create `wizard-stepper.tsx` (progress bar)
+- [x] Create `ticket-type-modal.tsx` (shadcn Dialog + form)
+- [x] Create `step-1-event-info.tsx`
+- [x] Create `step-2-time-tickets.tsx`
+- [x] Create `step-3-settings.tsx`
+- [x] Create `step-4-payment.tsx`
+- [x] Create `event-wizard.tsx` (main container)
+- [x] Update `types/events.ts` — add new fields to `EventDetail` and `TicketType`
+- [x] Update `types/organizer.ts` — add `category`, `bannerImageUrl`, `isOnline` to `OrganizerEvent`
+- [x] Update `next.config.ts` — add backend host to `remotePatterns` for image display
+- [x] Run `just lint` to check for TS errors
 
 ## Success Criteria
 
@@ -245,7 +265,7 @@ Check `frontend/src/proxy.ts`. If `/api/files` not proxied to backend, add:
 
 - **Tiptap SSR**: Must use `dynamic(..., { ssr: false })` — failing to do this causes hydration errors
 - **Province API down**: Static fallback required; fetch should have try/catch
-- **File upload proxy**: If `/api/files` not in proxy config, upload will 404
+- **File upload CORS**: Backend must allow frontend origin for multipart uploads; verify CORS config in `appsettings.json`
 - **Slug auto-generation**: Must sanitize to `[a-z0-9-]`, truncate at reasonable length
 
 ## Security Considerations

@@ -1,5 +1,18 @@
 // Shared formatting utilities for Vietnamese locale
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5010";
+
+/**
+ * Resolves a backend-uploaded image URL to an absolute URL.
+ * Relative paths like "/uploads/..." are prefixed with the API base URL.
+ * External URLs (https://...) are returned as-is.
+ */
+export function resolveImageUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  if (url.startsWith("http")) return url;
+  return `${API_URL}${url}`;
+}
+
 /** Format VND price (no decimals, Vietnamese dong symbol) */
 export function formatPrice(amount: number): string {
   return new Intl.NumberFormat("vi-VN").format(amount) + "đ";

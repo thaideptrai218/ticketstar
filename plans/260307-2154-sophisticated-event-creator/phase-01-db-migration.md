@@ -9,8 +9,9 @@
 ## Overview
 
 **Priority:** P1 — blocks all other phases
-**Status:** Pending
+**Status:** Completed
 **Effort:** 2h
+**Completed:** 2026-03-08
 
 Add 6 new fields to `Event` and 2 new fields to `TicketType`. Run EF Core migration. This fixes an existing bug where `CreateTicketTypeRequest` accepts `Description`/`MaxPerUser` but the entity has no columns for them.
 
@@ -98,13 +99,13 @@ New fields on `TicketType`:
 
 ## Todo List
 
-- [ ] Add 6 new fields to `Event.cs`
-- [ ] Add 2 new fields to `TicketType.cs`
-- [ ] Update EF configurations for column types
-- [ ] Run `just migration AddEventWizardFields`
-- [ ] Inspect generated migration file
-- [ ] Run `just migrate` to apply
-- [ ] Run `just build` to verify compile
+- [x] Add 6 new fields to `Event.cs`
+- [x] Add 2 new fields to `TicketType.cs`
+- [x] Update EF configurations for column types
+- [x] Run `just migration AddEventWizardFields`
+- [x] Inspect generated migration file
+- [x] Run `just migrate` to apply
+- [x] Run `just build` to verify compile
 
 ## Success Criteria
 

@@ -9,6 +9,13 @@ public record CreateEventRequest(
     string? Category,
     string? ImageUrl,
     string Slug,
+    // Wizard new fields
+    string? BannerImageUrl,
+    bool IsOnline,
+    int? MaxTicketsPerOrder,
+    string? RefundPolicy,
+    string? ContentWarning,
+    string? PaymentTerms,
     List<CreateTicketTypeRequest> TicketTypes
 );
 
@@ -19,7 +26,14 @@ public record UpdateEventRequest(
     DateTime? EndAt,
     string? Venue,
     string? Category,
-    string? ImageUrl
+    string? ImageUrl,
+    // Wizard new fields
+    string? BannerImageUrl,
+    bool? IsOnline,
+    int? MaxTicketsPerOrder,
+    string? RefundPolicy,
+    string? ContentWarning,
+    string? PaymentTerms
 );
 
 public record PublishEventRequest(
@@ -37,6 +51,12 @@ public record EventDetailResponse(
     string? Category,
     string Status,
     string? ImageUrl,
+    string? BannerImageUrl,
+    bool IsOnline,
+    int? MaxTicketsPerOrder,
+    string? RefundPolicy,
+    string? ContentWarning,
+    string? PaymentTerms,
     string OrganizerId,
     string OrganizerName,
     List<TicketTypeResponse> TicketTypes,
@@ -53,6 +73,8 @@ public record EventListItemResponse(
     string? Venue,
     string? Category,
     string? ImageUrl,
+    string? BannerImageUrl,
+    bool IsOnline,
     string Status,
     int TotalTicketCount,
     int AvailableTicketCount,
@@ -61,10 +83,12 @@ public record EventListItemResponse(
 
 public record CreateTicketTypeRequest(
     string Name,
-    string Description,
+    string? Description,
     decimal Price,
     int Quota,
-    int MaxPerUser
+    int MaxPerUser,
+    DateTime? SaleStartAt,
+    DateTime? SaleEndAt
 );
 
 public record UpdateTicketTypeRequest(
@@ -72,16 +96,20 @@ public record UpdateTicketTypeRequest(
     string? Description,
     decimal? Price,
     int? Quota,
-    int? MaxPerUser
+    int? MaxPerUser,
+    DateTime? SaleStartAt,
+    DateTime? SaleEndAt
 );
 
 public record TicketTypeResponse(
     Guid Id,
     string Name,
-    string Description,
+    string? Description,
     decimal Price,
     int Quota,
     int SoldCount,
     int AvailableCount,
-    int MaxPerUser
+    int MaxPerUser,
+    DateTime? SaleStartAt,
+    DateTime? SaleEndAt
 );

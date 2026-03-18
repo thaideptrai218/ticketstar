@@ -10,19 +10,25 @@
 ## Overview
 
 **Priority:** P1 — blocks Phase 3 integration
-**Status:** Pending
+**Status:** Completed
 **Effort:** 4h
+**Completed:** 2026-03-08
 **Blocked by:** Phase 01
 
-Update DTOs, EventService, and EventsController to support all new fields. Add file upload endpoint. Verify publish/unpublish endpoints exist (frontend already calls them).
+Update DTOs, EventService, and EventsController to support all new fields. Add file upload endpoint. Fix TicketType Description/MaxPerUser mapping (DTOs have them but entity didn't until Phase 1).
+
+> **Confirmed:** Publish/unpublish endpoints already exist and work (`POST /api/events/{id}/publish` + `/unpublish`). No changes needed.
 
 ## Key Insights
 
-- `CreateTicketTypeRequest` already has `Description` and `MaxPerUser` — but entity was missing columns (fixed in Phase 1). No DTO change needed for these.
+- `CreateTicketTypeRequest` already has `Description` and `MaxPerUser` — entity now has columns (Phase 1). No DTO change needed for these.
+- **BUT** `EventService.CreateEventAsync()` may NOT map `Description`/`MaxPerUser` to entity — must verify and fix mapping
+- `TicketTypeResponse` DTO already has `Description`/`MaxPerUser`/`AvailableCount` — verify projection maps correctly after entity fix
 - `SaleStartAt`/`SaleEndAt` exist on `TicketType` entity but are NOT in `CreateTicketTypeRequest` DTO — must add
-- `PublishEventRequest` DTO already exists; verify controller endpoints `/publish` and `/unpublish`
+- `PublishEventRequest` DTO + controller endpoints `/publish` and `/unpublish` already confirmed working
 - File upload: `POST /api/files/upload` → multipart, save to `wwwroot/uploads/`, return `{ url }`
 - Max upload size: 5MB; allowed types: jpg, jpeg, png, webp
+- Frontend calls backend directly (no API proxy needed) — `NEXT_PUBLIC_API_URL` points to `http://localhost:5010`
 
 ## Requirements
 
@@ -81,24 +87,12 @@ public record TicketTypeResponse(
 - Returns: `200 { url: "/uploads/{guid}.{ext}" }`
 - Error: `400` for invalid type/size, `500` for IO error
 
-### Verify: Publish/Unpublish endpoints
+### Publish/Unpublish — NO CHANGES NEEDED
 
-Check `EventsController.cs` for `[HttpPost("{id:guid}/publish")]` and `[HttpPost("{id:guid}/unpublish")]`. If missing, add:
-```csharp
-[HttpPost("{id:guid}/publish")]
-public async Task<IActionResult> PublishEvent(Guid id, CancellationToken ct)
-{
-    var userId = GetUserId() ?? "";
-    return FromResult(await _eventService.PublishEventAsync(id, userId, ct));
-}
-
-[HttpPost("{id:guid}/unpublish")]
-public async Task<IActionResult> UnpublishEvent(Guid id, CancellationToken ct)
-{
-    var userId = GetUserId() ?? "";
-    return FromResult(await _eventService.UnpublishEventAsync(id, userId, ct));
-}
-```
+Both endpoints confirmed working:
+- `POST /api/events/{id}/publish` → `EventService.PublishEventAsync()` → sets `Status = Published`
+- `POST /api/events/{id}/unpublish` → `EventService.UnpublishEventAsync()` → sets `Status = Draft`
+- Cache invalidation already implemented in both methods
 
 ## Related Code Files
 
@@ -118,9 +112,10 @@ public async Task<IActionResult> UnpublishEvent(Guid id, CancellationToken ct)
 2. **Update `EventService.cs`**:
    - Map new fields in `CreateEventAsync`: `BannerImageUrl`, `IsOnline`, `MaxTicketsPerOrder`, `RefundPolicy`, `ContentWarning`, `PaymentTerms`
    - Map new fields in `UpdateEventAsync`
-   - Map `SaleStartAt`/`SaleEndAt` when creating TicketTypes
-   - Map new fields in projection queries (EventDetailResponse, TicketTypeResponse)
-   - If `PublishEventAsync`/`UnpublishEventAsync` missing: add methods that set `Status = EventStatus.Published/Draft`
+   - **Fix TicketType mapping**: Verify `CreateEventAsync` maps `Description` and `MaxPerUser` from DTO to entity (likely broken pre-Phase 1)
+   - Map `SaleStartAt`/`SaleEndAt` when creating TicketTypes (DTO → entity)
+   - Update projection queries: `EventDetailResponse` must include new Event fields, `TicketTypeResponse` must include `SaleStartAt`/`SaleEndAt`
+   - Invalidate Redis cache keys after create/update (already done for existing fields, extend if needed)
 
 3. **Create `FilesController.cs`**:
    ```csharp
@@ -169,14 +164,14 @@ public async Task<IActionResult> UnpublishEvent(Guid id, CancellationToken ct)
 
 ## Todo List
 
-- [ ] Update `EventDtos.cs` — all DTO changes
-- [ ] Update `EventService.cs` — map new fields in create/update/project
-- [ ] Add `SaleStartAt`/`SaleEndAt` mapping for TicketTypes in EventService
-- [ ] Check and add publish/unpublish controller actions if missing
-- [ ] Create `FilesController.cs`
-- [ ] Update `Program.cs` for static files + multipart limits
-- [ ] Run `just build`
-- [ ] Smoke test file upload endpoint
+- [x] Update `EventDtos.cs` — all DTO changes
+- [x] Update `EventService.cs` — map new fields in create/update/project
+- [x] Add `SaleStartAt`/`SaleEndAt` mapping for TicketTypes in EventService
+- [x] Fix TicketType `Description`/`MaxPerUser` mapping in EventService (was silently broken)
+- [x] Create `FilesController.cs`
+- [x] Update `Program.cs` for static files + multipart limits
+- [x] Run `just build`
+- [x] Smoke test file upload endpoint
 
 ## Success Criteria
 

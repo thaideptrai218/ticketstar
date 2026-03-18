@@ -10,6 +10,8 @@ export interface EventListItem {
   venue: string | null;
   category: string | null;
   imageUrl: string | null;
+  bannerImageUrl?: string | null;
+  isOnline: boolean;
   status: string;
   totalTicketCount: number;
   availableTicketCount: number;
@@ -24,8 +26,15 @@ export interface EventDetail {
   startAt: string;
   endAt: string;
   venue: string | null;
+  category: string | null;
   status: string;
   imageUrl: string | null;
+  bannerImageUrl?: string | null;
+  isOnline: boolean;
+  maxTicketsPerOrder?: number | null;
+  refundPolicy?: string | null;
+  contentWarning?: string | null;
+  paymentTerms?: string | null;
   organizerId: string;
   organizerName: string;
   ticketTypes: TicketType[];
@@ -35,10 +44,12 @@ export interface EventDetail {
 export interface TicketType {
   id: string;
   name: string;
-  description: string;
+  description: string | null;
   price: number;
   quota: number;
   soldCount: number;
   availableCount: number;
   maxPerUser: number;
+  saleStartAt?: string | null;
+  saleEndAt?: string | null;
 }

@@ -12,10 +12,11 @@
 | 5 | Frontend Marketplace | 10h | ✅ Complete | 100% |
 | 6 | Frontend Attendee | 6h | ✅ Complete | 100% |
 | 7 | Frontend Organizer | 10h | ✅ Complete | 100% |
+| 7.5 | Event Wizard Enhancement | 4h | ✅ Complete | 100% |
 | 8 | Frontend Staff & Admin | 6h | ✅ Complete | 100% |
 | 9 | Testing | 8h | 🔄 Pending | 0% |
 
-**Total Effort:** 80 hours
+**Total Effort:** 84 hours
 
 ---
 
@@ -489,6 +490,61 @@
 
 ---
 
+## Phase 7.5: Event Wizard Enhancement ✅ Complete
+
+**Status:** Complete
+**Completed:** 2026-03-08
+**Effort:** 4 hours
+**Dependencies:** Phase 7
+
+### Completed Deliverables
+
+#### 4-Step Event Wizard ✅
+- [x] event-wizard.tsx — Multi-step state orchestration
+- [x] wizard-stepper.tsx — Visual step indicator
+- [x] step-1-event-info.tsx — Event name, description, banner image
+- [x] step-2-time-tickets.tsx — Date/time, ticket type management
+- [x] step-3-settings.tsx — Online mode, max per order, content warning
+- [x] step-4-payment.tsx — Refund policy, payment terms
+- [x] ticket-type-modal.tsx — Add/edit ticket tiers (modal dialog)
+- [x] image-upload-zone.tsx — Drag-drop banner image upload
+- [x] rich-text-editor.tsx — TipTap rich-text editor wrapper
+- [x] rich-text-editor-inner.tsx — TipTap extensions (bold, italic, lists, etc.)
+
+#### Backend Support ✅
+- [x] POST /api/files/upload endpoint (FilesController.cs)
+- [x] Event entity: BannerImageUrl, IsOnline, MaxTicketsPerOrder, RefundPolicy, ContentWarning, PaymentTerms
+- [x] TicketType entity: Description field
+
+#### Frontend Packages ✅
+- [x] @tiptap/react, @tiptap/starter-kit, @tiptap/extension-placeholder
+- [x] react-dropzone
+
+#### Removed Files ✅
+- [x] frontend/src/components/organizer/event-form.tsx (replaced by wizard)
+
+### Architecture
+
+```
+event-wizard.tsx
+├─ State: currentStep, formData, ticketTypes, isSubmitting
+├─ Validation: Each step validates before allowing next
+├─ Submission: Final POST to /api/events/create
+└─ Redirect: /organizer/events/[id]/edit on success
+```
+
+### Success Criteria
+- [x] All 4 steps render correctly
+- [x] Navigation (Back/Next) works
+- [x] Form validation per step
+- [x] Image upload functional
+- [x] Rich-text editor renders formatted content
+- [x] Ticket type modal add/edit works
+- [x] Final submission creates event with all fields
+- [x] Responsive across mobile/tablet/desktop
+
+---
+
 ## Phase 8: Frontend Staff & Admin ✅ Complete
 
 **Status:** Complete
@@ -595,13 +651,30 @@ Phase 2   Phase 4
 | Marketplace Live | Phase 5 | ✅ Complete |
 | Attendee Dashboard Ready | Phase 6 | ✅ Complete |
 | All Roles Implemented | Phase 6-8 | ✅ Complete (4/4 roles done) |
+| Event Wizard (Multi-Step) | Phase 7.5 | ✅ Complete |
 | Production Ready | Phase 9 | 🔄 In Progress (Testing) |
 
 ---
 
-**Last Updated:** 2026-03-07
-**Overall Progress:** 89% (8/9 phases complete: 1, 2, 2b, 3, 4, 5, 6, 7, 8)
+**Last Updated:** 2026-03-08
+**Overall Progress:** 90% (8.5/9 phases complete: 1, 2, 2b, 3, 4, 5, 6, 7, 7.5, 8)
 **Next Milestone:** Complete Phase 9 (Testing) - unit tests, integration tests, E2E tests
+
+## Event Wizard Feature (Phase 7.5 - Session 9)
+
+**Completed Enhancements:**
+- Replaced single-form `event-form.tsx` with guided 4-step wizard
+- Step 1: Event info (name, description, banner image)
+- Step 2: Time & ticket types (date/time, tier management)
+- Step 3: Settings (online/venue toggle, max tickets per order, content warning)
+- Step 4: Payment terms (refund policy, payment terms)
+- Added TipTap rich-text editor for formatted descriptions
+- Added drag-drop image upload (react-dropzone)
+- Added modal dialog for managing ticket types
+- Backend support: New POST /api/files/upload endpoint
+- Database enhancements: Event & TicketType entities updated with new fields
+
+---
 
 ## Critical Fixes Applied (Session 8)
 

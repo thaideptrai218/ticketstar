@@ -8,7 +8,10 @@ export interface OrganizerEvent {
   startAt: string;
   endAt: string;
   venue: string | null;
+  category?: string | null;
   imageUrl: string | null;
+  bannerImageUrl?: string | null;
+  isOnline: boolean;
   status: string;
   totalTicketCount: number;
   availableTicketCount: number;
