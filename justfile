@@ -13,7 +13,7 @@ default:
     @just --list
 
 # Full startup: infra + migrate + backend + frontend
-start:
+start: stop-infra
     #!/bin/sh
     echo "==> Starting Docker infrastructure..."
     docker compose up -d
@@ -69,10 +69,14 @@ infra-down:
 
 # Run backend API (port 5010)
 backend:
+    #!/bin/sh
+    lsof -ti :5010 2>/dev/null | xargs -r kill -9 2>/dev/null || true
     cd {{api_dir}} && dotnet watch run
 
 # Run frontend dev server (port 3001)
 frontend:
+    #!/bin/sh
+    lsof -ti :3001 2>/dev/null | xargs -r kill -9 2>/dev/null || true
     cd {{frontend_dir}} && pnpm dev
 
 # Build backend
