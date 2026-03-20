@@ -1,8 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using TicketStar.API.Models;
 using TicketStar.Application.DTOs;
 using TicketStar.Application.Interfaces;
+using TicketStar.Domain.Entities;
+using TicketStar.Domain.Interfaces;
 
 namespace TicketStar.API.Controllers;
 
@@ -13,11 +16,77 @@ public class AccountController : ApiControllerBase
 {
     private readonly IOrganizerProfileService _organizerProfileService;
     private readonly ICollaboratorService _collaboratorService;
+    private readonly IOrganizerCollaboratorService _orgCollaboratorService;
+    private readonly IUserRepository _userRepo;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public AccountController(IOrganizerProfileService organizerProfileService, ICollaboratorService collaboratorService)
+    public AccountController(
+        IOrganizerProfileService organizerProfileService,
+        ICollaboratorService collaboratorService,
+        IOrganizerCollaboratorService orgCollaboratorService,
+        IUserRepository userRepo,
+        IUnitOfWork unitOfWork)
     {
         _organizerProfileService = organizerProfileService;
         _collaboratorService = collaboratorService;
+        _orgCollaboratorService = orgCollaboratorService;
+        _userRepo = userRepo;
+        _unitOfWork = unitOfWork;
+    }
+
+    // ─── User profile (fullName / phone / avatarUrl) ──────────────────────────
+
+    /// <summary>Get the current user's personal profile.</summary>
+    [HttpGet("~/api/users/me/profile")]
+    public async Task<IActionResult> GetUserProfile(CancellationToken ct)
+    {
+        var userId = GetUserId();
+        if (userId is null) return Unauthorized();
+
+        var user = await _userRepo.Query()
+            .Include(u => u.Profile)
+            .FirstOrDefaultAsync(u => u.Id == userId, ct);
+
+        if (user is null) return NotFound();
+
+        var profile = user.Profile;
+        var response = new UserProfileResponse(
+            profile?.FullName ?? "",
+            profile?.Phone,
+            profile?.AvatarUrl);
+
+        return Ok(ApiResponse<UserProfileResponse>.Ok(response, HttpContext.TraceIdentifier));
+    }
+
+    /// <summary>Update the current user's personal profile.</summary>
+    [HttpPut("~/api/users/me/profile")]
+    public async Task<IActionResult> UpdateUserProfile([FromBody] UpdateUserProfileRequest request, CancellationToken ct)
+    {
+        var userId = GetUserId();
+        if (userId is null) return Unauthorized();
+
+        var user = await _userRepo.Query()
+            .Include(u => u.Profile)
+            .FirstOrDefaultAsync(u => u.Id == userId, ct);
+
+        if (user is null) return NotFound();
+
+        if (user.Profile is null)
+        {
+            user.Profile = new UserProfile { UserId = userId, FullName = request.FullName };
+        }
+
+        user.Profile.FullName = request.FullName;
+        user.Profile.Phone = request.Phone;
+        user.Profile.AvatarUrl = request.AvatarUrl;
+        user.Profile.UpdatedAt = DateTime.UtcNow;
+
+        _userRepo.Update(user);
+        await _unitOfWork.SaveChangesAsync(ct);
+
+        return Ok(ApiResponse<UserProfileResponse>.Ok(
+            new UserProfileResponse(user.Profile.FullName, user.Profile.Phone, user.Profile.AvatarUrl),
+            HttpContext.TraceIdentifier));
     }
 
     /// <summary>
@@ -93,5 +162,70 @@ public class AccountController : ApiControllerBase
         if (userId is null) return Unauthorized();
 
         return FromResult(await _organizerProfileService.UpdateAsync(userId, request, ct));
+    }
+
+    // ─── Organizer-level collaborators ────────────────────────────────────────
+
+    /// <summary>Invite a user to collaborate on an organizer profile (organization).</summary>
+    [HttpPost("organizer-profiles/{profileId}/collaborators")]
+    public async Task<IActionResult> InviteOrgCollaborator(string profileId, [FromBody] InviteOrgCollaboratorRequest request, CancellationToken ct)
+    {
+        var userId = GetUserId();
+        if (userId is null) return Unauthorized();
+        return FromResult(await _orgCollaboratorService.InviteByEmailAsync(userId, profileId, request, ct));
+    }
+
+    /// <summary>List collaborators of an organizer profile.</summary>
+    [HttpGet("organizer-profiles/{profileId}/collaborators")]
+    public async Task<IActionResult> GetOrgCollaborators(string profileId, CancellationToken ct)
+    {
+        var userId = GetUserId();
+        if (userId is null) return Unauthorized();
+        return FromResult(await _orgCollaboratorService.GetCollaboratorsAsync(userId, profileId, ct));
+    }
+
+    /// <summary>Update permission of an organizer collaborator.</summary>
+    [HttpPut("organizer-profiles/{profileId}/collaborators/{collaboratorId}")]
+    public async Task<IActionResult> UpdateOrgCollaborator(string profileId, string collaboratorId, [FromBody] UpdateOrgCollaboratorRequest request, CancellationToken ct)
+    {
+        var userId = GetUserId();
+        if (userId is null) return Unauthorized();
+        return FromResult(await _orgCollaboratorService.UpdatePermissionAsync(userId, profileId, collaboratorId, request, ct));
+    }
+
+    /// <summary>Remove a collaborator from an organizer profile.</summary>
+    [HttpDelete("organizer-profiles/{profileId}/collaborators/{collaboratorId}")]
+    public async Task<IActionResult> RemoveOrgCollaborator(string profileId, string collaboratorId, CancellationToken ct)
+    {
+        var userId = GetUserId();
+        if (userId is null) return Unauthorized();
+        return FromResult(await _orgCollaboratorService.RemoveCollaboratorAsync(userId, profileId, collaboratorId, ct));
+    }
+
+    /// <summary>Accept an org collaborator invite via token.</summary>
+    [HttpPost("org-invites/{token}/accept")]
+    public async Task<IActionResult> AcceptOrgInvite(string token, CancellationToken ct)
+    {
+        var userId = GetUserId();
+        if (userId is null) return Unauthorized();
+        return FromResult(await _orgCollaboratorService.AcceptInviteAsync(userId, token, ct));
+    }
+
+    /// <summary>Decline an org collaborator invite via token.</summary>
+    [HttpPost("org-invites/{token}/decline")]
+    public async Task<IActionResult> DeclineOrgInvite(string token, CancellationToken ct)
+    {
+        var userId = GetUserId();
+        if (userId is null) return Unauthorized();
+        return FromResult(await _orgCollaboratorService.DeclineInviteAsync(userId, token, ct));
+    }
+
+    /// <summary>Get all org collaborator invites (pending + accepted) for the current user.</summary>
+    [HttpGet("org-invites")]
+    public async Task<IActionResult> GetMyOrgInvites(CancellationToken ct)
+    {
+        var userId = GetUserId();
+        if (userId is null) return Unauthorized();
+        return FromResult(await _orgCollaboratorService.GetMyOrgInvitesAsync(userId, ct));
     }
 }

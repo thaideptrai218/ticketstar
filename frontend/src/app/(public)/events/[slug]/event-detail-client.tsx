@@ -144,8 +144,19 @@ export function EventDetailClient({ event }: EventDetailClientProps) {
               )}
 
               {/* Organizer */}
-              <div className="flex items-start gap-2.5">
-                <User className="mt-0.5 size-4 shrink-0 text-stone-400" />
+              <div className="flex items-center gap-2.5">
+                {event.organizerLogoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={resolveImageUrl(event.organizerLogoUrl) ?? ""}
+                    alt={event.organizerName}
+                    className="size-6 rounded-full object-cover shrink-0 ring-1 ring-stone-200"
+                  />
+                ) : (
+                  <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700 text-xs font-semibold">
+                    {getInitials(event.organizerName)}
+                  </div>
+                )}
                 <span className="text-sm text-stone-500">{event.organizerName}</span>
               </div>
             </div>
@@ -207,9 +218,7 @@ export function EventDetailClient({ event }: EventDetailClientProps) {
               Giới thiệu
             </h2>
             <div
-              className="prose prose-stone prose-sm max-w-none
-                prose-p:leading-relaxed prose-p:my-2
-                prose-a:text-amber-700 prose-a:no-underline hover:prose-a:underline"
+              className="prose prose-stone prose-sm max-w-none prose-p:leading-relaxed prose-p:my-2 prose-a:text-amber-700 prose-a:no-underline hover:prose-a:underline"
               dangerouslySetInnerHTML={{ __html: event.description }}
             />
           </div>
@@ -273,9 +282,18 @@ export function EventDetailClient({ event }: EventDetailClientProps) {
           </h2>
           <div className="flex items-center gap-4">
             <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-amber-50 border border-amber-100">
-              <span className="text-lg font-bold text-amber-700">
-                {getInitials(event.organizerName)}
-              </span>
+              {event.organizerLogoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={resolveImageUrl(event.organizerLogoUrl) ?? ""}
+                  alt={event.organizerName}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className="text-lg font-bold text-amber-700">
+                  {getInitials(event.organizerName)}
+                </span>
+              )}
             </div>
             <div>
               <p className="font-semibold text-stone-900">{event.organizerName}</p>

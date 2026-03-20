@@ -31,7 +31,14 @@ public class OrderExpiryService : BackgroundService
                 _logger.LogError(ex, "Error processing expired orders");
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(60), stoppingToken);
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(60), stoppingToken);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
         }
     }
 

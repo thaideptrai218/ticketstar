@@ -27,6 +27,7 @@ public class AppDbContext : DbContext
     public DbSet<CheckIn> CheckIns => Set<CheckIn>();
     public DbSet<OrganizerProfile> OrganizerProfiles => Set<OrganizerProfile>();
     public DbSet<EventCollaborator> EventCollaborators => Set<EventCollaborator>();
+    public DbSet<OrganizerCollaborator> OrganizerCollaborators => Set<OrganizerCollaborator>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

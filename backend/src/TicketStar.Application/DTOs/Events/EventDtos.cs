@@ -6,6 +6,7 @@ public record CreateEventRequest(
     DateTime StartAt,
     DateTime EndAt,
     string? Venue,
+    string? City,
     string? Category,
     string? ImageUrl,
     string Slug,
@@ -27,6 +28,7 @@ public record UpdateEventRequest(
     DateTime? StartAt,
     DateTime? EndAt,
     string? Venue,
+    string? City,
     string? Category,
     string? ImageUrl,
     // Wizard new fields
@@ -50,6 +52,7 @@ public record EventDetailResponse(
     DateTime StartAt,
     DateTime EndAt,
     string? Venue,
+    string? City,
     string? Category,
     string Status,
     string? ImageUrl,
@@ -61,6 +64,7 @@ public record EventDetailResponse(
     string? PaymentTerms,
     string OrganizerId,
     string OrganizerName,
+    string? OrganizerLogoUrl,
     List<TicketTypeResponse> TicketTypes,
     DateTime CreatedAt
 );

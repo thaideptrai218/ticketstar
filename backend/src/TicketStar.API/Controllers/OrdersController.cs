@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TicketStar.API.Models;
 using TicketStar.Application.Interfaces;
 using TicketStar.Application.DTOs.Orders;
 
@@ -27,7 +28,10 @@ public class OrdersController : ApiControllerBase
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetOrder(Guid id, CancellationToken ct)
     {
-        var userId = GetUserId() ?? "";
+        var userId = GetUserId();
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized(ApiResponse.Fail("Authentication required", HttpContext.TraceIdentifier));
+
         return FromResult(await _orderService.GetOrderByIdAsync(id, userId, ct));
     }
 

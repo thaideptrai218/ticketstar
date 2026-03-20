@@ -67,6 +67,7 @@ export interface CollaborationEvent {
   permissionLevel: CollaboratorPermissionLevel;
   collaboratorStatus: CollaboratorStatus;
   inviteToken?: string;  // present for Pending invites — used for inline accept/decline in NotificationBell
+  imageUrl?: string | null;
 }
 
 export interface CheckInStats {

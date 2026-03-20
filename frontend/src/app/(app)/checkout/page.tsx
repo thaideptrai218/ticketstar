@@ -21,7 +21,7 @@ function CheckoutContent() {
   const [selection, setSelection] = useState<TicketSelection>({});
   const [isLoadingEvent, setIsLoadingEvent] = useState(true);
 
-  const { step, paymentState, error, placeOrder, reset } = useCheckout();
+  const { step, paymentState, order, error, placeOrder, reset } = useCheckout();
 
   // Parse initial selection from URL params (format: "typeId:qty,typeId:qty")
   useEffect(() => {
@@ -85,6 +85,7 @@ function CheckoutContent() {
       <div className="mx-auto max-w-lg">
         <PaymentStatus
           state={paymentState}
+          orderId={order?.id}
           eventSlug={event.slug}
         />
       </div>

@@ -6,8 +6,10 @@ import {
   Building2,
   CheckCircle2,
   Clock,
+  Mail,
   Pencil,
   Plus,
+  Trash2,
   Users,
   X,
   AlertCircle,
@@ -15,16 +17,38 @@ import {
   ShieldOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   getMyOrganizerProfiles,
   getCollaboratorOrgs,
   createOrganizerProfile,
   updateOrganizerProfileById,
+  getOrgCollaborators,
+  inviteOrgCollaborator,
+  removeOrgCollaborator,
+  updateOrgCollaboratorPermission,
   type OrganizerProfile,
+  type OrgCollaborator,
   type CreateOrganizerProfileRequest,
 } from "@/lib/api/organizer-profile-api";
 import { OrganizerProfileForm } from "@/components/organizer/organizer-profile-form";
 import { useAuth } from "@/contexts/auth-context";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5010";
+
+const PERMISSION_OPTIONS = [
+  { value: "Viewer", label: "Xem" },
+  { value: "Operator", label: "Vận hành" },
+  { value: "Manager", label: "Quản lý" },
+];
+
+const STATUS_COLORS: Record<string, string> = {
+  Accepted: "text-green-600",
+  Pending: "text-amber-600",
+  Declined: "text-red-500",
+};
 
 // ─── Org Card ─────────────────────────────────────────────────────────────────
 
@@ -45,11 +69,21 @@ function OrgCard({
   });
 
   return (
-    <div className="group relative flex flex-col rounded-2xl border border-stone-200 bg-white p-6 shadow-sm transition-all hover:shadow-md hover:border-stone-300">
+    <div
+      className={`group relative flex flex-col rounded-2xl border border-stone-200 bg-white p-6 shadow-sm transition-all hover:shadow-md hover:border-stone-300${!isCollaborator && onEdit ? " cursor-pointer" : ""}`}
+      onClick={!isCollaborator && onEdit ? onEdit : undefined}
+    >
       {/* Top: avatar + badge */}
       <div className="flex items-start justify-between mb-4">
-        <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-xl font-bold text-amber-700">
-          {initial}
+        <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-xl font-bold text-amber-700 overflow-hidden">
+          {profile.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={profile.logoUrl.startsWith("http") ? profile.logoUrl : `${API_URL}${profile.logoUrl}`}
+              alt={profile.organizationName}
+              className="w-full h-full object-cover"
+            />
+          ) : initial}
         </div>
         {isCollaborator ? (
           <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 border border-blue-200 px-2.5 py-1 text-xs font-medium text-blue-700">
@@ -80,17 +114,136 @@ function OrgCard({
         <span>Tham gia {joinDate}</span>
       </div>
 
-      {/* Edit button — owners only */}
+      {/* Click-to-view hint — owners only */}
       {!isCollaborator && onEdit && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onEdit}
-          className="mt-auto w-full gap-2 border-stone-200 text-stone-600 hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700 cursor-pointer"
-        >
-          <Pencil className="size-3.5" />
-          Chỉnh sửa
+        <p className="mt-auto text-xs text-stone-400 group-hover:text-amber-600 transition-colors flex items-center gap-1">
+          <Building2 className="size-3" />
+          Nhấn để xem chi tiết
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ─── Org Collaborators Section ────────────────────────────────────────────────
+
+function OrgCollaboratorsSection({ profileId }: { profileId: string }) {
+  const [collaborators, setCollaborators] = useState<OrgCollaborator[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [email, setEmail] = useState("");
+  const [permission, setPermission] = useState("Operator");
+  const [inviting, setInviting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    getOrgCollaborators(profileId)
+      .then(setCollaborators)
+      .catch(() => {})
+      .finally(() => setIsLoading(false));
+  }, [profileId]);
+
+  async function handleInvite(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setError(null);
+    setInviting(true);
+    try {
+      const newCollab = await inviteOrgCollaborator(profileId, email.trim(), permission);
+      setCollaborators((prev) => [...prev, newCollab]);
+      setEmail("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Không thể gửi lời mời.");
+    } finally {
+      setInviting(false);
+    }
+  }
+
+  async function handleRemove(collaboratorId: string) {
+    await removeOrgCollaborator(profileId, collaboratorId).catch(() => {});
+    setCollaborators((prev) => prev.filter((c) => c.id !== collaboratorId));
+  }
+
+  async function handlePermissionChange(collaboratorId: string, newLevel: string) {
+    const updated = await updateOrgCollaboratorPermission(profileId, collaboratorId, newLevel).catch(() => null);
+    if (updated) {
+      setCollaborators((prev) => prev.map((c) => c.id === collaboratorId ? updated : c));
+    }
+  }
+
+  return (
+    <div className="border-t border-stone-100 pt-5 space-y-4">
+      <div className="flex items-center gap-2">
+        <Users className="size-4 text-amber-600" />
+        <h3 className="font-semibold text-stone-900 text-sm">Cộng tác viên tổ chức</h3>
+      </div>
+
+      {/* Invite form */}
+      <form onSubmit={handleInvite} className="flex gap-2 flex-wrap">
+        <Input
+          type="email"
+          placeholder="Email người dùng"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="flex-1 min-w-40 text-sm"
+          required
+        />
+        <Select value={permission} onValueChange={setPermission}>
+          <SelectTrigger className="w-36 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {PERMISSION_OPTIONS.map((o) => (
+              <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button type="submit" disabled={inviting} size="sm" className="bg-amber-700 hover:bg-amber-800 text-white gap-1.5 cursor-pointer">
+          <Mail className="size-3.5" />
+          {inviting ? "Đang gửi..." : "Mời"}
         </Button>
+      </form>
+      {error && <p className="text-xs text-red-500">{error}</p>}
+
+      {/* Collaborator list */}
+      {isLoading ? (
+        <p className="text-xs text-stone-400">Đang tải...</p>
+      ) : collaborators.length === 0 ? (
+        <p className="text-xs text-stone-400">Chưa có cộng tác viên nào.</p>
+      ) : (
+        <ul className="space-y-2">
+          {collaborators.map((c) => (
+            <li key={c.id} className="flex items-center gap-3 rounded-lg border border-stone-100 bg-stone-50 px-3 py-2 text-sm">
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-stone-800 truncate">{c.fullName ?? c.email}</p>
+                {c.fullName && <p className="text-xs text-stone-400 truncate">{c.email}</p>}
+              </div>
+              <Select
+                value={c.permissionLevel}
+                onValueChange={(v) => handlePermissionChange(c.id, v)}
+              >
+                <SelectTrigger className="w-28 text-xs h-7">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PERMISSION_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <span className={`text-xs font-medium ${STATUS_COLORS[c.status] ?? "text-stone-500"}`}>
+                {c.status === "Accepted" ? "Đã tham gia" : c.status === "Pending" ? "Đang chờ" : "Từ chối"}
+              </span>
+              <button
+                type="button"
+                onClick={() => handleRemove(c.id)}
+                className="shrink-0 text-stone-300 hover:text-red-500 transition-colors cursor-pointer"
+                aria-label="Xóa"
+              >
+                <Trash2 className="size-3.5" />
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
@@ -171,6 +324,7 @@ function EditPanel({
           submitLabel={submitLabel}
           isLoading={isSaving}
         />
+
       </div>
     </div>
   );
@@ -196,7 +350,95 @@ function CardSkeleton() {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-type PanelMode = "edit" | "create" | null;
+// ─── View Panel (read-only org details) ───────────────────────────────────────
+
+function ViewPanel({
+  profile,
+  onEdit,
+  onClose,
+}: {
+  profile: OrganizerProfile;
+  onEdit: () => void;
+  onClose: () => void;
+}) {
+  const joinDate = new Date(profile.createdAt).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
+  const initial = profile.organizationName?.charAt(0).toUpperCase() ?? "?";
+
+  function Row({ label, value }: { label: string; value?: string | null }) {
+    if (!value) return null;
+    return (
+      <div className="flex flex-col gap-0.5">
+        <span className="text-xs text-stone-400">{label}</span>
+        <span className="text-sm text-stone-800 break-all">{value}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border border-stone-200 bg-white shadow-sm">
+      {/* Header */}
+      <div className="flex items-center gap-3 border-b border-stone-100 px-6 py-4">
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-amber-100">
+          <Building2 className="size-4 text-amber-700" />
+        </div>
+        <p className="flex-1 font-semibold text-stone-900 text-sm truncate">{profile.organizationName}</p>
+        {profile.isVerified ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-green-50 border border-green-200 px-2.5 py-1 text-xs font-medium text-green-700 shrink-0">
+            <CheckCircle2 className="size-3" />
+            Đã xác minh
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1 rounded-full bg-stone-100 border border-stone-200 px-2.5 py-1 text-xs font-medium text-stone-500 shrink-0">
+            Chưa xác minh
+          </span>
+        )}
+        <button type="button" onClick={onClose} aria-label="Đóng" className="shrink-0 rounded-lg p-1.5 text-stone-400 hover:bg-stone-100 hover:text-stone-600 transition-colors cursor-pointer">
+          <X className="size-4" />
+        </button>
+      </div>
+
+      <div className="px-6 py-5 space-y-5">
+        {/* Avatar + name row */}
+        <div className="flex items-center gap-4">
+          <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-amber-100 text-2xl font-bold text-amber-700 overflow-hidden border border-amber-200">
+            {profile.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={profile.logoUrl.startsWith("http") ? profile.logoUrl : `${API_URL}${profile.logoUrl}`} alt={profile.organizationName} className="w-full h-full object-cover" />
+            ) : initial}
+          </div>
+          <div>
+            <p className="font-semibold text-stone-900">{profile.organizationName}</p>
+            <p className="text-xs text-stone-400 flex items-center gap-1 mt-0.5">
+              <Clock className="size-3" />
+              Tham gia {joinDate}
+            </p>
+          </div>
+        </div>
+
+        {/* Details grid */}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Row label="Mô tả" value={profile.description} />
+          <Row label="Số điện thoại" value={profile.phone} />
+          <Row label="Địa chỉ" value={profile.address} />
+          <Row label="Website" value={profile.website} />
+          <Row label="Facebook" value={profile.facebookUrl} />
+          <Row label="Instagram" value={profile.instagramUrl} />
+        </div>
+
+        {/* Edit button */}
+        <Button onClick={onEdit} size="sm" className="w-full gap-2 bg-amber-700 hover:bg-amber-800 text-white cursor-pointer">
+          <Pencil className="size-3.5" />
+          Chỉnh sửa
+        </Button>
+
+        {/* Collaborators */}
+        <OrgCollaboratorsSection profileId={profile.id} />
+      </div>
+    </div>
+  );
+}
+
+type PanelMode = "view" | "edit" | "create" | null;
 
 export default function OrganizerProfilePage() {
   const { refreshUser } = useAuth();
@@ -224,6 +466,13 @@ export default function OrganizerProfilePage() {
       .catch(() => setError("Không thể tải thông tin tổ chức."))
       .finally(() => setIsLoading(false));
   }, []);
+
+  function openView(id: string) {
+    setEditingId(id);
+    setPanelMode("view");
+    setSaved(false);
+    setError(null);
+  }
 
   function openEdit(id: string) {
     setEditingId(id);
@@ -316,7 +565,7 @@ export default function OrganizerProfilePage() {
               <OrgCard
                 key={p.id}
                 profile={p}
-                onEdit={() => openEdit(p.id)}
+                onEdit={() => openView(p.id)}
               />
             ))}
           </div>
@@ -353,8 +602,17 @@ export default function OrganizerProfilePage() {
         </div>
       )}
 
+      {/* ── View panel (read-only details) ── */}
+      {panelMode === "view" && editingProfile && (
+        <ViewPanel
+          profile={editingProfile}
+          onEdit={() => openEdit(editingProfile.id)}
+          onClose={closePanel}
+        />
+      )}
+
       {/* ── Edit / Create panel ── */}
-      {panelMode && (
+      {(panelMode === "edit" || panelMode === "create") && (
         <EditPanel
           profile={editingProfile}
           mode={panelMode}

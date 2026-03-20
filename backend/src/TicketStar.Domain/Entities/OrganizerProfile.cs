@@ -18,4 +18,5 @@ public class OrganizerProfile
 
     // Navigation
     public User User { get; set; } = null!;
+    public ICollection<OrganizerCollaborator> Collaborators { get; set; } = [];
 }

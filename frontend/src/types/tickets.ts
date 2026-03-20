@@ -2,6 +2,7 @@
 
 export interface MyTicket {
   id: string;
+  orderId: string;
   eventId: string;
   eventTitle: string;
   eventVenue: string | null;

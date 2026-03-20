@@ -155,44 +155,55 @@ public class OrderService : IOrderService
 
     public async Task<Result<OrderDetailResponse>> GetOrderByIdAsync(Guid orderId, string userId, CancellationToken ct)
     {
-        var order = await _orderRepo.GetByIdWithItemsAsync(orderId, ct);
-        if (order == null)
-            return Result<OrderDetailResponse>.Failure("Order not found", ResultError.NotFound);
+        try
+        {
+            var order = await _orderRepo.GetByIdWithItemsAsync(orderId, ct);
+            if (order == null)
+                return Result<OrderDetailResponse>.Failure("Order not found", ResultError.NotFound);
 
-        if (order.UserId != userId)
-            return Result<OrderDetailResponse>.Failure("Not authorized", ResultError.Forbidden);
+            if (order.UserId != userId)
+                return Result<OrderDetailResponse>.Failure("Not authorized", ResultError.Forbidden);
 
-        var tickets = await _ticketRepo.GetByOrderAsync(orderId, ct);
+            var tickets = await _ticketRepo.GetByOrderAsync(orderId, ct) ?? [];
 
-        return Result<OrderDetailResponse>.Success(new OrderDetailResponse(
-            order.Id,
-            order.Status.ToString(),
-            order.TotalAmount,
-            order.CreatedAt,
-            order.ExpiresAt,
-            order.PaidAt,
-            order.Items.Select(oi => new OrderItemResponse(
-                oi.Id,
-                oi.TicketTypeId,
-                "",
-                oi.Quantity,
-                oi.UnitPrice,
-                oi.UnitPrice * oi.Quantity
-            )).ToList(),
-            tickets.Select(t => new TicketResponse(
-                t.Id,
-                "",
-                "",
-                t.IsCheckedIn
-            )).ToList(),
-            order.Payment != null ? new PaymentResponse(
-                order.Payment.Id,
-                order.Payment.Provider,
-                order.Payment.ExternalRef,
-                order.Payment.Amount,
-                order.Payment.ProcessedAt
-            ) : null
-        ));
+            var ticketResponses = new List<TicketResponse>();
+            foreach (var t in tickets)
+            {
+                string ticketTypeName = t.OrderItem?.TicketType?.Name ?? "";
+                string qrBase64 = !string.IsNullOrEmpty(t.QrCode) ? _qrCodeService.GenerateQrCodeBase64(t.QrCode) : "";
+                ticketResponses.Add(new TicketResponse(t.Id, ticketTypeName, qrBase64, t.IsCheckedIn));
+            }
+
+            return Result<OrderDetailResponse>.Success(new OrderDetailResponse(
+                order.Id,
+                order.Status.ToString(),
+                order.TotalAmount,
+                order.CreatedAt,
+                order.ExpiresAt,
+                order.PaidAt,
+                order.Items.Select(oi => new OrderItemResponse(
+                    oi.Id,
+                    oi.TicketTypeId,
+                    oi.TicketType?.Name ?? "",
+                    oi.Quantity,
+                    oi.UnitPrice,
+                    oi.UnitPrice * oi.Quantity
+                )).ToList(),
+                ticketResponses,
+                order.Payment != null ? new PaymentResponse(
+                    order.Payment.Id,
+                    order.Payment.Provider,
+                    order.Payment.ExternalRef,
+                    order.Payment.Amount,
+                    order.Payment.ProcessedAt
+                ) : null
+            ));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get order {OrderId}", orderId);
+            return Result<OrderDetailResponse>.Failure("Failed to load order details", ResultError.Internal);
+        }
     }
 
     public async Task<Result<List<OrderResponse>>> GetUserOrdersAsync(string userId, CancellationToken ct)

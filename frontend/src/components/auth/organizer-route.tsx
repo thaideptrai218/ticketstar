@@ -33,7 +33,16 @@ export function OrganizerRoute({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!isAuthenticated || (!user?.isOrganizer && user?.role !== "Admin")) return null; // redirect in progress
+  // Show skeleton while redirect is in progress (router.replace is async)
+  if (!isAuthenticated || (!user?.isOrganizer && user?.role !== "Admin")) {
+    return (
+      <div className="space-y-4 p-6">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-3/4" />
+      </div>
+    );
+  }
 
   return <>{children}</>;
 }

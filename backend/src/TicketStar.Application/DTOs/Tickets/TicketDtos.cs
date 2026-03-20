@@ -2,6 +2,7 @@ namespace TicketStar.Application.DTOs.Tickets;
 
 public record MyTicketResponse(
     Guid Id,
+    Guid OrderId,
     Guid EventId,
     string EventTitle,
     string? EventVenue,

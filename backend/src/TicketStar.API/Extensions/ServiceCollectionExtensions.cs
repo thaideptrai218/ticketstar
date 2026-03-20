@@ -48,6 +48,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ITicketTypeService, TicketTypeService>();
         services.AddScoped<IOrganizerProfileService, OrganizerProfileService>();
         services.AddScoped<ICollaboratorService, CollaboratorService>();
+        services.AddScoped<IOrganizerCollaboratorService, OrganizerCollaboratorService>();
         services.AddScoped<IPayoutService, PayoutService>();
         services.AddScoped<IAdminService, AdminService>();
         services.AddScoped<IEmailService, SmtpEmailService>();
@@ -77,6 +78,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ICheckInRepository, CheckInRepository>();
         services.AddScoped<IOrganizerProfileRepository, OrganizerProfileRepository>();
         services.AddScoped<IEventCollaboratorRepository, EventCollaboratorRepository>();
+        services.AddScoped<IOrganizerCollaboratorRepository, OrganizerCollaboratorRepository>();
 
         return services;
     }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Building2, CalendarPlus, LayoutDashboard, List, Wallet, X, TriangleAlert } from "lucide-react";
 import { AppSidebar, type NavItem } from "@/components/layout/app-sidebar";
 import { OrganizerTopNav } from "@/components/layout/organizer-topnav";
@@ -71,11 +71,13 @@ function OrganizerNoticeModal({ onClose }: { onClose: () => void }) {
 }
 
 export default function OrganizerLayout({ children }: { children: React.ReactNode }) {
-  // Show only once per browser session (survives in-page navigation, clears on tab close)
-  const [noticeOpen, setNoticeOpen] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return !sessionStorage.getItem("organizer-notice-seen");
-  });
+  // Show only once per browser session — use useEffect to avoid SSR/client hydration mismatch
+  const [noticeOpen, setNoticeOpen] = useState(false);
+  useEffect(() => {
+    if (!sessionStorage.getItem("organizer-notice-seen")) {
+      setNoticeOpen(true);
+    }
+  }, []);
 
   return (
     <OrganizerRoute>

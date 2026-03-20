@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TicketStar.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using TicketStar.Infrastructure.Data;
 namespace TicketStar.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260320080951_AddEventCity")]
+    partial class AddEventCity
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -476,77 +479,6 @@ namespace TicketStar.Infrastructure.Migrations
                     b.HasIndex("TicketTypeId");
 
                     b.ToTable("OrderItems");
-                });
-
-            modelBuilder.Entity("TicketStar.Domain.Entities.OrganizerCollaborator", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasMaxLength(450)
-                        .HasColumnType("varchar(450)");
-
-                    b.Property<DateTime?>("AcceptedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("varchar(256)");
-
-                    b.Property<DateTime?>("ExpiresAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("InviteToken")
-                        .HasMaxLength(128)
-                        .HasColumnType("varchar(128)");
-
-                    b.Property<DateTime>("InvitedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime(6)")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
-
-                    b.Property<string>("InvitedBy")
-                        .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("varchar(450)");
-
-                    b.Property<string>("OrganizerProfileId")
-                        .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("varchar(450)");
-
-                    b.Property<string>("PermissionLevel")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("varchar(20)");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("varchar(20)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("UserId")
-                        .HasMaxLength(450)
-                        .HasColumnType("varchar(450)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("InviteToken")
-                        .IsUnique();
-
-                    b.HasIndex("InvitedBy");
-
-                    b.HasIndex("OrganizerProfileId");
-
-                    b.HasIndex("Email", "OrganizerProfileId")
-                        .IsUnique();
-
-                    b.HasIndex("UserId", "OrganizerProfileId")
-                        .IsUnique();
-
-                    b.ToTable("OrganizerCollaborators", (string)null);
                 });
 
             modelBuilder.Entity("TicketStar.Domain.Entities.OrganizerProfile", b =>
@@ -1152,32 +1084,6 @@ namespace TicketStar.Infrastructure.Migrations
                     b.Navigation("TicketType");
                 });
 
-            modelBuilder.Entity("TicketStar.Domain.Entities.OrganizerCollaborator", b =>
-                {
-                    b.HasOne("TicketStar.Domain.Entities.User", "Inviter")
-                        .WithMany()
-                        .HasForeignKey("InvitedBy")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("TicketStar.Domain.Entities.OrganizerProfile", "OrganizerProfile")
-                        .WithMany("Collaborators")
-                        .HasForeignKey("OrganizerProfileId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("TicketStar.Domain.Entities.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("Inviter");
-
-                    b.Navigation("OrganizerProfile");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("TicketStar.Domain.Entities.OrganizerProfile", b =>
                 {
                     b.HasOne("TicketStar.Domain.Entities.User", "User")
@@ -1323,11 +1229,6 @@ namespace TicketStar.Infrastructure.Migrations
             modelBuilder.Entity("TicketStar.Domain.Entities.OrderItem", b =>
                 {
                     b.Navigation("Tickets");
-                });
-
-            modelBuilder.Entity("TicketStar.Domain.Entities.OrganizerProfile", b =>
-                {
-                    b.Navigation("Collaborators");
                 });
 
             modelBuilder.Entity("TicketStar.Domain.Entities.Ticket", b =>

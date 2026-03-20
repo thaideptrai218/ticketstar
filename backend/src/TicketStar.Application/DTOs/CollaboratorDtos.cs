@@ -29,4 +29,5 @@ public record CollaborationEventResponse(
     string Status,
     string PermissionLevel,
     string CollaboratorStatus,
-    string? InviteToken);  // populated for Pending invites so frontend can accept/decline inline
+    string? InviteToken,   // populated for Pending invites so frontend can accept/decline inline
+    string? ImageUrl);     // event cover image for visual identification

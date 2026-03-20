@@ -31,7 +31,7 @@ export function PaymentStatus({ state, orderId, eventSlug }: PaymentStatusProps)
         <p className="text-sm text-stone-500">Vé của bạn đã sẵn sàng</p>
         <div className="flex gap-3 mt-4">
           <Button asChild className="bg-amber-800 hover:bg-amber-900">
-            <Link href="/attendee/tickets">Xem vé của tôi</Link>
+            <Link href={orderId ? `/attendee/orders/${orderId}` : "/attendee/tickets"}>Xem vé của tôi</Link>
           </Button>
           <Button variant="outline" asChild className="border-stone-200">
             <Link href="/events">Tiếp tục khám phá</Link>

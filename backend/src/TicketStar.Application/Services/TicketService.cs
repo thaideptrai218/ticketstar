@@ -34,12 +34,14 @@ public class TicketService : ITicketService
         var tickets = await _ticketRepo.Query()
             .Include(t => t.Event)
             .Include(t => t.TicketType)
+            .Include(t => t.OrderItem)
             .Where(t => t.UserId == userId)
             .OrderByDescending(t => t.CreatedAt)
             .ToListAsync(ct);
 
         var responses = tickets.Select(t => new MyTicketResponse(
             t.Id,
+            t.OrderItem.OrderId,
             t.EventId,
             t.Event.Title,
             t.Event.Venue,

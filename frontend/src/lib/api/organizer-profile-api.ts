@@ -24,6 +24,55 @@ export interface CreateOrganizerProfileRequest {
   website?: string;
   facebookUrl?: string;
   instagramUrl?: string;
+  logoUrl?: string;
+}
+
+export interface OrgCollaborator {
+  id: string;
+  userId?: string;
+  email: string;
+  fullName?: string;
+  permissionLevel: string;
+  status: string;
+  invitedAt: string;
+  acceptedAt?: string;
+  inviteToken?: string;
+  organizerProfileId?: string;
+  organizationName?: string;
+}
+
+export async function getOrgCollaborators(profileId: string): Promise<OrgCollaborator[]> {
+  return apiFetch<OrgCollaborator[]>(`/api/account/organizer-profiles/${profileId}/collaborators`);
+}
+
+export async function inviteOrgCollaborator(profileId: string, email: string, permissionLevel: string): Promise<OrgCollaborator> {
+  return apiFetch<OrgCollaborator>(`/api/account/organizer-profiles/${profileId}/collaborators`, {
+    method: "POST",
+    body: JSON.stringify({ email, permissionLevel }),
+  });
+}
+
+export async function removeOrgCollaborator(profileId: string, collaboratorId: string): Promise<void> {
+  return apiFetch(`/api/account/organizer-profiles/${profileId}/collaborators/${collaboratorId}`, { method: "DELETE" });
+}
+
+export async function updateOrgCollaboratorPermission(profileId: string, collaboratorId: string, permissionLevel: string): Promise<OrgCollaborator> {
+  return apiFetch<OrgCollaborator>(`/api/account/organizer-profiles/${profileId}/collaborators/${collaboratorId}`, {
+    method: "PUT",
+    body: JSON.stringify({ permissionLevel }),
+  });
+}
+
+export async function getMyOrgInvites(): Promise<OrgCollaborator[]> {
+  return apiFetch<OrgCollaborator[]>("/api/account/org-invites");
+}
+
+export async function acceptOrgInvite(token: string): Promise<OrgCollaborator> {
+  return apiFetch<OrgCollaborator>(`/api/account/org-invites/${token}/accept`, { method: "POST" });
+}
+
+export async function declineOrgInvite(token: string): Promise<void> {
+  return apiFetch(`/api/account/org-invites/${token}/decline`, { method: "POST" });
 }
 
 export type UpdateOrganizerProfileRequest = Partial<CreateOrganizerProfileRequest>;

@@ -7,7 +7,8 @@ public record CreateOrganizerProfileRequest(
     string? Address,
     string? Website,
     string? FacebookUrl,
-    string? InstagramUrl);
+    string? InstagramUrl,
+    string? LogoUrl = null);
 
 public record UpdateOrganizerProfileRequest(
     string OrganizationName,
@@ -16,7 +17,8 @@ public record UpdateOrganizerProfileRequest(
     string? Address,
     string? Website,
     string? FacebookUrl,
-    string? InstagramUrl);
+    string? InstagramUrl,
+    string? LogoUrl = null);
 
 public record OrganizerProfileResponse(
     string Id,

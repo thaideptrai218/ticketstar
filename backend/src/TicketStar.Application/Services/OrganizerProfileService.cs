@@ -46,6 +46,7 @@ public class OrganizerProfileService : IOrganizerProfileService
             Website = request.Website,
             FacebookUrl = request.FacebookUrl,
             InstagramUrl = request.InstagramUrl,
+            LogoUrl = request.LogoUrl,
             IsComplete = !string.IsNullOrWhiteSpace(request.OrganizationName),
             CreatedAt = DateTime.UtcNow
         };
@@ -94,6 +95,7 @@ public class OrganizerProfileService : IOrganizerProfileService
         profile.Website = request.Website;
         profile.FacebookUrl = request.FacebookUrl;
         profile.InstagramUrl = request.InstagramUrl;
+        if (request.LogoUrl != null) profile.LogoUrl = request.LogoUrl;
         profile.IsComplete = !string.IsNullOrWhiteSpace(request.OrganizationName);
         profile.UpdatedAt = DateTime.UtcNow;
 

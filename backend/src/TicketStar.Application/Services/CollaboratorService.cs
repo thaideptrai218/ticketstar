@@ -76,13 +76,24 @@ public class CollaboratorService : ICollaboratorService
 
         // Send invite email (fire-and-forget — don't fail the invite if email bounces)
         var organizer = await _userRepo.GetByIdAsync(organizerId, ct);
-        _ = _emailService.SendCollaboratorInviteAsync(
-            request.Email,
-            eventEntity.Title,
-            organizer?.Email ?? "Organizer",
-            collaborator.InviteToken,
-            permLevel.ToString(),
-            ct);
+        try
+        {
+            _ = _emailService.SendCollaboratorInviteAsync(
+                request.Email,
+                eventEntity.Title,
+                organizer?.Email ?? "Organizer",
+                collaborator.InviteToken,
+                permLevel.ToString(),
+                CancellationToken.None).ContinueWith(t =>
+            {
+                if (t.IsFaulted)
+                    _logger.LogError(t.Exception, "Failed to send collaborator invite email to {Email}", request.Email);
+            }, TaskScheduler.Default);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to initiate collaborator invite email to {Email}", request.Email);
+        }
 
         return Result<CollaboratorResponse>.Success(MapToResponse(collaborator, invitedUser));
     }
@@ -232,7 +243,8 @@ public class CollaboratorService : ICollaboratorService
             c.Event.Id, c.Event.Title, c.Event.Venue,
             c.Event.StartAt, c.Event.EndAt, c.Event.Status.ToString(),
             c.PermissionLevel.ToString(), c.Status.ToString(),
-            c.Status == CollaboratorStatus.Pending ? c.InviteToken : null  // only expose token for pending
+            c.Status == CollaboratorStatus.Pending ? c.InviteToken : null,  // only expose token for pending
+            c.Event.ImageUrl
         )).ToList();
         return Result<List<CollaborationEventResponse>>.Success(responses);
     }

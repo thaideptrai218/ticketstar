@@ -55,6 +55,7 @@ public class EventService : IEventService
             StartAt = request.StartAt,
             EndAt = request.EndAt,
             Venue = request.Venue,
+            City = request.City,
             Category = request.Category,
             ImageUrl = request.ImageUrl,
             BannerImageUrl = request.BannerImageUrl,
@@ -118,6 +119,7 @@ public class EventService : IEventService
         if (request.StartAt.HasValue) eventEntity.StartAt = request.StartAt.Value;
         if (request.EndAt.HasValue) eventEntity.EndAt = request.EndAt.Value;
         if (request.Venue != null) eventEntity.Venue = request.Venue;
+        if (request.City != null) eventEntity.City = request.City;
         if (request.Category != null) eventEntity.Category = request.Category;
         if (request.ImageUrl != null) eventEntity.ImageUrl = request.ImageUrl;
         if (request.BannerImageUrl != null) eventEntity.BannerImageUrl = request.BannerImageUrl;
@@ -298,12 +300,13 @@ public class EventService : IEventService
         var eventEntity = await _eventRepo.Query()
             .Include(e => e.TicketTypes)
             .Include(e => e.Organizer)
-            .ThenInclude(o => o.Profile)
+            .ThenInclude(o => o.OrganizerProfiles)
             .FirstAsync(e => e.Id == eventId, ct);
 
-        var organizerName = eventEntity.Organizer.Profile != null
-            ? eventEntity.Organizer.Profile.FullName
-            : eventEntity.Organizer.Email;
+        // Use the organizer's organization name and logo; fall back to email if no profile exists
+        var organizerProfile = eventEntity.Organizer.OrganizerProfiles.FirstOrDefault();
+        var organizerName = organizerProfile?.OrganizationName ?? eventEntity.Organizer.Email;
+        var organizerLogoUrl = organizerProfile?.LogoUrl;
 
         return new EventDetailResponse(
             eventEntity.Id,
@@ -313,6 +316,7 @@ public class EventService : IEventService
             eventEntity.StartAt,
             eventEntity.EndAt,
             eventEntity.Venue,
+            eventEntity.City,
             eventEntity.Category,
             eventEntity.Status.ToString(),
             eventEntity.ImageUrl,
@@ -324,6 +328,7 @@ public class EventService : IEventService
             eventEntity.PaymentTerms,
             eventEntity.OrganizerId,
             organizerName,
+            organizerLogoUrl,
             eventEntity.TicketTypes.Select(tt => new TicketTypeResponse(
                 tt.Id,
                 tt.Name,

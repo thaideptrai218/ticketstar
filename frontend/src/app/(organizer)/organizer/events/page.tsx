@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiFetch, ApiError } from "@/lib/api-client";
-import { formatDate } from "@/lib/format-utils";
+import { formatDate, resolveImageUrl } from "@/lib/format-utils";
 import { useMyCollaborations } from "@/hooks/use-collaborators";
 import type { OrganizerEvent } from "@/types/organizer";
 
@@ -222,7 +222,7 @@ export default function OrganizerEventsPage() {
                 <div key={e.id} className="group relative flex flex-col rounded-2xl border border-stone-200 bg-white shadow-sm transition-all hover:shadow-md hover:border-stone-300">
                   {/* Banner / color strip */}
                   {e.imageUrl ? (
-                    <img src={e.imageUrl} alt="" className="h-32 w-full rounded-t-2xl object-cover" />
+                    <img src={resolveImageUrl(e.imageUrl) ?? ""} alt="" className="h-32 w-full rounded-t-2xl object-cover" />
                   ) : (
                     <div className="h-2 w-full rounded-t-2xl bg-gradient-to-r from-amber-400 to-amber-200" />
                   )}
@@ -312,7 +312,11 @@ export default function OrganizerEventsPage() {
                   href={`/organizer/events/${c.eventId}`}
                   className="group relative flex flex-col rounded-2xl border border-stone-200 bg-white shadow-sm transition-all hover:shadow-md hover:border-stone-300"
                 >
-                  <div className="h-2 w-full rounded-t-2xl bg-gradient-to-r from-blue-400 to-blue-200" />
+                  {c.imageUrl ? (
+                    <img src={resolveImageUrl(c.imageUrl) ?? ""} alt="" className="h-32 w-full rounded-t-2xl object-cover" />
+                  ) : (
+                    <div className="h-2 w-full rounded-t-2xl bg-gradient-to-r from-blue-400 to-blue-200" />
+                  )}
                   <div className="flex-1 flex flex-col p-5 gap-3">
                     <div className="flex items-center justify-between gap-2">
                       <Badge variant="outline" className="text-xs border-blue-200 text-blue-600 bg-blue-50">

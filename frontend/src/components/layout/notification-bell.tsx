@@ -3,26 +3,39 @@
 // Notification bell — shows pending collaborator invites with inline accept/decline actions
 import { useState } from "react";
 import { Bell, CheckCircle2, X, Users, Check, XIcon } from "lucide-react";
-import { useMyCollaborations, useAcceptCollaboratorInvite, useDeclineCollaboratorInvite } from "@/hooks/use-collaborators";
+import {
+  useMyCollaborations,
+  useAcceptCollaboratorInvite,
+  useDeclineCollaboratorInvite,
+  useMyOrgInvites,
+  useAcceptOrgInvite,
+  useDeclineOrgInvite,
+} from "@/hooks/use-collaborators";
 import { formatDate } from "@/lib/format-utils";
 
 export function NotificationBell() {
   const [open, setOpen] = useState(false);
   const { data: collaborations } = useMyCollaborations();
-  const acceptMutation = useAcceptCollaboratorInvite();
-  const declineMutation = useDeclineCollaboratorInvite();
+  const { data: orgInvites } = useMyOrgInvites();
+  const acceptEventMutation = useAcceptCollaboratorInvite();
+  const declineEventMutation = useDeclineCollaboratorInvite();
+  const acceptOrgMutation = useAcceptOrgInvite();
+  const declineOrgMutation = useDeclineOrgInvite();
 
-  // Pending = invited but not yet accepted/declined
-  const pending = (collaborations ?? []).filter((c) => c.collaboratorStatus === "Pending");
-  const count = pending.length;
+  // Pending event invites
+  const pendingEvents = (collaborations ?? []).filter((c) => c.collaboratorStatus === "Pending");
+  // Pending org invites (only those with a token for inline accept/decline)
+  const pendingOrgs = (orgInvites ?? []).filter((c) => c.status === "Pending");
+  const count = pendingEvents.length + pendingOrgs.length;
 
-  function handleAccept(token: string) {
-    acceptMutation.mutate(token);
-  }
+  const isMutating =
+    acceptEventMutation.isPending || declineEventMutation.isPending ||
+    acceptOrgMutation.isPending || declineOrgMutation.isPending;
 
-  function handleDecline(token: string) {
-    declineMutation.mutate(token);
-  }
+  function handleAccept(token: string) { acceptEventMutation.mutate(token); }
+  function handleDecline(token: string) { declineEventMutation.mutate(token); }
+  function handleAcceptOrg(token: string) { acceptOrgMutation.mutate(token); }
+  function handleDeclineOrg(token: string) { declineOrgMutation.mutate(token); }
 
   return (
     <div className="relative">
@@ -69,28 +82,21 @@ export function NotificationBell() {
 
             {/* Notification list */}
             <div className="max-h-96 overflow-y-auto">
-              {pending.length === 0 ? (
+              {count === 0 ? (
                 <div className="flex flex-col items-center justify-center py-10 text-center">
                   <CheckCircle2 className="size-8 text-stone-200 mb-2" />
                   <p className="text-sm text-stone-400">Không có thông báo mới</p>
                 </div>
               ) : (
                 <div className="divide-y divide-stone-100">
-                  {pending.map((c) => (
-                    <div
-                      key={c.eventId}
-                      className="flex items-start gap-3 px-4 py-3.5"
-                    >
-                      {/* Icon */}
+                  {/* Event collaborator invites */}
+                  {pendingEvents.map((c) => (
+                    <div key={c.eventId} className="flex items-start gap-3 px-4 py-3.5">
                       <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 mt-0.5">
                         <Users className="size-4 text-amber-600" />
                       </div>
-
-                      {/* Content */}
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-stone-900 leading-snug">
-                          Lời mời cộng tác
-                        </p>
+                        <p className="text-sm font-medium text-stone-900 leading-snug">Lời mời sự kiện</p>
                         <p className="text-xs text-stone-500 truncate mt-0.5">{c.title}</p>
                         <div className="flex items-center gap-2 mt-1">
                           <span className="inline-flex items-center rounded-full bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium text-stone-600">
@@ -98,13 +104,11 @@ export function NotificationBell() {
                           </span>
                           <span className="text-[10px] text-stone-400">{formatDate(c.startAt)}</span>
                         </div>
-
-                        {/* Inline accept / decline — only shown when we have the token */}
                         {c.inviteToken && (
                           <div className="flex items-center gap-1.5 mt-2">
                             <button
                               type="button"
-                              disabled={acceptMutation.isPending || declineMutation.isPending}
+                              disabled={isMutating}
                               onClick={() => handleAccept(c.inviteToken!)}
                               className="inline-flex items-center gap-1 rounded-md bg-green-500 px-2 py-0.5 text-[11px] font-medium text-white hover:bg-green-600 disabled:opacity-50 transition-colors cursor-pointer"
                             >
@@ -113,7 +117,7 @@ export function NotificationBell() {
                             </button>
                             <button
                               type="button"
-                              disabled={acceptMutation.isPending || declineMutation.isPending}
+                              disabled={isMutating}
                               onClick={() => handleDecline(c.inviteToken!)}
                               className="inline-flex items-center gap-1 rounded-md border border-stone-200 px-2 py-0.5 text-[11px] font-medium text-stone-600 hover:bg-stone-100 disabled:opacity-50 transition-colors cursor-pointer"
                             >
@@ -123,8 +127,48 @@ export function NotificationBell() {
                           </div>
                         )}
                       </div>
+                      <div className="size-2 shrink-0 rounded-full bg-amber-500 mt-2" />
+                    </div>
+                  ))}
 
-                      {/* Unread dot */}
+                  {/* Organizer profile invites */}
+                  {pendingOrgs.map((c) => (
+                    <div key={c.id} className="flex items-start gap-3 px-4 py-3.5">
+                      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 mt-0.5">
+                        <Users className="size-4 text-blue-600" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-stone-900 leading-snug">Lời mời tổ chức</p>
+                        <p className="text-xs text-stone-500 truncate mt-0.5">{c.organizationName ?? c.email}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="inline-flex items-center rounded-full bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium text-stone-600">
+                            {c.permissionLevel}
+                          </span>
+                          <span className="text-[10px] text-stone-400">{formatDate(c.invitedAt)}</span>
+                        </div>
+                        {c.inviteToken && (
+                          <div className="flex items-center gap-1.5 mt-2">
+                            <button
+                              type="button"
+                              disabled={isMutating}
+                              onClick={() => handleAcceptOrg(c.inviteToken!)}
+                              className="inline-flex items-center gap-1 rounded-md bg-green-500 px-2 py-0.5 text-[11px] font-medium text-white hover:bg-green-600 disabled:opacity-50 transition-colors cursor-pointer"
+                            >
+                              <Check className="size-3" />
+                              Chấp nhận
+                            </button>
+                            <button
+                              type="button"
+                              disabled={isMutating}
+                              onClick={() => handleDeclineOrg(c.inviteToken!)}
+                              className="inline-flex items-center gap-1 rounded-md border border-stone-200 px-2 py-0.5 text-[11px] font-medium text-stone-600 hover:bg-stone-100 disabled:opacity-50 transition-colors cursor-pointer"
+                            >
+                              <XIcon className="size-3" />
+                              Từ chối
+                            </button>
+                          </div>
+                        )}
+                      </div>
                       <div className="size-2 shrink-0 rounded-full bg-amber-500 mt-2" />
                     </div>
                   ))}
@@ -133,7 +177,7 @@ export function NotificationBell() {
             </div>
 
             {/* Footer */}
-            {pending.length > 0 && (
+            {count > 0 && (
               <div className="border-t border-stone-100 px-4 py-2.5">
                 <a
                   href="/organizer/collaborators"

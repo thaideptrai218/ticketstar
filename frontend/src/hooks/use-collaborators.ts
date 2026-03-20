@@ -15,6 +15,7 @@ import {
   type GenerateInviteLinkRequest,
   type UpdateCollaboratorRequest,
 } from "@/lib/api/collaborator-api";
+import { getMyOrgInvites, acceptOrgInvite, declineOrgInvite } from "@/lib/api/organizer-profile-api";
 
 export const collaboratorsKey = (eventId: string) => ["collaborators", eventId] as const;
 export const myCollaborationsKey = ["my-collaborations"] as const;
@@ -79,5 +80,31 @@ export function useDeclineCollaboratorInvite() {
   return useMutation({
     mutationFn: (token: string) => declineCollaboratorInvite(token),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: myCollaborationsKey }),
+  });
+}
+
+export const myOrgInvitesKey = ["my-org-invites"] as const;
+
+export function useMyOrgInvites() {
+  return useQuery({
+    queryKey: myOrgInvitesKey,
+    queryFn: getMyOrgInvites,
+    refetchInterval: 30_000,
+  });
+}
+
+export function useAcceptOrgInvite() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (token: string) => acceptOrgInvite(token),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: myOrgInvitesKey }),
+  });
+}
+
+export function useDeclineOrgInvite() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (token: string) => declineOrgInvite(token),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: myOrgInvitesKey }),
   });
 }

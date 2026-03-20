@@ -26,6 +26,7 @@ export interface EventDetail {
   startAt: string;
   endAt: string;
   venue: string | null;
+  city?: string | null;
   category: string | null;
   status: string;
   imageUrl: string | null;
@@ -37,6 +38,7 @@ export interface EventDetail {
   paymentTerms?: string | null;
   organizerId: string;
   organizerName: string;
+  organizerLogoUrl?: string | null;
   ticketTypes: TicketType[];
   createdAt: string;
 }

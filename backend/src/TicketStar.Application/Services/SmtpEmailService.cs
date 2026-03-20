@@ -33,6 +33,12 @@ public class SmtpEmailService : IEmailService
             return;
         }
 
+        if (string.IsNullOrWhiteSpace(_opts.From))
+        {
+            _logger.LogWarning("SMTP From address is not configured — skipping invite email to {Email}", toEmail);
+            return;
+        }
+
         var acceptUrl = $"{_opts.AppBaseUrl}/invite/{inviteToken}";
 
         var body = $"""

@@ -2,6 +2,7 @@
 
 // Ticket card showing event info, QR thumbnail, and transfer action
 import { useState } from "react";
+import Link from "next/link";
 import { Calendar, MapPin, QrCode, Send } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,11 +22,14 @@ export function TicketCard({ ticket, onTransferSuccess }: TicketCardProps) {
 
   return (
     <>
-      <div className="rounded-2xl border border-stone-200 bg-white shadow-sm overflow-hidden">
+      <Link
+        href={`/attendee/orders/${ticket.orderId}`}
+        className="block rounded-2xl border border-stone-200 bg-white shadow-sm overflow-hidden hover:border-amber-300 hover:shadow-md transition-all"
+      >
         <div className="flex gap-4 p-5">
           {/* QR placeholder — click to open full QR dialog (avoids base64 decode on list render) */}
           <button
-            onClick={() => setQrOpen(true)}
+            onClick={(e) => { e.preventDefault(); setQrOpen(true); }}
             className="shrink-0 flex size-[76px] items-center justify-center rounded-lg border border-stone-100 bg-stone-50 hover:border-amber-300 hover:bg-amber-50 transition-colors"
             title="Xem mã QR"
           >
@@ -68,7 +72,10 @@ export function TicketCard({ ticket, onTransferSuccess }: TicketCardProps) {
         </div>
 
         {/* Actions */}
-        <div className="border-t border-stone-100 px-5 py-3 flex items-center justify-between gap-2 bg-stone-50/50">
+        <div
+          className="border-t border-stone-100 px-5 py-3 flex items-center justify-between gap-2 bg-stone-50/50"
+          onClick={(e) => e.preventDefault()}
+        >
           <Button
             size="sm"
             variant="ghost"
@@ -89,7 +96,7 @@ export function TicketCard({ ticket, onTransferSuccess }: TicketCardProps) {
             Chuyển vé
           </Button>
         </div>
-      </div>
+      </Link>
 
       <TicketQrDisplay
         open={qrOpen}

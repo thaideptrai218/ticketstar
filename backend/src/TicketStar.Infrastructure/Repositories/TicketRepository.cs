@@ -26,6 +26,7 @@ public class TicketRepository : EfRepository<Ticket>, ITicketRepository
             .Include(t => t.OrderItem)
             .ThenInclude(oi => oi.TicketType)
             .Include(t => t.CheckIn)
+            .AsSplitQuery()
             .ToListAsync(ct);
 
     public async Task<Ticket?> GetByQrCodeAsync(string qrCode, CancellationToken ct = default)
