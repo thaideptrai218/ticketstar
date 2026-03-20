@@ -73,7 +73,8 @@ public class AccountController : ApiControllerBase
 
         if (user.Profile is null)
         {
-            user.Profile = new UserProfile { UserId = userId, FullName = request.FullName };
+            // New entity attached to a tracked user — EF Core change tracker marks it as Added automatically
+            user.Profile = new UserProfile { UserId = userId };
         }
 
         user.Profile.FullName = request.FullName;
@@ -81,7 +82,9 @@ public class AccountController : ApiControllerBase
         user.Profile.AvatarUrl = request.AvatarUrl;
         user.Profile.UpdatedAt = DateTime.UtcNow;
 
-        _userRepo.Update(user);
+        // Do NOT call _userRepo.Update(user) here — DbSet.Update() would mark the newly-created
+        // UserProfile as Modified (not Added), resulting in a silent UPDATE on a non-existent row.
+        // EF Core change tracking already handles both insert (new profile) and update (existing profile).
         await _unitOfWork.SaveChangesAsync(ct);
 
         return Ok(ApiResponse<UserProfileResponse>.Ok(
