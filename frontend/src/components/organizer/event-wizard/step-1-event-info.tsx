@@ -221,9 +221,12 @@ export function Step1EventInfo({ data, onChange, onNext, isCreateMode, isAdmin }
       getMyOrganizerProfiles()
         .then((list) => {
           setMyProfiles(list);
-          // Auto-select the only profile if none selected yet
-          if (!data.organizerProfileId && list.length === 1) {
-            onChange({ organizerProfileId: list[0].id });
+          // In edit mode: auto-select matching or first profile (organizer is already fixed)
+          // In create mode: auto-select only when there's exactly one choice
+          if (!data.organizerProfileId && list.length > 0) {
+            if (!isCreateMode || list.length === 1) {
+              onChange({ organizerProfileId: list[0].id });
+            }
           }
         })
         .catch(() => {});
@@ -261,7 +264,7 @@ export function Step1EventInfo({ data, onChange, onNext, isCreateMode, isAdmin }
         />
       </div>
 
-      {/* Non-admin: searchable org combobox */}
+      {/* Non-admin: searchable org combobox (pre-selected in edit mode via auto-select) */}
       {!isAdmin && myProfiles.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-2">

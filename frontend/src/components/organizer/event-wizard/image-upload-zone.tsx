@@ -4,7 +4,7 @@
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5010";
+const API_URL = "/api/backend";
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
 
 interface ImageUploadZoneProps {

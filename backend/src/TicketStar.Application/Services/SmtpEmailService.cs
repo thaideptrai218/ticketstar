@@ -19,6 +19,56 @@ public class SmtpEmailService : IEmailService
         _logger = logger;
     }
 
+    public async Task SendMagicLinkAsync(string toEmail, string token, CancellationToken ct = default)
+    {
+        if (!_opts.Enabled)
+        {
+            _logger.LogWarning("=== DEV ONLY - Magic link token for {Email}: {Token} ===", toEmail, token);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_opts.From))
+        {
+            _logger.LogWarning("SMTP From address is not configured — skipping magic link email to {Email}", toEmail);
+            return;
+        }
+
+        var magicUrl = $"{_opts.AppBaseUrl}/magic-link/verify?token={token}";
+
+        var body = $"""
+            <div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:24px">
+              <h2 style="color:#1c1917">Đăng nhập TicketStar</h2>
+              <p style="color:#57534e">Nhấn nút bên dưới để đăng nhập. Link có hiệu lực trong 10 phút.</p>
+              <a href="{magicUrl}"
+                 style="display:inline-block;margin-top:16px;padding:12px 24px;background:#f59e0b;
+                        color:#fff;text-decoration:none;border-radius:8px;font-weight:600">
+                Đăng nhập ngay
+              </a>
+              <p style="margin-top:24px;color:#a8a29e;font-size:12px">
+                Nếu bạn không yêu cầu đăng nhập, hãy bỏ qua email này.
+              </p>
+            </div>
+            """;
+
+        using var message = new MailMessage
+        {
+            From = new MailAddress(_opts.From, _opts.FromName),
+            Subject = "Đăng nhập TicketStar",
+            Body = body,
+            IsBodyHtml = true,
+        };
+        message.To.Add(toEmail);
+
+        using var client = new SmtpClient(_opts.Host, _opts.Port)
+        {
+            EnableSsl = _opts.Secure,
+            Credentials = new NetworkCredential(_opts.User, _opts.Password),
+        };
+
+        await client.SendMailAsync(message, ct);
+        _logger.LogInformation("Magic link email sent to {Email}", toEmail);
+    }
+
     public async Task SendCollaboratorInviteAsync(
         string toEmail,
         string eventTitle,

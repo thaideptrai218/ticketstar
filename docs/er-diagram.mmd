@@ -1,0 +1,225 @@
+---
+title: TicketStar Database Schema
+---
+erDiagram
+    Users {
+        string Id PK
+        string Email
+        bool EmailVerified
+        string PasswordHash
+        string Role
+        bool IsOrganizer
+        bool MfaEnabled
+        int FailedLoginCount
+        datetime LockedUntil
+        datetime CreatedAt
+        datetime UpdatedAt
+        datetime DeletedAt
+    }
+
+    UserProfile {
+        string UserId PK, FK
+        string FullName
+        string AvatarUrl
+        string Phone
+        bool PhoneVerified
+        string Bio
+        datetime UpdatedAt
+    }
+
+    OrganizerProfile {
+        string Id PK
+        string UserId FK
+        string OrganizationName
+        string Description
+        string LogoUrl
+        string Phone
+        string Address
+        string Website
+        string FacebookUrl
+        string InstagramUrl
+        bool IsComplete
+        datetime CreatedAt
+        datetime UpdatedAt
+    }
+
+    AuthIdentity {
+        string Id PK
+        string UserId FK
+        string Provider
+        string ProviderUserId
+        datetime CreatedAt
+    }
+
+    RefreshToken {
+        string Id PK
+        string UserId FK
+        string TokenHash
+        string DeviceInfo
+        string IpAddress
+        bool IsRevoked
+        datetime ExpiresAt
+        datetime CreatedAt
+    }
+
+    MagicLink {
+        string Id PK
+        string UserId FK
+        string TokenHash
+        bool IsUsed
+        datetime ExpiresAt
+        datetime CreatedAt
+    }
+
+    AuthSession {
+        string Id PK
+        string UserId FK
+        string Device
+        string IpAddress
+        string UserAgent
+        datetime LastUsedAt
+        datetime ExpiresAt
+        datetime CreatedAt
+    }
+
+    SecurityEvent {
+        string Id PK
+        string UserId FK
+        string EventType
+        string IpAddress
+        string Details
+        datetime CreatedAt
+    }
+
+    MfaRecoveryCodes {
+        string Id PK
+        string UserId FK
+        string CodeHash
+        bool IsUsed
+        datetime UsedAt
+        datetime CreatedAt
+    }
+
+    Events {
+        guid Id PK
+        string OrganizerId FK
+        string Title
+        string Slug
+        string Description
+        string Category
+        string Status
+        string Venue
+        string City
+        string Province
+        bool IsOnline
+        string ImageUrl
+        string BannerImageUrl
+        int MaxTicketsPerOrder
+        datetime StartAt
+        datetime EndAt
+        datetime CreatedAt
+        datetime UpdatedAt
+    }
+
+    TicketTypes {
+        guid Id PK
+        guid EventId FK
+        string Name
+        string Description
+        decimal Price
+        int Quota
+        int SoldCount
+        int MaxPerUser
+        datetime SaleStartAt
+        datetime SaleEndAt
+        datetime CreatedAt
+        datetime UpdatedAt
+    }
+
+    EventCollaborators {
+        string Id PK
+        string UserId FK
+        guid EventId FK
+        string Email
+        string PermissionLevel
+        string InviteToken
+        string InvitedBy FK
+        string Status
+        datetime InvitedAt
+        datetime AcceptedAt
+        datetime ExpiresAt
+    }
+
+    Orders {
+        guid Id PK
+        string UserId FK
+        string Status
+        decimal TotalAmount
+        datetime ExpiresAt
+        datetime PaidAt
+        datetime CreatedAt
+        datetime UpdatedAt
+    }
+
+    OrderItems {
+        guid Id PK
+        guid OrderId FK
+        guid TicketTypeId FK
+        int Quantity
+        decimal UnitPrice
+        datetime CreatedAt
+    }
+
+    Tickets {
+        guid Id PK
+        guid OrderItemId FK
+        string UserId FK
+        guid EventId FK
+        guid TicketTypeId FK
+        string QrCode
+        bool IsCheckedIn
+        datetime CreatedAt
+    }
+
+    Payments {
+        guid Id PK
+        guid OrderId FK
+        string Provider
+        string ExternalRef
+        decimal Amount
+        string Status
+        datetime CreatedAt
+        datetime ProcessedAt
+        datetime UpdatedAt
+    }
+
+    CheckIn {
+        guid Id PK
+        guid TicketId FK
+        string ScannedBy FK
+        guid EventId FK
+        datetime ScannedAt
+    }
+
+    Users ||--o| UserProfile : "has"
+    Users ||--o| OrganizerProfile : "has"
+    Users ||--o{ AuthIdentity : "has"
+    Users ||--o{ RefreshToken : "has"
+    Users ||--o{ MagicLink : "has"
+    Users ||--o{ AuthSession : "has"
+    Users ||--o{ SecurityEvent : "has"
+    Users ||--o{ MfaRecoveryCodes : "has"
+    Users ||--o{ Events : "organizes"
+    Users ||--o{ Orders : "places"
+    Users ||--o{ Tickets : "owns"
+    Users ||--o{ CheckIn : "scans"
+    Events ||--o{ TicketTypes : "has"
+    Events ||--o{ EventCollaborators : "has"
+    Events ||--o{ Tickets : "includes"
+    Events ||--o{ CheckIn : "records"
+    TicketTypes ||--o{ OrderItems : "in"
+    TicketTypes ||--o{ Tickets : "generates"
+    Orders ||--|{ OrderItems : "contains"
+    Orders ||--o| Payments : "has"
+    OrderItems ||--o{ Tickets : "produces"
+    Tickets ||--o| CheckIn : "has"

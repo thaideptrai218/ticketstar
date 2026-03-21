@@ -36,7 +36,7 @@ import {
 import { OrganizerProfileForm } from "@/components/organizer/organizer-profile-form";
 import { useAuth } from "@/contexts/auth-context";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5010";
+const API_URL = "/api/backend";
 
 const PERMISSION_OPTIONS = [
   { value: "Viewer", label: "Xem" },

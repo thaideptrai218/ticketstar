@@ -1,6 +1,6 @@
 // Shared formatting utilities for Vietnamese locale
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5010";
+const API_URL = "/api/backend";
 
 /**
  * Resolves a backend-uploaded image URL to an absolute URL.

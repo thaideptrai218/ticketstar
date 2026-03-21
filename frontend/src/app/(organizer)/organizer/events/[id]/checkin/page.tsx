@@ -54,7 +54,11 @@ function QrScanner({ onScan }: { onScan: (code: string) => void }) {
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.play();
+        // Wait for metadata to load before playing to avoid interrupted play() warning
+        await new Promise<void>((resolve) => {
+          videoRef.current!.onloadedmetadata = () => resolve();
+        });
+        await videoRef.current.play();
       }
       setActive(true);
 

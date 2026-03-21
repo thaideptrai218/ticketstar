@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { OrganizerProfile, CreateOrganizerProfileRequest } from "@/lib/api/organizer-profile-api";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5010";
+const API_URL = "/api/backend";
 const MAX_SIZE = 5 * 1024 * 1024;
 
 // Compact avatar uploader — shows a 56px circle, click to replace

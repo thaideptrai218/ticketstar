@@ -16,6 +16,12 @@ public class AdminController : ApiControllerBase
         _adminService = adminService;
     }
 
+    [HttpGet("stats")]
+    public async Task<IActionResult> GetStats(CancellationToken ct)
+    {
+        return FromResult(await _adminService.GetStatsAsync(ct));
+    }
+
     [HttpGet("organizers")]
     public async Task<IActionResult> ListOrganizers(CancellationToken ct)
     {

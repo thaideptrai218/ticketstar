@@ -27,6 +27,7 @@ public class AuthService : IAuthService
     private readonly ITokenBlacklist _tokenBlacklist;
     private readonly IMfaService _mfaService;
     private readonly ICollaboratorService _collaboratorService;
+    private readonly IEmailService _emailService;
     private readonly GoogleAuthOptions _googleOptions;
     private readonly JwtOptions _jwtOptions;
     private readonly ILogger<AuthService> _logger;
@@ -46,6 +47,7 @@ public class AuthService : IAuthService
         ITokenBlacklist tokenBlacklist,
         IMfaService mfaService,
         ICollaboratorService collaboratorService,
+        IEmailService emailService,
         IOptions<GoogleAuthOptions> googleOptions,
         IOptions<JwtOptions> jwtOptions,
         ILogger<AuthService> logger)
@@ -64,6 +66,7 @@ public class AuthService : IAuthService
         _tokenBlacklist = tokenBlacklist;
         _mfaService = mfaService;
         _collaboratorService = collaboratorService;
+        _emailService = emailService;
         _googleOptions = googleOptions.Value;
         _jwtOptions = jwtOptions.Value;
         _logger = logger;
@@ -256,12 +259,11 @@ public class AuthService : IAuthService
 
         await LogEventAsync(user.Id, SecurityEventType.MagicLinkRequested, true, ip, null);
 
-        // RED TEAM H2 FIX: log only hash prefix, never plaintext token
+        // Log only hash prefix, never plaintext token
         var hash = _tokenHasher.Hash(token);
         _logger.LogDebug("Magic link issued for {Email}, hash prefix: {Prefix}", email, hash[..8]);
 
-        // Console stub for dev — use Warning so it shows regardless of log level config
-        _logger.LogWarning("=== DEV ONLY - MAGIC LINK TOKEN for {Email}: {Token} ===", email, token);
+        await _emailService.SendMagicLinkAsync(email, token);
 
         return Result.Success();
     }

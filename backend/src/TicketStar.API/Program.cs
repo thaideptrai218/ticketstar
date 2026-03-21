@@ -55,12 +55,11 @@ builder.Services.AddEndpointsApiExplorer();
 // Allow multipart uploads up to 5MB
 builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(o =>
     o.MultipartBodyLengthLimit = 5 * 1024 * 1024);
-var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins(corsOrigins)
+        policy.SetIsOriginAllowed(_ => true)
               .AllowAnyMethod()
               .AllowAnyHeader()
               .AllowCredentials();

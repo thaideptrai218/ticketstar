@@ -5,7 +5,9 @@
 // (not '*') with allowCredentials: true — see backend Cors settings in appsettings.json.
 // Auth cookies (ts_at, refresh_token) are httpOnly and sent automatically by the browser.
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5010";
+// All browser API calls go through the Next.js proxy (/api/backend/*)
+// so mobile/LAN devices don't need direct access to the backend server.
+const BASE_URL = "/api/backend";
 
 export class ApiError extends Error {
   constructor(

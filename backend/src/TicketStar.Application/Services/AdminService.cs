@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using TicketStar.Application.Common;
 using TicketStar.Application.Interfaces;
+using TicketStar.Domain.Enums;
 using TicketStar.Domain.Interfaces;
 
 namespace TicketStar.Application.Services;
@@ -9,12 +10,24 @@ public class AdminService : IAdminService
 {
     private readonly IUserRepository _userRepo;
     private readonly IOrganizerProfileRepository _organizerProfileRepo;
+    private readonly IOrderRepository _orderRepo;
+    private readonly IEventRepository _eventRepo;
+    private readonly ITicketRepository _ticketRepo;
     private readonly IUnitOfWork _unitOfWork;
 
-    public AdminService(IUserRepository userRepo, IOrganizerProfileRepository organizerProfileRepo, IUnitOfWork unitOfWork)
+    public AdminService(
+        IUserRepository userRepo,
+        IOrganizerProfileRepository organizerProfileRepo,
+        IOrderRepository orderRepo,
+        IEventRepository eventRepo,
+        ITicketRepository ticketRepo,
+        IUnitOfWork unitOfWork)
     {
         _userRepo = userRepo;
         _organizerProfileRepo = organizerProfileRepo;
+        _orderRepo = orderRepo;
+        _eventRepo = eventRepo;
+        _ticketRepo = ticketRepo;
         _unitOfWork = unitOfWork;
     }
 
@@ -83,6 +96,46 @@ public class AdminService : IAdminService
         _userRepo.Update(user);
         await _unitOfWork.SaveChangesAsync(ct);
         return Result<bool>.Success(true);
+    }
+
+    public async Task<Result<object>> GetStatsAsync(CancellationToken ct)
+    {
+        var userCount = await _userRepo.Query().CountAsync(ct);
+        var eventCount = await _eventRepo.Query().CountAsync(ct);
+        var orderCount = await _orderRepo.Query().CountAsync(ct);
+        var ticketCount = await _ticketRepo.Query().CountAsync(ct);
+        var totalRevenue = await _orderRepo.Query()
+            .Where(o => o.Status == OrderStatus.Paid)
+            .SumAsync(o => (decimal?)o.TotalAmount, ct) ?? 0m;
+        var pendingOrders = await _orderRepo.Query()
+            .Where(o => o.Status == OrderStatus.Pending)
+            .CountAsync(ct);
+
+        // Recent events (last 5)
+        var recentEvents = await _eventRepo.Query()
+            .OrderByDescending(e => e.CreatedAt)
+            .Take(5)
+            .Select(e => new { e.Id, e.Title, e.Status, e.CreatedAt })
+            .ToListAsync(ct);
+
+        // Recent orders (last 5)
+        var recentOrders = await _orderRepo.Query()
+            .OrderByDescending(o => o.CreatedAt)
+            .Take(5)
+            .Select(o => new { o.Id, o.Status, o.TotalAmount, o.CreatedAt })
+            .ToListAsync(ct);
+
+        return Result<object>.Success(new
+        {
+            userCount,
+            eventCount,
+            orderCount,
+            ticketCount,
+            totalRevenue,
+            pendingOrders,
+            recentEvents,
+            recentOrders
+        });
     }
 
     public async Task<Result<bool>> RevokeOrganizerAsync(string userId, CancellationToken ct)

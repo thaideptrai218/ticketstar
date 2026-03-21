@@ -9,4 +9,5 @@ public interface IAdminService
     Task<Result<bool>> LockUserAsync(string userId, CancellationToken ct);
     Task<Result<bool>> UnlockUserAsync(string userId, CancellationToken ct);
     Task<Result<bool>> RevokeOrganizerAsync(string userId, CancellationToken ct);
+    Task<Result<object>> GetStatsAsync(CancellationToken ct);
 }
