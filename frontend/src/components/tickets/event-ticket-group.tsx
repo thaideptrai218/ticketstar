@@ -35,7 +35,7 @@ export function EventTicketGroup({
       {/* Group header — click to toggle */}
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full text-left px-5 py-4 flex items-center gap-4 hover:bg-stone-50/70 transition-colors"
+        className="w-full text-left px-5 py-4 flex items-center gap-4 hover:bg-stone-50/70 transition-colors cursor-pointer"
       >
         {/* Event icon */}
         <div className="shrink-0 flex size-11 items-center justify-center rounded-xl bg-amber-50 border border-amber-100">

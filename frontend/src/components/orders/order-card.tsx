@@ -24,7 +24,7 @@ export function OrderCard({ order }: OrderCardProps) {
   return (
     <button
       onClick={() => router.push(`/attendee/orders/${order.id}`)}
-      className="w-full text-left rounded-2xl border border-stone-200 bg-white shadow-sm px-5 py-4 hover:shadow-md hover:border-stone-300 transition-all duration-200 flex items-center gap-4"
+      className="w-full text-left rounded-2xl border border-stone-200 bg-white shadow-sm px-5 py-4 hover:shadow-md hover:border-stone-300 transition-all duration-200 flex items-center gap-4 cursor-pointer"
     >
       <div className="shrink-0 size-10 rounded-full bg-amber-50 border border-amber-100 flex items-center justify-center">
         <ShoppingBag className="size-5 text-amber-700" />

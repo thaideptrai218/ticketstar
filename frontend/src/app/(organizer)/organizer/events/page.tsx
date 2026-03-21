@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiFetch, ApiError } from "@/lib/api-client";
-import { formatDate, resolveImageUrl } from "@/lib/format-utils";
+import { formatDate, formatPrice, resolveImageUrl } from "@/lib/format-utils";
 import { useMyCollaborations } from "@/hooks/use-collaborators";
 import type { OrganizerEvent } from "@/types/organizer";
 
@@ -219,7 +219,7 @@ export default function OrganizerEventsPage() {
               const st = STATUS_MAP[e.status] ?? STATUS_MAP.Draft;
               const sold = e.totalTicketCount - e.availableTicketCount;
               return (
-                <div key={e.id} className="group relative flex flex-col rounded-2xl border border-stone-200 bg-white shadow-sm transition-all hover:shadow-md hover:border-stone-300">
+                <div key={e.id} className="group relative flex flex-col rounded-2xl border border-stone-200 bg-white shadow-sm transition-all hover:shadow-md hover:border-stone-300 cursor-pointer">
                   {/* Banner / color strip */}
                   {e.imageUrl ? (
                     <img src={resolveImageUrl(e.imageUrl) ?? ""} alt="" className="h-32 w-full rounded-t-2xl object-cover" />
@@ -245,6 +245,7 @@ export default function OrganizerEventsPage() {
                       <div className="flex items-center gap-1.5">
                         <CalendarDays className="size-3.5 shrink-0" />
                         {formatDate(e.startAt)}
+                        {e.endAt && <span className="text-stone-300"> – {formatDate(e.endAt)}</span>}
                       </div>
                       {e.venue && (
                         <div className="flex items-center gap-1.5">
@@ -252,10 +253,23 @@ export default function OrganizerEventsPage() {
                           <span className="truncate">{e.venue}</span>
                         </div>
                       )}
-                      <div className="flex items-center gap-1.5">
-                        <Ticket className="size-3.5 shrink-0" />
-                        {sold}/{e.totalTicketCount} vé đã bán
+                      <div className="flex items-center justify-between gap-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <Ticket className="size-3.5 shrink-0" />
+                          {sold}/{e.totalTicketCount} vé đã bán
+                        </div>
+                        {e.minPrice > 0 && (
+                          <span className="text-amber-600 font-medium">{formatPrice(e.minPrice)}</span>
+                        )}
+                        {e.minPrice === 0 && (
+                          <span className="text-green-600 font-medium">Miễn phí</span>
+                        )}
                       </div>
+                      {e.category && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="rounded-full bg-stone-100 px-2 py-0.5 text-stone-500">{e.category}</span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Progress bar */}
@@ -310,7 +324,7 @@ export default function OrganizerEventsPage() {
                 <Link
                   key={c.eventId}
                   href={`/organizer/events/${c.eventId}`}
-                  className="group relative flex flex-col rounded-2xl border border-stone-200 bg-white shadow-sm transition-all hover:shadow-md hover:border-stone-300"
+                  className="group relative flex flex-col rounded-2xl border border-stone-200 bg-white shadow-sm transition-all hover:shadow-md hover:border-stone-300 cursor-pointer"
                 >
                   {c.imageUrl ? (
                     <img src={resolveImageUrl(c.imageUrl) ?? ""} alt="" className="h-32 w-full rounded-t-2xl object-cover" />
@@ -331,6 +345,7 @@ export default function OrganizerEventsPage() {
                       <div className="flex items-center gap-1.5">
                         <CalendarDays className="size-3.5 shrink-0" />
                         {formatDate(c.startAt)}
+                        {c.endAt && <span className="text-stone-300"> – {formatDate(c.endAt)}</span>}
                       </div>
                       {c.venue && (
                         <div className="flex items-center gap-1.5">
@@ -338,6 +353,17 @@ export default function OrganizerEventsPage() {
                           <span className="truncate">{c.venue}</span>
                         </div>
                       )}
+                      <div className="flex items-center gap-1.5">
+                        <span className={`rounded-full px-2 py-0.5 font-medium ${
+                          c.status === "Published"
+                            ? "bg-green-50 text-green-600"
+                            : c.status === "Cancelled"
+                            ? "bg-red-50 text-red-500"
+                            : "bg-stone-100 text-stone-500"
+                        }`}>
+                          {STATUS_MAP[c.status]?.label ?? c.status}
+                        </span>
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center justify-end border-t border-stone-100 px-4 py-2.5">

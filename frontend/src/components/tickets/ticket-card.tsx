@@ -3,7 +3,7 @@
 // Ticket card showing event info, QR thumbnail, and transfer action
 import { useState } from "react";
 import Link from "next/link";
-import { Calendar, MapPin, QrCode, Send } from "lucide-react";
+import { Calendar, Clock, MapPin, QrCode, Send } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDate, formatTime } from "@/lib/format-utils";
@@ -24,13 +24,13 @@ export function TicketCard({ ticket, onTransferSuccess }: TicketCardProps) {
     <>
       <Link
         href={`/attendee/orders/${ticket.orderId}`}
-        className="block rounded-2xl border border-stone-200 bg-white shadow-sm overflow-hidden hover:border-amber-300 hover:shadow-md transition-all"
+        className="block rounded-2xl border border-stone-200 bg-white shadow-sm overflow-hidden hover:border-amber-300 hover:shadow-md transition-all cursor-pointer"
       >
         <div className="flex gap-4 p-5">
           {/* QR placeholder — click to open full QR dialog (avoids base64 decode on list render) */}
           <button
             onClick={(e) => { e.preventDefault(); setQrOpen(true); }}
-            className="shrink-0 flex size-[76px] items-center justify-center rounded-lg border border-stone-100 bg-stone-50 hover:border-amber-300 hover:bg-amber-50 transition-colors"
+            className="shrink-0 flex size-[76px] items-center justify-center rounded-lg border border-stone-100 bg-stone-50 hover:border-amber-300 hover:bg-amber-50 transition-colors cursor-pointer"
             title="Xem mã QR"
           >
             <QrCode className="size-8 text-stone-400" />
@@ -68,6 +68,10 @@ export function TicketCard({ ticket, onTransferSuccess }: TicketCardProps) {
                   <span className="line-clamp-1">{ticket.eventVenue}</span>
                 </div>
               )}
+              <div className="flex items-center gap-1.5 text-xs text-stone-400">
+                <Clock className="size-3.5 shrink-0" />
+                <span>Đặt: {formatDate(ticket.createdAt)}</span>
+              </div>
             </div>
           </div>
         </div>

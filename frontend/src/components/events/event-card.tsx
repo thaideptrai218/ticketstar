@@ -16,7 +16,7 @@ export function EventCard({ event }: EventCardProps) {
   return (
     <Link
       href={`/events/${event.slug}`}
-      className="group overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1"
+      className="group overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer"
     >
       {/* Image */}
       <div className="relative aspect-[4/3] overflow-hidden bg-stone-100">
@@ -32,6 +32,12 @@ export function EventCard({ event }: EventCardProps) {
         ) : (
           <div className="flex h-full items-center justify-center text-stone-300">
             <TicketIcon className="size-12" />
+          </div>
+        )}
+        {/* Online badge */}
+        {event.isOnline && (
+          <div className="absolute top-3 left-3 flex items-center gap-1 rounded-full bg-blue-600/90 backdrop-blur-sm px-2.5 py-1 text-xs font-medium text-white shadow-sm">
+            Online
           </div>
         )}
         <div className="absolute top-3 right-3 flex items-center gap-1.5 rounded-full bg-white/90 backdrop-blur-sm px-3 py-1.5 text-sm font-medium text-stone-900 shadow-sm">
@@ -68,6 +74,7 @@ export function EventCard({ event }: EventCardProps) {
             <Calendar className="size-4 shrink-0" />
             <span>
               {formatDate(event.startAt)} · {formatTime(event.startAt)}
+              {event.endAt && ` – ${formatTime(event.endAt)}`}
             </span>
           </div>
           {event.venue && (
@@ -84,10 +91,28 @@ export function EventCard({ event }: EventCardProps) {
           )}
         </div>
 
+        {event.description && (
+          <p className="mt-2 text-xs text-stone-400 line-clamp-2 leading-relaxed">
+            {event.description.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim()}
+          </p>
+        )}
+
+        {/* Ticket availability bar */}
+        {event.totalTicketCount > 0 && (
+          <div className="mt-3">
+            <div className="h-1 w-full rounded-full bg-stone-100 overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${isSoldOut ? "bg-red-300" : "bg-amber-400"}`}
+                style={{ width: `${Math.round(((event.totalTicketCount - event.availableTicketCount) / event.totalTicketCount) * 100)}%` }}
+              />
+            </div>
+          </div>
+        )}
+
         <Button
           variant="outline"
           size="sm"
-          className="mt-4 w-full border-amber-200 text-amber-700 hover:bg-amber-50 hover:border-amber-300"
+          className="mt-4 w-full border-amber-200 text-amber-700 hover:bg-amber-50 hover:border-amber-300 cursor-pointer"
           asChild
         >
           <span>{isSoldOut ? "Xem chi tiết" : "Đặt vé ngay"}</span>
