@@ -56,6 +56,7 @@ public class EventService : IEventService
             EndAt = request.EndAt,
             Venue = request.Venue,
             City = request.City,
+            Province = request.Province,
             Category = request.Category,
             ImageUrl = request.ImageUrl,
             BannerImageUrl = request.BannerImageUrl,
@@ -120,6 +121,7 @@ public class EventService : IEventService
         if (request.EndAt.HasValue) eventEntity.EndAt = request.EndAt.Value;
         if (request.Venue != null) eventEntity.Venue = request.Venue;
         if (request.City != null) eventEntity.City = request.City;
+        if (request.Province != null) eventEntity.Province = request.Province;
         if (request.Category != null) eventEntity.Category = request.Category;
         if (request.ImageUrl != null) eventEntity.ImageUrl = request.ImageUrl;
         if (request.BannerImageUrl != null) eventEntity.BannerImageUrl = request.BannerImageUrl;
@@ -317,6 +319,7 @@ public class EventService : IEventService
             eventEntity.EndAt,
             eventEntity.Venue,
             eventEntity.City,
+            eventEntity.Province,
             eventEntity.Category,
             eventEntity.Status.ToString(),
             eventEntity.ImageUrl,

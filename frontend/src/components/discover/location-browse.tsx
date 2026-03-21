@@ -11,7 +11,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { PagedResult } from "@/types/api";
 import type { EventListItem } from "@/types/events";
 
-const CITIES = ["Hà Nội", "TP. Hồ Chí Minh", "Đà Nẵng", "Hội An", "Nha Trang", "Cần Thơ"];
+const CITIES = [
+  "Thành phố Hà Nội",
+  "Thành phố Hồ Chí Minh",
+  "Thành phố Đà Nẵng",
+  "Thành phố Hải Phòng",
+  "Thành phố Huế",
+  "Thành phố Cần Thơ",
+];
 
 function CardSkeleton() {
   return (

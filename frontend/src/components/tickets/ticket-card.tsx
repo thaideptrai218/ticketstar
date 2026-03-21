@@ -55,6 +55,7 @@ export function TicketCard({ ticket, onTransferSuccess }: TicketCardProps) {
             </div>
 
             <p className="mt-1 text-xs font-medium text-amber-700">{ticket.ticketTypeName}</p>
+            <p className="text-[10px] font-mono text-stone-400">#{ticket.id.slice(0, 8).toUpperCase()}</p>
 
             <div className="mt-2 space-y-1">
               <div className="flex items-center gap-1.5 text-xs text-stone-500">

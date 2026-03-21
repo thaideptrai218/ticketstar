@@ -1,7 +1,6 @@
 "use client";
 
-import { LayoutDashboard, LogOut, Settings, Shield, ShoppingBag, Ticket, User } from "lucide-react";
-import Link from "next/link";
+import { LayoutDashboard, LogOut, Settings, Shield, ShoppingBag, Ticket } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -70,42 +69,32 @@ export function UserMenu() {
         <DropdownMenuSeparator />
 
         {user.isOrganizer && (
-          <DropdownMenuItem asChild>
-            <Link href="/organizer/dashboard" className="cursor-pointer">
-              <LayoutDashboard className="size-4" aria-hidden="true" />
-              Quản lý sự kiện
-            </Link>
+          <DropdownMenuItem onSelect={() => router.push("/organizer/dashboard")} className="cursor-pointer">
+            <LayoutDashboard className="size-4" aria-hidden="true" />
+            Quản lý sự kiện
           </DropdownMenuItem>
         )}
 
-        <DropdownMenuItem asChild>
-          <Link href="/attendee/my-tickets" className="cursor-pointer">
-            <Ticket className="size-4" aria-hidden="true" />
-            Vé của tôi
-          </Link>
+        <DropdownMenuItem onSelect={() => router.push("/attendee/my-tickets")} className="cursor-pointer">
+          <Ticket className="size-4" aria-hidden="true" />
+          Vé của tôi
         </DropdownMenuItem>
 
-        <DropdownMenuItem asChild>
-          <Link href="/attendee/orders" className="cursor-pointer">
-            <ShoppingBag className="size-4" aria-hidden="true" />
-            Đơn hàng
-          </Link>
+        <DropdownMenuItem onSelect={() => router.push("/attendee/orders")} className="cursor-pointer">
+          <ShoppingBag className="size-4" aria-hidden="true" />
+          Đơn hàng
         </DropdownMenuItem>
 
         <DropdownMenuSeparator />
 
-        <DropdownMenuItem asChild>
-          <Link href="/settings/security" className="cursor-pointer">
-            <Shield className="size-4" aria-hidden="true" />
-            Bảo mật
-          </Link>
+        <DropdownMenuItem onSelect={() => router.push("/settings/security")} className="cursor-pointer">
+          <Shield className="size-4" aria-hidden="true" />
+          Bảo mật
         </DropdownMenuItem>
 
-        <DropdownMenuItem asChild>
-          <Link href="/settings" className="cursor-pointer">
-            <Settings className="size-4" aria-hidden="true" />
-            Cài đặt
-          </Link>
+        <DropdownMenuItem onSelect={() => router.push("/settings")} className="cursor-pointer">
+          <Settings className="size-4" aria-hidden="true" />
+          Cài đặt
         </DropdownMenuItem>
 
         <DropdownMenuSeparator />

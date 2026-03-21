@@ -24,7 +24,7 @@ export function PageTransition({ children }: { children: React.ReactNode }) {
       key={animKey}
       style={
         animKey > 0
-          ? { animation: "page-slide-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both" }
+          ? { animation: "page-slide-in 0.22s cubic-bezier(0.16, 1, 0.3, 1) both" }
           : undefined
       }
     >

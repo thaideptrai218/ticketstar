@@ -71,8 +71,8 @@ export function NavigationBar() {
           scrolled ? "py-2" : "py-3"
         }`}
       >
-        {/* Logo — shrinks on scroll */}
-        <Link href="/" className="flex items-center gap-2 shrink-0">
+        {/* Logo — shrinks on scroll; go to /home if authenticated, / otherwise */}
+        <Link href={isAuthenticated ? "/home" : "/"} className="flex items-center gap-2 shrink-0">
           <div
             className={`flex items-center justify-center rounded-lg bg-amber-700 text-white shadow-sm transition-all duration-300 ${
               scrolled ? "size-8" : "size-9"

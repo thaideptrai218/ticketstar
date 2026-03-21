@@ -10,7 +10,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Header */}
         <header className="sticky top-0 z-40 border-b border-stone-200/60 bg-white/80 backdrop-blur-lg">
           <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
-            <Link href="/" className="flex items-center gap-2.5">
+            <Link href="/home" className="flex items-center gap-2.5">
               <div className="flex size-8 items-center justify-center rounded-lg bg-amber-700 text-white">
                 <Ticket className="size-4" aria-hidden="true" />
               </div>

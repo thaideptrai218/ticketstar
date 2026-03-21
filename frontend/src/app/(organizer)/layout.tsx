@@ -80,15 +80,14 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
   }, []);
 
   return (
-    <OrganizerRoute>
-      <div className="flex min-h-screen bg-[#faf8f5]">
-        <AppSidebar navItems={NAV_ITEMS} title="Quản lý" />
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <OrganizerTopNav />
-          <main className="flex-1 overflow-auto p-6 lg:p-8">
-            {children}
-          </main>
-        </div>
+    <div className="flex min-h-screen bg-[#faf8f5]">
+      <AppSidebar navItems={NAV_ITEMS} title="Quản lý" />
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <OrganizerTopNav />
+        {/* OrganizerRoute only guards main content — sidebar/topnav always render to avoid layout flash */}
+        <main className="flex-1 overflow-auto p-6 lg:p-8">
+          <OrganizerRoute>{children}</OrganizerRoute>
+        </main>
       </div>
 
       {noticeOpen && (
@@ -97,6 +96,6 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
           setNoticeOpen(false);
         }} />
       )}
-    </OrganizerRoute>
+    </div>
   );
 }

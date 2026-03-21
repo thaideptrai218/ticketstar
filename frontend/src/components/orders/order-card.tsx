@@ -48,6 +48,13 @@ export function OrderCard({ order }: OrderCardProps) {
             {formatPrice(order.totalAmount)}
           </span>
         </div>
+
+        {/* Ticket type names */}
+        <p className="mt-1 text-xs text-stone-400 line-clamp-1">
+          {order.items.map((item) =>
+            item.quantity > 1 ? `${item.ticketTypeName} ×${item.quantity}` : item.ticketTypeName
+          ).join(" · ")}
+        </p>
       </div>
 
       <ChevronRight className="size-4 text-stone-400 shrink-0" />

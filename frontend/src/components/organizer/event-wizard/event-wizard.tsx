@@ -25,7 +25,8 @@ export interface WizardState {
   category: string;
   isOnline: boolean;
   venue: string;
-  city: string;
+  city: string;     // Thành phố trực thuộc TW
+  province: string; // Tỉnh (enabled only after city is selected)
   onlineUrl: string;
   description: string;
   // Step 2
@@ -51,6 +52,7 @@ const DEFAULT_STATE: WizardState = {
   isOnline: false,
   venue: "",
   city: "",
+  province: "",
   onlineUrl: "",
   description: "",
   startAt: "",
@@ -74,6 +76,7 @@ function eventDetailToWizardState(ev: EventDetail): WizardState {
     isOnline: ev.isOnline ?? false,
     venue: ev.venue ?? "",
     city: ev.city ?? "",
+    province: ev.province ?? "",
     onlineUrl: "",
     description: ev.description ?? "",
     startAt: ev.startAt ? ev.startAt.slice(0, 16) : "",
@@ -129,6 +132,7 @@ export function EventWizard({ mode, initialData }: EventWizardProps) {
         endAt: new Date(state.endAt).toISOString(),
         venue: state.isOnline ? null : (state.venue || null),
         city: state.isOnline ? null : (state.city || null),
+        province: state.isOnline ? null : (state.province || null),
         category: state.category || null,
         imageUrl: state.coverImageUrl || null,
         bannerImageUrl: state.bannerImageUrl || null,

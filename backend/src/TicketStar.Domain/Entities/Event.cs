@@ -11,7 +11,10 @@ public class Event
     public DateTime StartAt { get; set; }
     public DateTime EndAt { get; set; }
     public string? Venue { get; set; }
+    /// <summary>Thành phố trực thuộc TW (e.g. "Thành phố Hà Nội")</summary>
     public string? City { get; set; }
+    /// <summary>Tỉnh (e.g. "Tỉnh Nghệ An") — optional sub-location detail</summary>
+    public string? Province { get; set; }
     /// <summary>Event category: Music | Sports | Arts | Technology | Food | Education</summary>
     public string? Category { get; set; }
     public EventStatus Status { get; set; }

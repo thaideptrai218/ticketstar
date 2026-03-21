@@ -7,6 +7,7 @@ public record CreateEventRequest(
     DateTime EndAt,
     string? Venue,
     string? City,
+    string? Province,
     string? Category,
     string? ImageUrl,
     string Slug,
@@ -29,6 +30,7 @@ public record UpdateEventRequest(
     DateTime? EndAt,
     string? Venue,
     string? City,
+    string? Province,
     string? Category,
     string? ImageUrl,
     // Wizard new fields
@@ -53,6 +55,7 @@ public record EventDetailResponse(
     DateTime EndAt,
     string? Venue,
     string? City,
+    string? Province,
     string? Category,
     string Status,
     string? ImageUrl,

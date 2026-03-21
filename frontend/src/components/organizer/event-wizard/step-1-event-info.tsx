@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { ImageUploadZone } from "./image-upload-zone";
 import { RichTextEditor } from "./rich-text-editor";
-import { fetchProvinces } from "@/lib/vn-provinces";
+import { fetchProvincesGrouped, type ProvinceGrouped } from "@/lib/vn-provinces";
 import { apiFetch } from "@/lib/api-client";
 import { getMyOrganizerProfiles, type OrganizerProfile } from "@/lib/api/organizer-profile-api";
 import type { WizardState } from "./event-wizard";
@@ -206,12 +206,12 @@ function OrgCombobox({
 // ─── Step 1 ───────────────────────────────────────────────────────────────────
 
 export function Step1EventInfo({ data, onChange, onNext, isCreateMode, isAdmin }: Step1Props) {
-  const [provinces, setProvinces] = useState<string[]>([]);
+  const [provinces, setProvinces] = useState<ProvinceGrouped>({ cities: [], provinces: [] });
   const [adminOrgs, setAdminOrgs] = useState<AdminOrgOption[]>([]);
   const [myProfiles, setMyProfiles] = useState<OrganizerProfile[]>([]);
 
   useEffect(() => {
-    fetchProvinces().then(setProvinces);
+    fetchProvincesGrouped().then(setProvinces);
   }, []);
 
   useEffect(() => {
@@ -403,15 +403,36 @@ export function Step1EventInfo({ data, onChange, onNext, isCreateMode, isAdmin }
               />
             </div>
             <div>
-              <Label htmlFor="ev-city">Tỉnh / Thành phố</Label>
+              <Label htmlFor="ev-city">Thành phố</Label>
               <select
                 id="ev-city"
                 value={data.city}
-                onChange={(e) => onChange({ city: e.target.value })}
+                onChange={(e) => {
+                  // Selecting a new city resets the province
+                  onChange({ city: e.target.value, province: "" });
+                }}
                 className="mt-1 w-full border rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
               >
-                <option value="">-- Chọn tỉnh thành --</option>
-                {provinces.map((p) => <option key={p} value={p}>{p}</option>)}
+                <option value="">-- Chọn thành phố --</option>
+                {provinces.cities.map((p) => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+            <div>
+              <Label htmlFor="ev-province">
+                Tỉnh
+                {!data.city && (
+                  <span className="ml-1.5 text-xs text-stone-400 font-normal">(chọn thành phố trước)</span>
+                )}
+              </Label>
+              <select
+                id="ev-province"
+                value={data.province}
+                onChange={(e) => onChange({ province: e.target.value })}
+                disabled={!data.city}
+                className="mt-1 w-full border rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-stone-50"
+              >
+                <option value="">-- Chọn tỉnh --</option>
+                {provinces.provinces.map((p) => <option key={p} value={p}>{p}</option>)}
               </select>
             </div>
           </>

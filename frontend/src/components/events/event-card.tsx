@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
-import { Calendar, MapPin, TicketIcon } from "lucide-react";
+import { Calendar, MapPin, TicketIcon, Users } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatPrice, formatDate, formatTime, resolveImageUrl } from "@/lib/format-utils";
 import type { EventListItem } from "@/types/events";
@@ -41,6 +42,23 @@ export function EventCard({ event }: EventCardProps) {
 
       {/* Details */}
       <div className="p-5">
+        {/* Category + status row */}
+        {(event.category || event.status !== "Published") && (
+          <div className="mb-2 flex items-center gap-1.5 flex-wrap">
+            {event.category && (
+              <Badge variant="outline" className="text-xs text-stone-500 border-stone-200 px-2 py-0.5">
+                {event.category}
+              </Badge>
+            )}
+            {event.status === "Cancelled" && (
+              <Badge className="text-xs bg-red-50 text-red-600 border-red-100 px-2 py-0.5">Đã hủy</Badge>
+            )}
+            {event.status === "Draft" && (
+              <Badge className="text-xs bg-stone-100 text-stone-500 border-stone-200 px-2 py-0.5">Nháp</Badge>
+            )}
+          </div>
+        )}
+
         <h3 className="text-lg font-semibold text-stone-900 line-clamp-2 group-hover:text-amber-700 transition-colors">
           {event.title}
         </h3>
@@ -56,6 +74,12 @@ export function EventCard({ event }: EventCardProps) {
             <div className="flex items-center gap-2 text-sm text-stone-500">
               <MapPin className="size-4 shrink-0" />
               <span className="line-clamp-1">{event.venue}</span>
+            </div>
+          )}
+          {!isSoldOut && (
+            <div className="flex items-center gap-2 text-sm text-stone-500">
+              <Users className="size-4 shrink-0" />
+              <span>{event.availableTicketCount} vé còn lại</span>
             </div>
           )}
         </div>

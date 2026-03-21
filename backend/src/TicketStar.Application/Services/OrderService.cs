@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using StackExchange.Redis;
+using DomainOrder = TicketStar.Domain.Entities.Order;
 using TicketStar.Application.Common;
 using TicketStar.Application.DTOs.Events;
 using TicketStar.Application.DTOs.Orders;
@@ -24,6 +26,7 @@ public class OrderService : IOrderService
     private readonly IQrCodeService _qrCodeService;
     private readonly IPaymentRepository _paymentRepo;
     private readonly ISePayWebhookHandler _sePayHandler;
+    private readonly IConnectionMultiplexer _redis;
     private readonly ILogger<OrderService> _logger;
 
     public OrderService(
@@ -36,6 +39,7 @@ public class OrderService : IOrderService
         IDistributedLock distributedLock,
         IQrCodeService qrCodeService,
         ISePayWebhookHandler sePayHandler,
+        IConnectionMultiplexer redis,
         ILogger<OrderService> logger)
     {
         _orderRepo = orderRepo;
@@ -47,6 +51,7 @@ public class OrderService : IOrderService
         _distributedLock = distributedLock;
         _qrCodeService = qrCodeService;
         _sePayHandler = sePayHandler;
+        _redis = redis;
         _logger = logger;
     }
 
@@ -91,7 +96,7 @@ public class OrderService : IOrderService
 
         try
         {
-            var order = new Order
+            var order = new DomainOrder
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
@@ -107,6 +112,9 @@ public class OrderService : IOrderService
             {
                 await _ticketTypeRepo.IncrementSoldCountAsync(item.TicketTypeId, item.Quantity, ct);
             }
+
+            // Invalidate cached event detail so availableCount reflects the new sold counts
+            await InvalidateEventCacheAsync(eventEntity.Slug);
 
             _orderRepo.Add(order);
             await _unitOfWork.SaveChangesAsync(ct);
@@ -166,13 +174,10 @@ public class OrderService : IOrderService
 
             var tickets = await _ticketRepo.GetByOrderAsync(orderId, ct) ?? [];
 
-            var ticketResponses = new List<TicketResponse>();
-            foreach (var t in tickets)
-            {
-                string ticketTypeName = t.OrderItem?.TicketType?.Name ?? "";
-                string qrBase64 = !string.IsNullOrEmpty(t.QrCode) ? _qrCodeService.GenerateQrCodeBase64(t.QrCode) : "";
-                ticketResponses.Add(new TicketResponse(t.Id, ticketTypeName, qrBase64, t.IsCheckedIn));
-            }
+            // QR images are fetched on-demand via GET /api/tickets/{id}/qr — skip expensive generation here
+            var ticketResponses = tickets.Select(t => new TicketResponse(
+                t.Id, t.OrderItem?.TicketType?.Name ?? "", "", t.IsCheckedIn
+            )).ToList();
 
             return Result<OrderDetailResponse>.Success(new OrderDetailResponse(
                 order.Id,
@@ -208,24 +213,32 @@ public class OrderService : IOrderService
 
     public async Task<Result<List<OrderResponse>>> GetUserOrdersAsync(string userId, CancellationToken ct)
     {
-        var orders = await _orderRepo.GetByUserAsync(userId, ct);
-        return Result<List<OrderResponse>>.Success(orders.Select(o => new OrderResponse(
-            o.Id,
-            o.Status.ToString(),
-            o.TotalAmount,
-            o.CreatedAt,
-            o.ExpiresAt,
-            o.PaidAt,
-            "",
-            o.Items.Select(oi => new OrderItemResponse(
-                oi.Id,
-                oi.TicketTypeId,
+        try
+        {
+            var orders = await _orderRepo.GetByUserAsync(userId, ct);
+            return Result<List<OrderResponse>>.Success(orders.Select(o => new OrderResponse(
+                o.Id,
+                o.Status.ToString(),
+                o.TotalAmount,
+                o.CreatedAt,
+                o.ExpiresAt,
+                o.PaidAt,
                 "",
-                oi.Quantity,
-                oi.UnitPrice,
-                oi.UnitPrice * oi.Quantity
-            )).ToList()
-        )).ToList());
+                o.Items.Select(oi => new OrderItemResponse(
+                    oi.Id,
+                    oi.TicketTypeId,
+                    "",
+                    oi.Quantity,
+                    oi.UnitPrice,
+                    oi.UnitPrice * oi.Quantity
+                )).ToList()
+            )).ToList());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get orders for user {UserId}", userId);
+            return Result<List<OrderResponse>>.Failure("Không thể tải danh sách đơn hàng.", ResultError.Internal);
+        }
     }
 
     public async Task<Result<OrderDetailResponse>> ProcessSePayWebhookAsync(string jsonPayload, string signature, CancellationToken ct)
@@ -431,10 +444,24 @@ public class OrderService : IOrderService
         order.UpdatedAt = DateTime.UtcNow;
 
         // Release ticket reservations
+        string? cancelEventSlug = null;
+        if (order.Items.Count > 0)
+        {
+            var firstTicketType = await _ticketTypeRepo.GetByIdAsync(order.Items.First().TicketTypeId, ct);
+            if (firstTicketType != null)
+            {
+                var cancelEvent = await _eventRepo.GetByIdAsync(firstTicketType.EventId, ct);
+                cancelEventSlug = cancelEvent?.Slug;
+            }
+        }
+
         foreach (var item in order.Items)
         {
             await _ticketTypeRepo.IncrementSoldCountAsync(item.TicketTypeId, -item.Quantity, ct);
         }
+
+        if (cancelEventSlug != null)
+            await InvalidateEventCacheAsync(cancelEventSlug);
 
         _orderRepo.Update(order);
         await _unitOfWork.SaveChangesAsync(ct);
@@ -468,6 +495,9 @@ public class OrderService : IOrderService
             await _ticketTypeRepo.IncrementSoldCountAsync(item.TicketTypeId, -item.Quantity, ct);
         }
 
+        // Invalidate cached event detail so availableCount reflects the restored counts
+        await InvalidateEventCacheAsync(eventEntity.Slug);
+
         // Cancel issued tickets
         var tickets = await _ticketRepo.GetByOrderAsync(orderId, ct);
         foreach (var ticket in tickets)
@@ -485,5 +515,19 @@ public class OrderService : IOrderService
         _orderRepo.Update(order);
         await _unitOfWork.SaveChangesAsync(ct);
         return Result<bool>.Success(true);
+    }
+
+    /// <summary>Bust the Redis event-by-slug cache so availableCount is fresh on next request.</summary>
+    private async Task InvalidateEventCacheAsync(string slug)
+    {
+        try
+        {
+            var db = _redis.GetDatabase();
+            await db.KeyDeleteAsync(CacheKeys.EventBySlug(slug));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to invalidate event cache for slug {Slug}", slug);
+        }
     }
 }

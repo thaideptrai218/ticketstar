@@ -27,6 +27,7 @@ export interface EventDetail {
   endAt: string;
   venue: string | null;
   city?: string | null;
+  province?: string | null;
   category: string | null;
   status: string;
   imageUrl: string | null;

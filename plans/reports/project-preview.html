@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TicketStar - Project Preview</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #8b5cf6;
+            --primary-dark: #7c3aed;
+            --secondary: #06b6d4;
+            --accent: #f59e0b;
+            --dark: #0f172a;
+            --darker: #020617;
+            --light: #f8fafc;
+            --gray: #64748b;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--darker);
+            color: var(--light);
+            overflow-x: hidden;
+        }
+
+        /* Animated Background */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background:
+                radial-gradient(ellipse at 20% 20%, rgba(139, 92, 246, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(6, 182, 212, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(245, 158, 11, 0.05) 0%, transparent 50%);
+            animation: bgPulse 10s ease-in-out infinite;
+        }
+
+        @keyframes bgPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 1rem 2rem;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(139, 92, 246, 0.2);
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .nav-links a {
+            color: var(--gray);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover {
+            color: var(--primary);
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 2rem;
+            position: relative;
+        }
+
+        .hero-content {
+            max-width: 800px;
+            animation: fadeInUp 1s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .hero h1 {
+            font-size: 4rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--light), var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: gradientShift 5s ease infinite;
+            background-size: 200% 200%;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .hero p {
+            font-size: 1.3rem;
+            color: var(--gray);
+            margin-bottom: 2rem;
+        }
+
+        .cta-button {
+            display: inline-block;
+            padding: 1rem 2.5rem;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: 600;
+            transition: all 0.3s;
+            box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4);
+        }
+
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 30px rgba(139, 92, 246, 0.6);
+        }
+
+        /* Section Styles */
+        section {
+            padding: 6rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 3rem;
+            position: relative;
+        }
+
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            border-radius: 2px;
+        }
+
+        /* Features Grid */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+        }
+
+        .feature-card {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            border-radius: 16px;
+            padding: 2rem;
+            transition: all 0.3s;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 0.6s ease forwards;
+        }
+
+        .feature-card:nth-child(1) { animation-delay: 0.1s; }
+        .feature-card:nth-child(2) { animation-delay: 0.2s; }
+        .feature-card:nth-child(3) { animation-delay: 0.3s; }
+        .feature-card:nth-child(4) { animation-delay: 0.4s; }
+        .feature-card:nth-child(5) { animation-delay: 0.5s; }
+        .feature-card:nth-child(6) { animation-delay: 0.6s; }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+            box-shadow: 0 10px 40px rgba(139, 92, 246, 0.2);
+        }
+
+        .feature-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature-card h3 {
+            font-size: 1.3rem;
+            margin-bottom: 0.5rem;
+            color: var(--light);
+        }
+
+        .feature-card p {
+            color: var(--gray);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        /* Architecture Diagram */
+        .arch-container {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            border-radius: 20px;
+            padding: 3rem;
+            margin-top: 2rem;
+        }
+
+        .arch-diagram {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .arch-box {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(6, 182, 212, 0.2));
+            border: 1px solid var(--primary);
+            border-radius: 12px;
+            padding: 1.5rem 2rem;
+            text-align: center;
+            min-width: 150px;
+            transition: all 0.3s;
+        }
+
+        .arch-box:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 20px rgba(139, 92, 246, 0.4);
+        }
+
+        .arch-box .icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .arch-box .label {
+            font-weight: 600;
+            color: var(--light);
+        }
+
+        .arch-box .port {
+            font-size: 0.8rem;
+            color: var(--gray);
+            margin-top: 0.3rem;
+        }
+
+        .arch-arrow {
+            font-size: 2rem;
+            color: var(--primary);
+            animation: arrowPulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes arrowPulse {
+            0%, 100% { opacity: 0.5; transform: translateX(0); }
+            50% { opacity: 1; transform: translateX(5px); }
+        }
+
+        /* User Roles */
+        .roles-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+        }
+
+        .role-card {
+            background: rgba(15, 23, 42, 0.8);
+            border-left: 4px solid;
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: all 0.3s;
+        }
+
+        .role-card.admin { border-color: #ef4444; }
+        .role-card.organizer { border-color: #f59e0b; }
+        .role-card.staff { border-color: #06b6d4; }
+        .role-card.attendee { border-color: #22c55e; }
+
+        .role-card:hover {
+            transform: translateX(5px);
+            box-shadow: -5px 0 20px currentColor;
+        }
+
+        .role-card h3 {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .role-card .permissions {
+            color: var(--gray);
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        /* Tech Stack */
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+        }
+
+        .tech-item {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .tech-item:hover {
+            border-color: var(--secondary);
+            background: rgba(6, 182, 212, 0.1);
+        }
+
+        .tech-item .emoji {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .tech-item .name {
+            font-weight: 600;
+            color: var(--light);
+        }
+
+        /* API Endpoints */
+        .api-list {
+            display: grid;
+            gap: 0.5rem;
+        }
+
+        .api-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            background: rgba(15, 23, 42, 0.6);
+            padding: 1rem;
+            border-radius: 8px;
+            border-left: 3px solid;
+            transition: all 0.3s;
+        }
+
+        .api-item:hover {
+            background: rgba(15, 23, 42, 0.9);
+            transform: translateX(5px);
+        }
+
+        .api-item.get { border-color: #22c55e; }
+        .api-item.post { border-color: #f59e0b; }
+        .api-item.put { border-color: #06b6d4; }
+        .api-item.delete { border-color: #ef4444; }
+
+        .api-method {
+            font-weight: 700;
+            font-size: 0.8rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .api-item.get .api-method { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+        .api-item.post .api-method { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+        .api-item.put .api-method { background: rgba(6, 182, 212, 0.2); color: #06b6d4; }
+        .api-item.delete .api-method { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+
+        .api-endpoint {
+            color: var(--gray);
+            font-family: monospace;
+        }
+
+        /* Status Timeline */
+        .timeline {
+            position: relative;
+            padding-left: 30px;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(to bottom, var(--primary), var(--secondary));
+        }
+
+        .timeline-item {
+            position: relative;
+            padding: 1rem 0 2rem;
+            opacity: 0;
+            animation: fadeInRight 0.6s ease forwards;
+        }
+
+        .timeline-item:nth-child(1) { animation-delay: 0.1s; }
+        .timeline-item:nth-child(2) { animation-delay: 0.2s; }
+        .timeline-item:nth-child(3) { animation-delay: 0.3s; }
+        .timeline-item:nth-child(4) { animation-delay: 0.4s; }
+        .timeline-item:nth-child(5) { animation-delay: 0.5s; }
+
+        @keyframes fadeInRight {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -34px;
+            top: 1.5rem;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--primary);
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.3);
+        }
+
+        .timeline-item.complete::before {
+            background: #22c55e;
+            box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.3);
+        }
+
+        .timeline-item.in-progress::before {
+            background: #f59e0b;
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.3);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.3); }
+            50% { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0.1); }
+        }
+
+        .timeline-item.pending::before {
+            background: var(--gray);
+        }
+
+        .timeline-phase {
+            font-weight: 700;
+            color: var(--light);
+            margin-bottom: 0.3rem;
+        }
+
+        .timeline-status {
+            display: inline-block;
+            padding: 0.2rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .timeline-item.complete .timeline-status {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+        }
+
+        .timeline-item.in-progress .timeline-status {
+            background: rgba(245, 158, 11, 0.2);
+            color: #f59e0b;
+        }
+
+        .timeline-item.pending .timeline-status {
+            background: rgba(100, 116, 139, 0.2);
+            color: var(--gray);
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 3rem;
+            background: rgba(15, 23, 42, 0.8);
+            border-top: 1px solid rgba(139, 92, 246, 0.2);
+            margin-top: 4rem;
+        }
+
+        footer p {
+            color: var(--gray);
+        }
+
+        /* Floating Elements */
+        .floating {
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        /* Scroll animations */
+        .reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.8s ease;
+        }
+
+        .reveal.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 2.5rem; }
+            .roles-container { grid-template-columns: 1fr; }
+            .arch-diagram { flex-direction: column; }
+            .arch-arrow { transform: rotate(90deg); }
+            @keyframes arrowPulse {
+                0%, 100% { opacity: 0.5; transform: rotate(90deg) translateY(0); }
+                50% { opacity: 1; transform: rotate(90deg) translateY(5px); }
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-animation"></div>
+
+    <nav>
+        <div class="logo">🎫 TicketStar</div>
+        <div class="nav-links">
+            <a href="#features">Features</a>
+            <a href="#architecture">Architecture</a>
+            <a href="#roles">Roles</a>
+            <a href="#api">API</a>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <div class="hero-content">
+            <div class="floating" style="font-size: 5rem; margin-bottom: 1rem;">🎪</div>
+            <h1>TicketStar</h1>
+            <p>Full-stack ticketing marketplace platform with event creation, ticket sales, QR check-in, and role-based access control.</p>
+            <a href="#features" class="cta-button">Explore Features</a>
+        </div>
+    </section>
+
+    <section id="features" class="reveal">
+        <h2 class="section-title">Core Features</h2>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">🎯</div>
+                <h3>Event Management</h3>
+                <p>Organizers can create, update, and manage events with ticket tiers, pricing, and availability quotas.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🎫</div>
+                <h3>Ticket Sales</h3>
+                <p>Attendees can browse events, purchase tickets via SePay (VietQR), and receive QR tickets instantly.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📱</div>
+                <h3>QR Check-in</h3>
+                <p>Staff can scan attendee QR codes for instant event entry validation with real-time status updates.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🔐</div>
+                <h3>Advanced Auth</h3>
+                <p>JWT with refresh token rotation, TOTP MFA, Redis rate limiting, and token blacklisting.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">💳</div>
+                <h3>SePay Integration</h3>
+                <p>Real VietQR payment integration with webhook processing and automatic order confirmation.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📊</div>
+                <h3>Analytics Dashboard</h3>
+                <p>Real-time sales statistics, check-in metrics, and revenue tracking for organizers.</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="architecture" class="reveal">
+        <h2 class="section-title">System Architecture</h2>
+        <div class="arch-container">
+            <div class="arch-diagram">
+                <div class="arch-box">
+                    <div class="icon">⚛️</div>
+                    <div class="label">Next.js 15</div>
+                    <div class="port">Port: 3001</div>
+                </div>
+                <div class="arch-arrow">→</div>
+                <div class="arch-box">
+                    <div class="icon">🔷</div>
+                    <div class="label">.NET 8 API</div>
+                    <div class="port">Port: 5010</div>
+                </div>
+                <div class="arch-arrow">→</div>
+                <div class="arch-box">
+                    <div class="icon">🗄️</div>
+                    <div class="label">MySQL 8</div>
+                    <div class="port">Port: 3307</div>
+                </div>
+            </div>
+            <div style="display: flex; justify-content: center; gap: 2rem; margin-top: 2rem; flex-wrap: wrap;">
+                <div class="arch-box">
+                    <div class="icon">⚡</div>
+                    <div class="label">Redis 7</div>
+                    <div class="port">Port: 6380</div>
+                </div>
+                <div class="arch-box">
+                    <div class="icon">🐰</div>
+                    <div class="label">RabbitMQ</div>
+                    <div class="port">5672 / 15672</div>
+                </div>
+            </div>
+            <div style="margin-top: 2rem; text-align: center; color: var(--gray);">
+                <p>Layered Architecture: <strong>API → Application → Domain ← Infrastructure</strong></p>
+            </div>
+        </div>
+    </section>
+
+    <section id="roles" class="reveal">
+        <h2 class="section-title">User Roles & Permissions</h2>
+        <div class="roles-container">
+            <div class="role-card admin">
+                <h3>🛡️ Admin</h3>
+                <div class="permissions">
+                    Full system access, user management, platform configuration, system monitoring
+                </div>
+            </div>
+            <div class="role-card organizer">
+                <h3>🎨 Organizer</h3>
+                <div class="permissions">
+                    Create/manage events, view sales stats, manage payouts, view check-in statistics
+                </div>
+            </div>
+            <div class="role-card staff">
+                <h3>👤 Staff</h3>
+                <div class="permissions">
+                    Check-in attendees for assigned events, view event attendee lists
+                </div>
+            </div>
+            <div class="role-card attendee">
+                <h3>🎟️ Attendee</h3>
+                <div class="permissions">
+                    Browse events, purchase tickets, view owned tickets, QR display for check-in
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="reveal">
+        <h2 class="section-title">Technology Stack</h2>
+        <div class="tech-grid">
+            <div class="tech-item">
+                <div class="emoji">⚛️</div>
+                <div class="name">Next.js 15</div>
+            </div>
+            <div class="tech-item">
+                <div class="emoji">⚡</div>
+                <div class="name">React 19</div>
+            </div>
+            <div class="tech-item">
+                <div class="emoji">📘</div>
+                <div class="name">TypeScript</div>
+            </div>
+            <div class="tech-item">
+                <div class="emoji">🎨</div>
+                <div class="name">Tailwind CSS</div>
+            </div>
+            <div class="tech-item">
+                <div class="emoji">🔷</div>
+                <div class="name">.NET 8</div>
+            </div>
+            <div class="tech-item">
+                <div class="emoji">🗄️</div>
+                <div class="name">MySQL 8</div>
+            </div>
+            <div class="tech-item">
+                <div class="emoji">⚡</div>
+                <div class="name">Redis 7</div>
+            </div>
+            <div class="tech-item">
+                <div class="emoji">🐰</div>
+                <div class="name">RabbitMQ</div>
+            </div>
+        </div>
+    </section>
+
+    <section id="api" class="reveal">
+        <h2 class="section-title">API Endpoints</h2>
+        <div class="arch-container">
+            <h3 style="margin-bottom: 1rem; color: var(--primary);">Authentication</h3>
+            <div class="api-list" style="margin-bottom: 2rem;">
+                <div class="api-item post">
+                    <span class="api-method">POST</span>
+                    <span class="api-endpoint">/api/auth/register</span>
+                </div>
+                <div class="api-item post">
+                    <span class="api-method">POST</span>
+                    <span class="api-endpoint">/api/auth/login</span>
+                </div>
+                <div class="api-item post">
+                    <span class="api-method">POST</span>
+                    <span class="api-endpoint">/api/auth/google-login</span>
+                </div>
+                <div class="api-item post">
+                    <span class="api-method">POST</span>
+                    <span class="api-endpoint">/api/auth/mfa/setup</span>
+                </div>
+                <div class="api-item post">
+                    <span class="api-method">POST</span>
+                    <span class="api-endpoint">/api/auth/refresh</span>
+                </div>
+            </div>
+
+            <h3 style="margin-bottom: 1rem; color: var(--secondary);">Events & Tickets</h3>
+            <div class="api-list" style="margin-bottom: 2rem;">
+                <div class="api-item get">
+                    <span class="api-method">GET</span>
+                    <span class="api-endpoint">/api/events</span>
+                </div>
+                <div class="api-item post">
+                    <span class="api-method">POST</span>
+                    <span class="api-endpoint">/api/events</span>
+                </div>
+                <div class="api-item get">
+                    <span class="api-method">GET</span>
+                    <span class="api-endpoint">/api/events/{id}</span>
+                </div>
+                <div class="api-item post">
+                    <span class="api-method">POST</span>
+                    <span class="api-endpoint">/api/orders</span>
+                </div>
+                <div class="api-item get">
+                    <span class="api-method">GET</span>
+                    <span class="api-endpoint">/api/tickets/my-tickets</span>
+                </div>
+            </div>
+
+            <h3 style="margin-bottom: 1rem; color: var(--accent);">Check-in</h3>
+            <div class="api-list">
+                <div class="api-item post">
+                    <span class="api-method">POST</span>
+                    <span class="api-endpoint">/api/check-in/scan</span>
+                </div>
+                <div class="api-item get">
+                    <span class="api-method">GET</span>
+                    <span class="api-endpoint">/api/check-in/stats/{eventId}</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="reveal">
+        <h2 class="section-title">Development Status</h2>
+        <div class="timeline">
+            <div class="timeline-item complete">
+                <div class="timeline-phase">Phase 1: Project Scaffolding</div>
+                <span class="timeline-status">✅ Complete</span>
+            </div>
+            <div class="timeline-item complete">
+                <div class="timeline-phase">Phase 2: Database & Identity + Auth Hardening</div>
+                <span class="timeline-status">✅ Complete</span>
+            </div>
+            <div class="timeline-item in-progress">
+                <div class="timeline-phase">Phase 3: Backend API</div>
+                <span class="timeline-status">🔄 In Progress</span>
+            </div>
+            <div class="timeline-item pending">
+                <div class="timeline-phase">Phase 4: Frontend Auth & Layout</div>
+                <span class="timeline-status">⏳ Pending</span>
+            </div>
+            <div class="timeline-item pending">
+                <div class="timeline-phase">Phase 5-9: Frontend Implementation & Testing</div>
+                <span class="timeline-status">⏳ Pending</span>
+            </div>
+        </div>
+    </section>
+
+    <section class="reveal">
+        <h2 class="section-title">Security Features</h2>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">🔑</div>
+                <h3>JWT httpOnly Cookies</h3>
+                <p>5min access tokens with 7-day refresh tokens and automatic rotation.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📱</div>
+                <h3>TOTP MFA</h3>
+                <p>Two-factor authentication with recovery codes and AES-256 encryption.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🚦</div>
+                <h3>Rate Limiting</h3>
+                <p>Redis distributed sliding-window rate limiting per IP address.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🔒</div>
+                <h3>Password Security</h3>
+                <p>Argon2id hashing with OWASP-compliant parameters.</p>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <p>🎫 TicketStar — Full-Stack Ticketing Marketplace</p>
+        <p style="margin-top: 0.5rem; font-size: 0.9rem;">.NET 8 • Next.js 15 • MySQL • Redis • RabbitMQ</p>
+    </footer>
+
+    <script>
+        // Scroll reveal animation
+        const revealElements = document.querySelectorAll('.reveal');
+
+        const revealOnScroll = () => {
+            revealElements.forEach(element => {
+                const elementTop = element.getBoundingClientRect().top;
+                const windowHeight = window.innerHeight;
+
+                if (elementTop < windowHeight - 100) {
+                    element.classList.add('active');
+                }
+            });
+        };
+
+        window.addEventListener('scroll', revealOnScroll);
+        window.addEventListener('load', revealOnScroll);
+
+        // Smooth scroll for navigation
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Navbar background on scroll
+        const nav = document.querySelector('nav');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 50) {
+                nav.style.background = 'rgba(15, 23, 42, 0.95)';
+            } else {
+                nav.style.background = 'rgba(15, 23, 42, 0.8)';
+            }
+        });
+    </script>
+</body>
+</html>

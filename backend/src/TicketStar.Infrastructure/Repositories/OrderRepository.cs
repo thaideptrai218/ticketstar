@@ -14,10 +14,8 @@ public class OrderRepository : EfRepository<Order>, IOrderRepository
         => await DbSet
             .Where(o => o.UserId == userId)
             .Include(o => o.Items)
-            .ThenInclude(oi => oi.TicketType)
             .Include(o => o.Payment)
             .OrderByDescending(o => o.CreatedAt)
-            .AsSplitQuery()
             .ToListAsync(ct);
 
     public async Task<Order?> GetByIdWithItemsAsync(Guid orderId, CancellationToken ct = default)
